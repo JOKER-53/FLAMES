@@ -5,6 +5,7 @@ import { evaluatePacket } from "@fortisim/engine";
 import { PacketFlowPanel } from "../components/policyObjects/PacketFlowPanel";
 import { NetworkSimCanvas } from "../components/policyObjects/NetworkSimCanvas";
 import { NetworkTopology } from "../components/policyObjects/NetworkTopology";
+import { HardQuestionCard } from "../components/HardQuestionCard";
 import { getSubmissionFeedback } from "../api/client";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
@@ -359,6 +360,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       <div className="space-y-4">
         <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} />
+        <HardQuestionCard taskId={scenarioId} session={session} />
       </div>
 
       {showSim && (

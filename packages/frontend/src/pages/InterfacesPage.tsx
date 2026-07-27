@@ -6,6 +6,7 @@ const ALL_PORT_SCENARIOS_AND_FINAL = [...ALL_PORT_SCENARIOS, portFinalScenario];
 import { ChassisDiagram } from "../components/policyObjects/ChassisDiagram";
 import type { PortZone, PortAssignment } from "../components/policyObjects/ChassisDiagram";
 import { InterfaceTopology } from "../components/policyObjects/InterfaceTopology";
+import { HardQuestionCard } from "../components/HardQuestionCard";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
 const ADMIN_ACCESS_OPTIONS: AdminAccess[] = ["PING", "HTTPS", "SSH", "HTTP"];
@@ -280,6 +281,9 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
               </div>
             )}
           </div>
+          <div className="mt-4">
+           <HardQuestionCard taskId={activeIfaceScenarioId} session={session} />
+          </div>
         </>
       )}
 
@@ -352,6 +356,9 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
                 {portAiRemark}
               </div>
             )}
+          </div>
+          <div className="mt-4">
+           <HardQuestionCard taskId={portScenario?.id} session={session} />
           </div>
         </>
       )}

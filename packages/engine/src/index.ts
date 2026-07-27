@@ -16,3 +16,4 @@ export * from "./interfaceGrader";
 export * from "./interfaceScenarios";
 export * from "./portGrader";
 export * from "./portScenarios";
+export * from "./hardQuestions";
