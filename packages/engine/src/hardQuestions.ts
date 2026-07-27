@@ -65,17 +65,6 @@ export const HARD_QUESTIONS: Record<string, HardQuestion> = {
     ],
     correctIndex: 1,
   },
-  "port-final-01": {
-    question:
-      "The Final Assignment combines a redundant WAN, a multi-server DMZ, a large LAN, a spare port, and a 'trick' port. If you're unsure whether an unlabeled port is LAN or DMZ, what's the most reliable way to decide, rather than guessing from its position on the chassis?",
-    choices: [
-      "Assume it's LAN, since most ports usually are",
-      "Trace what it's actually connected to and match the zone to that real segment, not its position on the chassis",
-      "Assign it to WAN just to be safe",
-      "Leave it unassigned — unassigned ports are automatically secure",
-    ],
-    correctIndex: 1,
-  },
 
   // ---------------- Interface Config track ----------------
   "interface-ip-01": {
@@ -220,17 +209,6 @@ export const HARD_QUESTIONS: Record<string, HardQuestion> = {
       "A rule allowing only LAN → management server over SSH, with no corresponding WAN → management server SSH rule at all",
       "Allow WAN → management server over SSH, since firewalls block brute-force attempts automatically",
       "SSH doesn't need a policy, since it's internal-only by default",
-    ],
-    correctIndex: 1,
-  },
-  "firewall-final-01": {
-    question:
-      "The Firewall Policy Final combines multiple systems, DMZ servers, guest isolation, and web filtering into one rule set. When broad zone rules, narrow host-specific denies, and web-filter-scoped rules all coexist, what's the biggest practical risk in how they're ordered?",
-    choices: [
-      "Order is irrelevant, as long as every needed rule exists somewhere in the list",
-      "A broad ACCEPT rule placed above a narrower DENY or filtered rule can shadow it entirely, since the firewall stops at the first match — specific exceptions generally need to sit above the general rules they override",
-      "Web-filtering rules always take priority over policy rules, regardless of position",
-      "Only the last rule in the list is ever actually evaluated",
     ],
     correctIndex: 1,
   },
