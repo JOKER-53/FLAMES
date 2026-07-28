@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchScenarioList } from "../api/client";
-import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS } from "@fortisim/engine";
+import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS, interfaceFullScenario, portFinalScenario } from "@fortisim/engine";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
 export type Track = "policy" | "interface" | "port";
@@ -94,9 +94,9 @@ export function TrackTasksPage({ session, track }: TrackTasksPageProps) {
 
   const finalTask: TaskEntry | null =
     track === "port"
-      ? { id: "port-final-01", title: "🏆 Port Assignment Final", description: "The complete port challenge combining all concepts: redundant WAN, multi-server DMZ, large LAN, spare port, and a trick port.", difficulty: 10, isFinal: true }
+      ? { id: portFinalScenario.id, title: "🏆 Port Assignment Final", description: "...", difficulty: 10, isFinal: true }
       : track === "interface"
-      ? { id: ALL_INTERFACE_SCENARIOS[2].id, title: "🏆 Interface Config Final", description: "Configure all interfaces from scratch: IPs, subnets, and administrative access — the complete setup a network admin performs before writing policies.", difficulty: 10, isFinal: true }
+       ? { id: interfaceFullScenario.id, title: "🏆 Interface Config Final", description: "...", difficulty: 10, isFinal: true }
       : ps[10]?.id
       ? { id: ps[10].id, title: "🏆 Firewall Policy Final", description: "The ultimate challenge: multiple systems, DMZ servers, guest isolation, web filtering, and inter-zone security all in one.", difficulty: 10, isFinal: true }
       : null;

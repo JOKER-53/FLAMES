@@ -53,7 +53,33 @@ export const interfaceAccessScenario: InterfaceScenario = {
   ],
 };
 
-// ---- Scenario 3: Full Interface Configuration ----
+// ---- Scenario 3: Custom Addressing Scheme ----
+export const interfaceCustomScenario: InterfaceScenario = {
+  id: "interface-custom-01",
+  title: "Custom Addressing Scheme",
+  description:
+    "This branch uses a non-default address plan. WAN (wan1) still uses DHCP — leave its IP as 0.0.0.0. " +
+    "DMZ (dmz) only needs to host a handful of servers, so it's been sized down to 172.16.10.1 with a /26 subnet " +
+    "(not the usual /24). LAN (internal) should be 172.16.20.1 with a /24 subnet. " +
+    "Configure administrative access the same way as before: WAN allows PING only, DMZ allows PING and HTTPS, " +
+    "and LAN allows PING, HTTPS, and SSH.",
+  starterInterfaces: BLANK_INTERFACES.map((i) => ({ ...i })),
+  checks: [
+    { interfaceName: "wan1", field: "ip", expectedValue: "0.0.0.0", description: "WAN interface IP (DHCP/internet)" },
+    { interfaceName: "wan1", field: "subnet", expectedValue: "0", description: "WAN interface subnet" },
+    { interfaceName: "wan1", field: "adminAccess", expectedValue: ["PING"], description: "WAN admin access (PING only)" },
+    { interfaceName: "dmz", field: "ip", expectedValue: "172.16.10.1", description: "DMZ interface IP" },
+    { interfaceName: "dmz", field: "subnet", expectedValue: "26", description: "DMZ interface subnet (/26, not /24)" },
+    { interfaceName: "dmz", field: "adminAccess", expectedValue: ["PING", "HTTPS"], description: "DMZ admin access (PING + HTTPS)" },
+    { interfaceName: "internal", field: "ip", expectedValue: "172.16.20.1", description: "LAN interface IP" },
+    { interfaceName: "internal", field: "subnet", expectedValue: "24", description: "LAN interface subnet (/24)" },
+    { interfaceName: "internal", field: "adminAccess", expectedValue: ["PING", "HTTPS", "SSH"], description: "LAN admin access (PING + HTTPS + SSH)" },
+  ],
+};
+
+// ---- Scenario 4: Full Interface Configuration (Final Assessment — kept out
+// of ALL_INTERFACE_SCENARIOS below so it isn't double-counted as a regular
+// task; reached only via its own dedicated Final Assessment entry point) ----
 export const interfaceFullScenario: InterfaceScenario = {
   id: "interface-full-01",
   title: "Full Interface Setup",
@@ -78,5 +104,5 @@ export const interfaceFullScenario: InterfaceScenario = {
 export const ALL_INTERFACE_SCENARIOS: InterfaceScenario[] = [
   interfaceIpScenario,
   interfaceAccessScenario,
-  interfaceFullScenario,
+  interfaceCustomScenario,
 ];
