@@ -89,16 +89,16 @@ export const HARD_QUESTIONS: Record<string, HardQuestion> = {
     ],
     correctIndex: 1,
   },
-  "interface-full-01": {
+  "interface-custom-01": {
     question:
-      "You're configuring every interface from scratch before any firewall policies exist. If interfaces are misconfigured (wrong IPs, subnets, or zones) at this stage, what happens to policies you write afterward, even if the policy rules themselves are logically correct?",
+      "This branch's DMZ uses a /26 subnet instead of the usual /24, even though both could technically host the same servers. Why might an admin deliberately choose the smaller /26 for a DMZ with only a few hosts?",
     choices: [
-      "Nothing — firewall policies work independently of interface configuration",
-      "Policies match on interface zones and address objects tied to those subnets, so bad interface setup means traffic hits the wrong zone or fails to match at all — a 'correct' policy still behaves incorrectly",
-      "Firewall policies automatically fix interface misconfigurations",
-      "Interfaces only matter for documentation, not for actual traffic",
+      "A /26 subnet supports far fewer usable addresses than a /24, which keeps the DMZ's address space and broadcast domain scoped to roughly what's actually needed, reducing exposed surface if the segment is scanned",
+      "/26 and /24 are functionally identical — the number is just a labeling preference",
+      "/26 subnets can only be assigned to WAN interfaces, never to a DMZ",
+      "Smaller subnets like /26 automatically make network traffic faster",
     ],
-    correctIndex: 1,
+    correctIndex: 0,
   },
 
   // ---------------- Firewall Policy track ----------------

@@ -8,7 +8,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { fetchScenarioList } from "../api/client";
-import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS } from "@fortisim/engine";
+import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS, interfaceFullScenario, portFinalScenario } from "@fortisim/engine";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 import type { Track } from "./TrackTasksPage";
 
@@ -39,13 +39,13 @@ export function TasksOverviewPage({ session }: TasksOverviewPageProps) {
   // derived by string matching — it has to enumerate the real ids.
   const regularIds: Record<Track, string[]> = {
     port: ALL_PORT_SCENARIOS.map((s) => s.id),
-    interface: [ALL_INTERFACE_SCENARIOS[0].id, ALL_INTERFACE_SCENARIOS[1].id],
+    interface: ALL_INTERFACE_SCENARIOS.map((s) => s.id),
     policy: (policyIds ?? []).filter((id) => id !== "firewall-final-01"),
   };
 
   const finalIds: Record<Track, string> = {
-    port: "port-final-01",
-    interface: ALL_INTERFACE_SCENARIOS[2].id,
+    port: portFinalScenario.id,
+    interface: interfaceFullScenario.id,
     policy: "firewall-final-01",
   };
 

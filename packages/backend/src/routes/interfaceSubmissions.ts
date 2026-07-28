@@ -6,13 +6,18 @@
 // ============================================================================
 
 import { Router } from "express";
-import { gradeInterfaceSubmission, InterfaceSubmission, ALL_INTERFACE_SCENARIOS } from "@fortisim/engine";
+import { gradeInterfaceSubmission, InterfaceSubmission, ALL_INTERFACE_SCENARIOS, interfaceFullScenario } from "@fortisim/engine";
 import { getFeedbackForInterfaceReport } from "../services/nimInterfaceFeedback";
 
 export const interfaceSubmissionsRouter = Router();
 
+// ALL_INTERFACE_SCENARIOS covers only the 3 regular exercises; the Final
+// Assignment (interface-full-01) is defined separately so it isn't shown
+// twice in the task list, and must be searched here too, or grading it 404s.
+const ALL_INTERFACE_SCENARIOS_AND_FINAL = [...ALL_INTERFACE_SCENARIOS, interfaceFullScenario];
+
 function getScenario(id: string) {
-  return ALL_INTERFACE_SCENARIOS.find((s) => s.id === id);
+  return ALL_INTERFACE_SCENARIOS_AND_FINAL.find((s) => s.id === id);
 }
 
 interfaceSubmissionsRouter.post("/:scenarioId/grade", (req, res) => {

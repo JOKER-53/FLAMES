@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import type { AdminAccess, InterfaceConfig, InterfaceGradingReport, PortGradingReport } from "@fortisim/engine";
-import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS, portFinalScenario } from "@fortisim/engine";
-const ALL_PORT_SCENARIOS_AND_FINAL = [...ALL_PORT_SCENARIOS, portFinalScenario];
+import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS, interfaceFullScenario, portFinalScenario } from "@fortisim/engine";
 import { ChassisDiagram } from "../components/policyObjects/ChassisDiagram";
 import type { PortZone, PortAssignment } from "../components/policyObjects/ChassisDiagram";
 import { InterfaceTopology } from "../components/policyObjects/InterfaceTopology";
@@ -11,6 +10,16 @@ import { ScenarioSession } from "../hooks/useScenarioSession";
 
 const ADMIN_ACCESS_OPTIONS: AdminAccess[] = ["PING", "HTTPS", "SSH", "HTTP"];
 type TrackType = "interface" | "port";
+
+// ALL_PORT_SCENARIOS covers only the 5 regular exercises; the Final
+// Assignment (port-final-01) lives separately in finalAssignments.ts. Any
+// lookup by id (not just the "browse exercises" list) needs to search both,
+// or navigating straight to the Final renders a blank scenario.
+const ALL_PORT_SCENARIOS_AND_FINAL = [...ALL_PORT_SCENARIOS, portFinalScenario];
+// ALL_INTERFACE_SCENARIOS covers only the 3 regular exercises; the Final
+// Assignment (interface-full-01) is defined separately, same reasoning as
+// the port track above.
+const ALL_INTERFACE_SCENARIOS_AND_FINAL = [...ALL_INTERFACE_SCENARIOS, interfaceFullScenario];
 
 interface InterfacesPageProps {
   session: ScenarioSession;
@@ -45,7 +54,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   const [portError, setPortError] = useState<string | null>(null);
 
   useEffect(() => {
-    const scenario = ALL_INTERFACE_SCENARIOS.find((s) => s.id === activeIfaceScenarioId);
+    const scenario = ALL_INTERFACE_SCENARIOS_AND_FINAL.find((s) => s.id === activeIfaceScenarioId);
     if (scenario) {
       setInterfaces(scenario.starterInterfaces.map((i) => ({ ...i, adminAccess: [...i.adminAccess] })));
       setIfaceReport(null);
@@ -135,8 +144,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   return (
     <div className="max-w-4xl">
       {cameFromTask && (
-        
-+      <Link to={`/tasks/${track}`} className="inline-block text-[12px] text-forti-red hover:underline mb-3">
+        <Link to={`/tasks/${track}`} className="inline-block text-[12px] text-forti-red hover:underline mb-3">
           ← Back to Tasks
         </Link>
       )}
@@ -159,7 +167,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
       {track === "interface" && (
         <>
           {(() => {
-            const activeScenario = ALL_INTERFACE_SCENARIOS.find((s) => s.id === activeIfaceScenarioId);
+            const activeScenario = ALL_INTERFACE_SCENARIOS_AND_FINAL.find((s) => s.id === activeIfaceScenarioId);
             if (!activeScenario) return null;
             return (
               <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-5">
@@ -202,7 +210,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
           <div className="bg-white border border-gray-200 rounded-md overflow-hidden mb-5">
             <div className="px-3 py-2 border-b border-gray-200 bg-gray-50">
-              <span className="text-[13px] font-medium text-gray-700">{ALL_INTERFACE_SCENARIOS.find((s) => s.id === activeIfaceScenarioId)?.title}</span>
+              <span className="text-[13px] font-medium text-gray-700">{ALL_INTERFACE_SCENARIOS_AND_FINAL.find((s) => s.id === activeIfaceScenarioId)?.title}</span>
             </div>
             <table className="w-full text-[12.5px]">
               <thead>
@@ -281,8 +289,9 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
               </div>
             )}
           </div>
+
           <div className="mt-4">
-           <HardQuestionCard taskId={activeIfaceScenarioId} session={session} />
+            <HardQuestionCard taskId={activeIfaceScenarioId} session={session} />
           </div>
         </>
       )}
@@ -357,8 +366,9 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
               </div>
             )}
           </div>
+
           <div className="mt-4">
-           <HardQuestionCard taskId={portScenario?.id} session={session} />
+            <HardQuestionCard taskId={portScenario?.id} session={session} />
           </div>
         </>
       )}
