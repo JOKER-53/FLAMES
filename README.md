@@ -10,7 +10,7 @@ Built for classroom use alongside a real FortiGate 6000F lab unit, so the
 visual language and workflow are intentionally modeled on the real FortiOS
 web admin console.
 
-## What students practice
+## What students can practice? 
 
 ### Firewall Policy (5 scenarios) to learn
 Students configure firewall policies — source/destination addresses,
