@@ -1,12 +1,9 @@
 // ============================================================================
-// Shows the "hard question" for a given task id as an alternate path to
-// completing it. The hands-on configuration exercise (grading via Submit)
-// is completely unchanged — this is just a second door to the same
-// completed state. Either one marks the task done via session.markTaskComplete.
+// Knowledge Check — fetches a fresh AI-generated MCQ from the backend on
+// every mount. One attempt only: wrong answer locks the card permanently.
 // ============================================================================
 
 import { useEffect, useState } from "react";
-import { HARD_QUESTIONS } from "@fortisim/engine";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
 interface HardQuestionCardProps {
@@ -14,29 +11,52 @@ interface HardQuestionCardProps {
   session: ScenarioSession;
 }
 
+interface Question {
+  question: string;
+  choices: string[];
+  correctIndex: number;
+}
+
 export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
+  const [question, setQuestion] = useState<Question | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
+  const [locked, setLocked] = useState(false);
 
   useEffect(() => {
+    if (!taskId) return;
+    setQuestion(null);
     setSelected(null);
     setResult(null);
+    setLocked(false);
+    setFetchError(null);
+    setLoading(true);
+
+    fetch(`/api/knowledge-check/${taskId}`)
+      .then((r) => {
+        if (!r.ok) throw new Error(`Server error ${r.status}`);
+        return r.json();
+      })
+      .then((data) => setQuestion(data))
+      .catch((err) => setFetchError(err.message ?? "Failed to load question"))
+      .finally(() => setLoading(false));
   }, [taskId]);
 
   if (!taskId) return null;
-  const q = HARD_QUESTIONS[taskId];
-  if (!q) return null;
 
   const id: string = taskId;
   const completed = session.completedTaskIds.has(id);
 
   function handleAnswer() {
-    if (selected === null) return;
-    if (selected === q.correctIndex) {
+    if (selected === null || locked || !question) return;
+    if (selected === question.correctIndex) {
       setResult("correct");
       session.markTaskComplete(id);
     } else {
       setResult("incorrect");
+      setLocked(true);
     }
   }
 
@@ -50,44 +70,77 @@ export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
           </span>
         )}
       </div>
-      <p className="text-[12.5px] text-gray-500 mb-2">
-        Prefer a quick check instead of the hands-on exercise? Answer this correctly to complete the task either way.
+
+      <p className="text-[12.5px] text-gray-500 mb-3">
+        Answer this correctly to complete the task — no hands-on config needed.{" "}
+        <span className="text-red-500 font-medium">One attempt only. Questions are AI-generated and unique each time.</span>
       </p>
-      <p className="text-[12.5px] text-gray-800 font-medium mb-3 leading-relaxed">{q.question}</p>
-      <div className="space-y-1.5 mb-3">
-        {q.choices.map((choice, idx) => (
-          <label
-            key={idx}
-            className={`flex items-start gap-2 p-2 rounded border cursor-pointer text-[12.5px] leading-snug transition-colors ${
-              selected === idx ? "border-forti-red bg-red-50" : "border-gray-200 hover:bg-gray-50"
-            }`}
-          >
-            <input
-              type="radio"
-              name={`hard-question-${taskId}`}
-              className="mt-0.5 shrink-0"
-              checked={selected === idx}
-              onChange={() => {
-                setSelected(idx);
-                setResult(null);
-              }}
-            />
-            <span>{choice}</span>
-          </label>
-        ))}
-      </div>
-      <button
-        onClick={handleAnswer}
-        disabled={selected === null}
-        className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90 disabled:opacity-40"
-      >
-        Answer
-      </button>
-      {result === "correct" && (
-        <div className="mt-2 text-[12.5px] text-emerald-600 font-medium">✓ Correct — task marked complete.</div>
+
+      {loading && (
+        <div className="text-[12.5px] text-gray-400 animate-pulse">Generating question…</div>
       )}
-      {result === "incorrect" && (
-        <div className="mt-2 text-[12.5px] text-red-600">Not quite — review the scenario and try again.</div>
+
+      {fetchError && (
+        <div className="text-[12.5px] text-red-500">Failed to load question: {fetchError}</div>
+      )}
+
+      {question && (
+        <>
+          <p className="text-[12.5px] text-gray-800 font-medium mb-3 leading-relaxed">
+            {question.question}
+          </p>
+
+          <div className="space-y-1.5 mb-3">
+            {question.choices.map((choice, idx) => (
+              <label
+                key={idx}
+                className={`flex items-start gap-2 p-2 rounded border text-[12.5px] leading-snug transition-colors ${
+                  locked || completed
+                    ? "cursor-not-allowed opacity-60"
+                    : "cursor-pointer"
+                } ${
+                  selected === idx
+                    ? "border-forti-red bg-red-50"
+                    : "border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`knowledge-check-${taskId}`}
+                  className="mt-0.5 shrink-0"
+                  checked={selected === idx}
+                  disabled={locked || completed}
+                  onChange={() => {
+                    if (!locked && !completed) {
+                      setSelected(idx);
+                      setResult(null);
+                    }
+                  }}
+                />
+                <span>{choice}</span>
+              </label>
+            ))}
+          </div>
+
+          <button
+            onClick={handleAnswer}
+            disabled={selected === null || locked || completed}
+            className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            Answer
+          </button>
+
+          {result === "correct" && (
+            <div className="mt-2 text-[12.5px] text-emerald-600 font-medium">
+              ✓ Correct — task marked complete.
+            </div>
+          )}
+          {result === "incorrect" && (
+            <div className="mt-2 text-[12.5px] text-red-600 font-medium">
+              ✗ Incorrect — this question is now locked. Complete the hands-on exercise instead.
+            </div>
+          )}
+        </>
       )}
     </div>
   );
