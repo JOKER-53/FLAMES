@@ -7,6 +7,11 @@ export interface NavItem {
 
 export const NAV_STRUCTURE: NavItem[] = [
   {
+    label: "Hardware Reference",
+    path: "/",
+    icon: "hardware",
+  },
+  {
     label: "Tasks",
     path: "/tasks",
     icon: "dashboard",

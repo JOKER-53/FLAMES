@@ -1,14 +1,11 @@
 // ============================================================================
 // Small, fixed set of line icons for the sidebar nav. Inline SVG.
 // ============================================================================
-
 interface IconProps {
   className?: string;
 }
-
 const base = "stroke-current fill-none";
 const strokeProps = { strokeWidth: 1.6, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
-
 export function DashboardIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -19,7 +16,6 @@ export function DashboardIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function PolicyIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -28,7 +24,6 @@ export function PolicyIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function ShieldIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -38,7 +33,6 @@ export function ShieldIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function VpnIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -48,7 +42,6 @@ export function VpnIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function SdwanIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -59,7 +52,6 @@ export function SdwanIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function NetworkIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -69,7 +61,6 @@ export function NetworkIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function SystemIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -81,7 +72,6 @@ export function SystemIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function LogIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -90,7 +80,6 @@ export function LogIcon({ className }: IconProps) {
     </svg>
   );
 }
-
 export function UserIcon({ className }: IconProps) {
   return (
     <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
@@ -99,7 +88,18 @@ export function UserIcon({ className }: IconProps) {
     </svg>
   );
 }
-
+export function HardwareIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 18 18" className={className} {...strokeProps}>
+      <rect x="1.5" y="6" width="15" height="6" rx="1" className={base} />
+      <path d="M4 6V4.5M7 6V4.5M11 6V4.5M14 6V4.5" className={base} />
+      <circle cx="4"  cy="9" r="0.7" fill="currentColor" stroke="none" />
+      <circle cx="6.2" cy="9" r="0.7" fill="currentColor" stroke="none" />
+      <circle cx="8.4" cy="9" r="0.7" fill="currentColor" stroke="none" />
+      <rect x="11" y="7.8" width="3" height="2.4" rx="0.4" className={base} />
+    </svg>
+  );
+}
 export const ICONS: Record<string, (props: IconProps) => JSX.Element> = {
   dashboard: DashboardIcon,
   policy: PolicyIcon,
@@ -110,4 +110,5 @@ export const ICONS: Record<string, (props: IconProps) => JSX.Element> = {
   system: SystemIcon,
   log: LogIcon,
   user: UserIcon,
+  hardware: HardwareIcon,
 };
