@@ -50,21 +50,18 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0f172a);
 
-    // Camera looks straight at front-face center
     const camera = new THREE.PerspectiveCamera(36, W / H, 0.1, 100);
-    camera.position.set(0, 0.8, 10);
+    camera.position.set(0, 1.5, 10);
     camera.lookAt(0, 0, 0);
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
     const key = new THREE.DirectionalLight(0xfff8f0, 0.9);
     key.position.set(3, 6, 8); scene.add(key);
-    const fill = new THREE.DirectionalLight(0xc0d8ff, 0.5);
+    const fill = new THREE.DirectionalLight(0xc0d8ff, 0.45);
     fill.position.set(-5, 2, 5); scene.add(fill);
-    const front = new THREE.DirectionalLight(0xffffff, 0.4);
-    front.position.set(0, 0, 10); scene.add(front);
+    const front = new THREE.DirectionalLight(0xffffff, 0.5);
+    front.position.set(0, 1, 10); scene.add(front);
 
-    // Everything in one group — pivot at origin, no floor needed
     const group = new THREE.Group();
     scene.add(group);
     const clickables: any[] = [];
@@ -80,7 +77,6 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const B  = (w: number, h: number, d: number) => new THREE.BoxGeometry(w, h, d);
     const Cy = (r: number, h: number, s = 12)    => new THREE.CylinderGeometry(r, r, h, s);
 
-    // Materials
     const mBody   = new THREE.MeshStandardMaterial({ color: 0xd8d6d0, roughness: 0.5,  metalness: 0.05 });
     const mTop    = new THREE.MeshStandardMaterial({ color: 0xe4e2dc, roughness: 0.45, metalness: 0.04 });
     const mFront  = new THREE.MeshStandardMaterial({ color: 0xcac8c2, roughness: 0.48, metalness: 0.06 });
@@ -88,110 +84,101 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const mBlack  = new THREE.MeshStandardMaterial({ color: 0x08090d, roughness: 0.3,  metalness: 0.6  });
     const mGray   = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.5,  metalness: 0.4  });
     const mRubber = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.95, metalness: 0    });
-    const mRed    = new THREE.MeshStandardMaterial({ color: 0xee1111, roughness: 0.3,  metalness: 0.2, emissive: 0xcc0000, emissiveIntensity: 0.4 });
+    const mRed    = new THREE.MeshStandardMaterial({ color: 0xee1111, roughness: 0.3,  metalness: 0.2, emissive: 0xcc0000, emissiveIntensity: 0.5 });
     const mOrange = new THREE.MeshStandardMaterial({ color: 0xf97316, roughness: 0.3,  metalness: 0.2, emissive: 0xf97316, emissiveIntensity: 0.3 });
     const mBlue   = new THREE.MeshStandardMaterial({ color: 0x2563eb, roughness: 0.3,  metalness: 0.2, emissive: 0x2563eb, emissiveIntensity: 0.25 });
     const mTeal   = new THREE.MeshStandardMaterial({ color: 0x0d9488, roughness: 0.3,  metalness: 0.2, emissive: 0x0d9488, emissiveIntensity: 0.25 });
     const mPurple = new THREE.MeshStandardMaterial({ color: 0x7c3aed, roughness: 0.3,  metalness: 0.2, emissive: 0x7c3aed, emissiveIntensity: 0.3  });
-    const mGreen  = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.25, metalness: 0.1, emissive: 0x22c55e, emissiveIntensity: 0.9  });
-    const mAmber  = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.25, metalness: 0.1, emissive: 0xfbbf24, emissiveIntensity: 0.8  });
+    const mGreen  = new THREE.MeshStandardMaterial({ color: 0x22c55e, roughness: 0.2,  metalness: 0.1, emissive: 0x22c55e, emissiveIntensity: 1.2  });
+    const mAmber  = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.2,  metalness: 0.1, emissive: 0xfbbf24, emissiveIntensity: 1.1  });
     const mGold   = new THREE.MeshStandardMaterial({ color: 0xc8960a, roughness: 0.2,  metalness: 0.9  });
 
-    // ── CHASSIS — centered at origin ─────────────────────────────────────────
-    // Body: 9w × 1h × 5.5d, front face at z=+2.75
-    add(B(9, 1.0, 5.5),  mBody,  0,  0,     0,    "chassis");
-    add(B(9, 0.02, 5.5), mTop,   0,  0.51,  0,    "chassis");
-    add(B(9, 1.0, 0.06), mFront, 0,  0,     2.78, "chassis");
-    // Bottom dark panel
-    add(B(9, 0.02, 5.5), mDark,  0, -0.51,  0,    null);
+    // Chassis body centered at origin
+    add(B(9, 1.0, 5.5),  mBody,  0,  0,    0,    "chassis");
+    add(B(9, 0.02, 5.5), mTop,   0,  0.51, 0,    "chassis");
+    add(B(9, 1.0, 0.06), mFront, 0,  0,    2.78, "chassis");
+    add(B(9, 0.02, 5.5), mDark,  0, -0.51, 0,    null);
+    add(B(0.3, 0.3, 0.04),  mRed, -3.55, 0.28, 2.81, "chassis");
+    add(B(1.6, 0.14, 0.03), new THREE.MeshStandardMaterial({ color: 0xb2b0aa }), -2.55, 0.28, 2.81, "chassis");
 
-    // Red Fortinet "F" logo on front
-    add(B(0.28, 0.28, 0.03), mRed,  -3.55, 0.28, 2.81, "chassis");
-    // Model name plate
-    add(B(1.6, 0.14, 0.025), new THREE.MeshStandardMaterial({ color: 0xb2b0aa }), -2.6, 0.28, 2.81, "chassis");
-
-    // ── RUBBER FEET ──────────────────────────────────────────────────────────
-    [[-3.8,-2.0],[3.8,-2.0],[-3.8,2.0],[3.8,2.0]].forEach(([fx,fz]) =>
-      add(Cy(0.18, 0.14), mRubber, fx as number, -0.57, fz as number, null, Math.PI/2)
+    // Rubber feet
+    ([ [-3.8,-2.0],[3.8,-2.0],[-3.8,2.0],[3.8,2.0] ] as [number,number][]).forEach(([fx,fz]) =>
+      add(Cy(0.18, 0.14), mRubber, fx, -0.57, fz, null, Math.PI/2)
     );
 
-    // ── SIDE VENTS ───────────────────────────────────────────────────────────
+    // Side vents
     for (let z = -1.6; z <= 1.6; z += 0.28)
       add(B(0.06, 0.48, 0.2), new THREE.MeshStandardMaterial({ color: 0xb0aea8 }), 4.52, 0, z, "vents");
     for (let z = -1.0; z <= 1.0; z += 0.28)
       add(B(0.06, 0.38, 0.16), new THREE.MeshStandardMaterial({ color: 0xb0aea8 }), -4.52, 0, z, "vents");
 
-    // ── TOP VENT DOT GRID ─────────────────────────────────────────────────────
+    // Top vent dots
     for (let x = -1.0; x <= 3.5; x += 0.38)
       for (let z = -1.8; z <= 1.8; z += 0.38)
         add(Cy(0.055, 0.065, 8), new THREE.MeshStandardMaterial({ color: 0x888480 }), x, 0.525, z, null);
 
-    // ── LED STRIP on top-front ────────────────────────────────────────────────
-    // PWR, STATUS, HA
-    add(B(0.13, 0.13, 0.05), mGreen,  -2.9, 0.39, 2.76, "leds");
-    add(B(0.13, 0.13, 0.05), mGreen,  -2.6, 0.39, 2.76, "leds");
-    add(B(0.13, 0.13, 0.05), mAmber,  -2.3, 0.39, 2.76, "leds");
-    // Port LEDs 1-5
+    // LEDs on top surface near front edge — raised above top skin so always visible
+    const ledY = 0.54;
+    const ledZ = 2.2;
+    add(B(0.15, 0.1, 0.15), mGreen, -2.9, ledY, ledZ, "leds");
+    add(B(0.15, 0.1, 0.15), mGreen, -2.5, ledY, ledZ, "leds");
+    add(B(0.15, 0.1, 0.15), mAmber, -2.1, ledY, ledZ, "leds");
     [-0.6, -0.2, 0.2, 0.6, 1.0].forEach((x, i) =>
-      add(B(0.1, 0.1, 0.045), i % 2 === 0 ? mGreen : mAmber, x, 0.39, 2.76, "leds")
+      add(B(0.12, 0.1, 0.12), i % 2 === 0 ? mGreen : mAmber, x, ledY, ledZ, "leds")
     );
-    // DMZ, WAN1, WAN2 LEDs
-    [1.6, 2.0, 2.4].forEach(x => add(B(0.1, 0.1, 0.045), mGreen, x, 0.39, 2.76, "leds"));
+    [1.6, 2.0, 2.4].forEach(x => add(B(0.12, 0.1, 0.12), mGreen, x, ledY, ledZ, "leds"));
 
-    // ── PORT LABEL DARK STRIP ────────────────────────────────────────────────
-    add(B(8.8, 0.38, 0.035), mBlack, 0, -0.3, 2.8, null);
+    // Port label strip
+    add(B(8.8, 0.38, 0.04), mBlack, 0, -0.3, 2.8, null);
 
-    // ── RJ-45 PORTS ──────────────────────────────────────────────────────────
+    // RJ-45 helper
     function rj45(x: number, accent: any, part: string) {
       const y = -0.1, z = 2.78;
-      add(B(0.44, 0.38, 0.13), mDark,  x, y,      z,       part); // bezel
-      add(B(0.34, 0.27, 0.07), mBlack, x, y,      z+0.04,  part); // void
-      add(B(0.28, 0.20, 0.04), accent, x, y,      z+0.075, part); // colour
-      add(B(0.16, 0.055,0.07), mGray,  x, y-0.19, z+0.02,  part); // latch tab
+      add(B(0.44, 0.38, 0.13), mDark,  x, y,      z,       part);
+      add(B(0.34, 0.27, 0.07), mBlack, x, y,      z+0.04,  part);
+      add(B(0.28, 0.20, 0.04), accent, x, y,      z+0.075, part);
+      add(B(0.16, 0.06, 0.07), mGray,  x, y-0.19, z+0.02,  part);
       for (let p = -3; p <= 3; p++)
-        add(B(0.022, 0.1, 0.02), mGold, x + p * 0.044, y + 0.05, z + 0.085, null); // pins
+        add(B(0.022, 0.1, 0.02), mGold, x + p * 0.044, y + 0.05, z + 0.085, null);
     }
 
     rj45(-2.72, mGray,   "console");
     rj45(-2.18, mOrange, "wan2");
     rj45(-1.64, mOrange, "wan1");
     rj45(-1.10, mTeal,   "dmz");
-    rj45(-0.47, mPurple, "ha");   // HA-B
-    rj45( 0.07, mPurple, "ha");   // HA-A
-    // HA separator ridge
+    rj45(-0.47, mPurple, "ha");
+    rj45( 0.07, mPurple, "ha");
     add(B(0.05, 0.44, 0.14), mGray, 0.42, -0.1, 2.79, null);
-    // LAN ports 5-1
     [0.76, 1.26, 1.76, 2.26, 2.76].forEach(x => rj45(x, mBlue, "lan"));
 
-    // ── USB 3.0 ──────────────────────────────────────────────────────────────
+    // USB
     add(B(0.36, 0.26, 0.13), mDark,  -3.32, -0.08, 2.78, "usb");
     add(B(0.28, 0.16, 0.07), mBlue,  -3.32, -0.08, 2.82, "usb");
-    add(B(0.28, 0.03, 0.05), mGray,  -3.32, -0.08, 2.83, null); // divider
+    add(B(0.28, 0.03, 0.05), mGray,  -3.32, -0.08, 2.83, null);
 
-    // ── DC POWER BARREL ──────────────────────────────────────────────────────
+    // DC barrel
     add(Cy(0.16, 0.13, 12), mGray,  -3.88, -0.1, 2.82, "power", Math.PI/2);
     add(Cy(0.07, 0.15,  8), mBlack, -3.88, -0.1, 2.82, "power", Math.PI/2);
 
-    // ── RESET PINHOLE ────────────────────────────────────────────────────────
+    // Reset
     add(B(0.22, 0.22, 0.05), mDark, -4.28, -0.1, 2.80, "reset");
     add(Cy(0.05, 0.06, 8),   mRed,  -4.28, -0.1, 2.83, "reset", Math.PI/2);
 
-    // ── INITIAL VIEW — front-face clearly visible ─────────────────────────────
-    // Small tilt so you can see top and front simultaneously
-    let rotX = 0.18, rotY = 0.3;
-    group.rotation.x = rotX;
-    group.rotation.y = rotY;
+    // Orbit state
+    let rotX = 0.42, rotY = 0.3;
+    let isDragging = false, prevX = 0, prevY = 0;
+    let autoRotate = true;
+    group.rotation.set(rotX, rotY, 0);
 
-    // ── RAYCASTER ────────────────────────────────────────────────────────────
+    // Raycaster
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     let hlObj: any = null;
-    let isDragging = false;
 
     const onClick = (e: MouseEvent) => {
       const r = mount.getBoundingClientRect();
-      mouse.x = ((e.clientX - r.left) / r.width)  *  2 - 1;
-      mouse.y = -((e.clientY - r.top)  / r.height) *  2 + 1;
+      mouse.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+      mouse.y = -((e.clientY - r.top)  / r.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
       const hits = raycaster.intersectObjects(clickables);
       if (!hits.length) return;
@@ -205,30 +192,25 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
 
     const onHover = (e: MouseEvent) => {
       const r = mount.getBoundingClientRect();
-      mouse.x = ((e.clientX - r.left) / r.width)  *  2 - 1;
-      mouse.y = -((e.clientY - r.top)  / r.height) *  2 + 1;
+      mouse.x =  ((e.clientX - r.left) / r.width)  * 2 - 1;
+      mouse.y = -((e.clientY - r.top)  / r.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
       const hits = raycaster.intersectObjects(clickables);
       mount.style.cursor = hits.length ? "pointer" : (isDragging ? "grabbing" : "grab");
       setHovered(hits.length ? hits[0].object.userData.part : null);
     };
 
-    mount.addEventListener("click", onClick);
-    mount.addEventListener("mousemove", onHover);
-
-    // ── ORBIT ─────────────────────────────────────────────────────────────────
-    let prevX = 0, prevY = 0;
-
     const onDown = (e: MouseEvent) => {
-      isDragging = true; prevX = e.clientX; prevY = e.clientY;
+      isDragging = true; autoRotate = false;
+      prevX = e.clientX; prevY = e.clientY;
       mount.style.cursor = "grabbing";
     };
-    const onUp = () => { isDragging = false; mount.style.cursor = "grab"; };
+    const onUp   = () => { isDragging = false; mount.style.cursor = "grab"; };
     const onMove = (e: MouseEvent) => {
       if (!isDragging) return;
       rotY += (e.clientX - prevX) * 0.007;
       rotX += (e.clientY - prevY) * 0.005;
-      rotX = Math.max(-0.5, Math.min(1.0, rotX));
+      rotX = Math.max(-0.4, Math.min(1.2, rotX));
       prevX = e.clientX; prevY = e.clientY;
       group.rotation.set(rotX, rotY, 0);
     };
@@ -238,37 +220,46 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     };
 
     let tx = 0, ty = 0;
-    const onTS = (e: TouchEvent) => { tx = e.touches[0].clientX; ty = e.touches[0].clientY; };
+    const onTS = (e: TouchEvent) => { autoRotate = false; tx = e.touches[0].clientX; ty = e.touches[0].clientY; };
     const onTM = (e: TouchEvent) => {
       e.preventDefault();
       rotY += (e.touches[0].clientX - tx) * 0.009;
       rotX += (e.touches[0].clientY - ty) * 0.007;
-      rotX = Math.max(-0.5, Math.min(1.0, rotX));
+      rotX = Math.max(-0.4, Math.min(1.2, rotX));
       tx = e.touches[0].clientX; ty = e.touches[0].clientY;
       group.rotation.set(rotX, rotY, 0);
     };
 
-    mount.addEventListener("mousedown", onDown);
-    window.addEventListener("mouseup", onUp);
+    mount.addEventListener("click",      onClick);
+    mount.addEventListener("mousemove",  onHover);
+    mount.addEventListener("mousedown",  onDown);
+    window.addEventListener("mouseup",   onUp);
     window.addEventListener("mousemove", onMove);
-    mount.addEventListener("wheel", onWheel, { passive: false });
+    mount.addEventListener("wheel",      onWheel, { passive: false });
     mount.addEventListener("touchstart", onTS);
-    mount.addEventListener("touchmove", onTM, { passive: false });
+    mount.addEventListener("touchmove",  onTM, { passive: false });
 
     let animId: number;
-    const animate = () => { animId = requestAnimationFrame(animate); renderer.render(scene, camera); };
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+      if (autoRotate) {
+        rotY += 0.005;
+        group.rotation.set(rotX, rotY, 0);
+      }
+      renderer.render(scene, camera);
+    };
     animate();
 
     return () => {
       cancelAnimationFrame(animId);
-      mount.removeEventListener("click", onClick);
-      mount.removeEventListener("mousemove", onHover);
-      mount.removeEventListener("mousedown", onDown);
-      window.removeEventListener("mouseup", onUp);
+      mount.removeEventListener("click",      onClick);
+      mount.removeEventListener("mousemove",  onHover);
+      mount.removeEventListener("mousedown",  onDown);
+      window.removeEventListener("mouseup",   onUp);
       window.removeEventListener("mousemove", onMove);
-      mount.removeEventListener("wheel", onWheel);
+      mount.removeEventListener("wheel",      onWheel);
       mount.removeEventListener("touchstart", onTS);
-      mount.removeEventListener("touchmove", onTM);
+      mount.removeEventListener("touchmove",  onTM);
       renderer.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };
@@ -279,7 +270,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between" }}>
         <div>
           <h1 className="text-[15px] font-semibold text-forti-dark mb-0.5">FortiGate 60F — Interactive Hardware Reference</h1>
-          <p className="text-gray-500 text-[12px]">Drag to rotate · scroll to zoom · click any component to learn what it does</p>
+          <p className="text-gray-500 text-[12px]">Auto-rotates · drag to control · scroll to zoom · click any part to learn what it does</p>
         </div>
         {hovered && PART_INFO[hovered] && (
           <span className="text-[11px] text-blue-500 font-medium">↑ {PART_INFO[hovered].title}</span>
