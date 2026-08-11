@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
 interface DashboardProps { session: ScenarioSession; }
@@ -28,8 +30,6 @@ const CABLE_TYPES = [
   { id: "usb-a",        label: "USB Drive",              color: "#60a5fa", accepts: ["usb"],          desc: "USB flash drive for firmware recovery or provisioning." },
   { id: "dc-power",     label: "DC Power Adapter",       color: "#fbbf24", accepts: ["power"],        desc: "12V DC barrel connector from the power adapter." },
 ];
-
-declare global { interface Window { THREE: any; } }
 
 export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   const mountRef  = useRef<HTMLDivElement>(null);
@@ -72,258 +72,245 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   useEffect(() => {
     if (!mountRef.current) return;
     const mount = mountRef.current;
+    const W = mount.clientWidth || 900;
+    const H = mount.clientHeight || 460;
 
-    function loadScript(src: string): Promise<void> {
-      return new Promise((res, rej) => {
-        if (document.querySelector(`script[src="${src}"]`)) { res(); return; }
-        const s = document.createElement("script");
-        s.src = src; s.onload = () => res(); s.onerror = () => rej(new Error("Failed: " + src));
-        document.head.appendChild(s);
-      });
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.0;
+    mount.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0d1117);
+
+    const camera = new THREE.PerspectiveCamera(45, W / H, 0.0001, 100000);
+    camera.position.set(0, 0, 10);
+
+    // Strong all-around lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    const d1 = new THREE.DirectionalLight(0xffffff, 1.0); d1.position.set(5, 10, 10); scene.add(d1);
+    const d2 = new THREE.DirectionalLight(0xffffff, 0.8); d2.position.set(-5, 5, 10); scene.add(d2);
+    const d3 = new THREE.DirectionalLight(0xffffff, 0.5); d3.position.set(0, -5, 10); scene.add(d3);
+    const d4 = new THREE.DirectionalLight(0xffffff, 0.4); d4.position.set(0, 5, -10); scene.add(d4);
+
+    const group = new THREE.Group();
+    scene.add(group);
+    const portIndicators: Record<string, any> = {};
+    const cableMeshes: Record<string, any> = {};
+
+    const loader = new GLTFLoader();
+    loader.load(
+      "/firewall.glb",
+      (gltf) => {
+        const model = gltf.scene;
+
+        // Bounding box before scale
+        const box0 = new THREE.Box3().setFromObject(model);
+        const size0 = new THREE.Vector3();
+        box0.getSize(size0);
+        console.log("GLB raw size:", size0);
+
+        // Scale to 8 units
+        const maxDim = Math.max(size0.x, size0.y, size0.z);
+        const scale = maxDim > 0 ? 8 / maxDim : 1;
+        model.scale.setScalar(scale);
+
+        // Center
+        const box1 = new THREE.Box3().setFromObject(model);
+        const center = new THREE.Vector3();
+        box1.getCenter(center);
+        model.position.sub(center);
+
+        // Fix materials — ensure they respond to light
+        model.traverse((child: any) => {
+          if (child.isMesh) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach((mat: any) => {
+              if (mat) {
+                mat.side = THREE.FrontSide;
+                if (mat.emissiveIntensity !== undefined) mat.emissiveIntensity = Math.min(mat.emissiveIntensity, 0.3);
+                mat.needsUpdate = true;
+              }
+            });
+          }
+        });
+
+        group.add(model);
+
+        // Final bounds for camera + port placement
+        const box2 = new THREE.Box3().setFromObject(group);
+        const size2 = new THREE.Vector3();
+        box2.getSize(size2);
+        console.log("GLB final size:", size2);
+
+        // Auto-fit camera
+        const maxS = Math.max(size2.x, size2.y, size2.z);
+        const fov  = camera.fov * (Math.PI / 180);
+        const dist = (maxS / 2) / Math.tan(fov / 2) * 1.6;
+        camera.position.set(0, size2.y * 0.25, dist);
+        camera.near = dist / 1000;
+        camera.far  = dist * 100;
+        camera.updateProjectionMatrix();
+        camera.lookAt(0, 0, 0);
+        console.log("Camera Z:", dist, "size:", size2);
+
+        // Port indicator spheres on front face
+        const frontZ = size2.z / 2;
+        const r = size2.y * 0.055;
+        const portDefs = [
+          { id:"reset",   part:"reset",   x:-0.46*size2.x, y:0,             color:"#dc2626" },
+          { id:"power",   part:"power",   x:-0.40*size2.x, y:0,             color:"#fbbf24" },
+          { id:"usb",     part:"usb",     x:-0.33*size2.x, y:0.04*size2.y,  color:"#60a5fa" },
+          { id:"console", part:"console", x:-0.26*size2.x, y:0,             color:"#94a3b8" },
+          { id:"wan2",    part:"wan2",    x:-0.19*size2.x, y:0,             color:"#f97316" },
+          { id:"wan1",    part:"wan1",    x:-0.12*size2.x, y:0,             color:"#f97316" },
+          { id:"dmz",     part:"dmz",     x:-0.05*size2.x, y:0,             color:"#0d9488" },
+          { id:"ha-b",    part:"ha",      x: 0.02*size2.x, y:0,             color:"#7c3aed" },
+          { id:"ha-a",    part:"ha",      x: 0.09*size2.x, y:0,             color:"#7c3aed" },
+          { id:"lan-5",   part:"lan",     x: 0.17*size2.x, y:0,             color:"#2563eb" },
+          { id:"lan-4",   part:"lan",     x: 0.24*size2.x, y:0,             color:"#2563eb" },
+          { id:"lan-3",   part:"lan",     x: 0.31*size2.x, y:0,             color:"#2563eb" },
+          { id:"lan-2",   part:"lan",     x: 0.38*size2.x, y:0,             color:"#2563eb" },
+          { id:"lan-1",   part:"lan",     x: 0.45*size2.x, y:0,             color:"#2563eb" },
+        ];
+
+        portDefs.forEach(({ id, part, x, y, color }) => {
+          const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(r, 12, 12),
+            new THREE.MeshStandardMaterial({
+              color: new THREE.Color(color),
+              emissive: new THREE.Color(color),
+              emissiveIntensity: 1.5,
+              roughness: 0.2, metalness: 0.1,
+            })
+          );
+          sphere.position.set(x, y, frontZ + r * 1.5);
+          sphere.userData.portId = id;
+          sphere.userData.part   = part;
+          group.add(sphere);
+          portIndicators[id] = sphere;
+        });
+
+        threeRef.current = { group, scene, portIndicators, cableMeshes, size: size2 };
+        setLoading(false);
+      },
+      undefined,
+      (err) => {
+        console.error("GLB error:", err);
+        setLoadErr("Could not load firewall.glb — " + ((err as any)?.message ?? String(err)));
+        setLoading(false);
+      }
+    );
+
+    // Orbit
+    let rotX = 0.18, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
+    let autoRotate = true;
+    let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    group.rotation.set(rotX, rotY, 0);
+
+    function resetIdleTimer() {
+      autoRotate = false;
+      if (idleTimer) clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => { autoRotate = true; }, 10000);
     }
 
-    (async () => {
-      try {
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js");
-        await loadScript("https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js");
-      } catch (e: any) {
-        setLoadErr("Failed to load 3D libs: " + e.message);
-        setLoading(false);
+    const raycaster = new THREE.Raycaster();
+    const mouse     = new THREE.Vector2();
+
+    const onClick = (e: MouseEvent) => {
+      const r = mount.getBoundingClientRect();
+      mouse.x =  ((e.clientX-r.left)/r.width)*2-1;
+      mouse.y = -((e.clientY-r.top)/r.height)*2+1;
+      raycaster.setFromCamera(mouse, camera);
+      const indHits = raycaster.intersectObjects(Object.values(portIndicators));
+      if (indHits.length) {
+        const obj = indHits[0].object as any;
+        if (modeRef.current === "cable") handlePortClick(obj.userData.portId);
+        else setSelected(PART_INFO[obj.userData.part] ?? null);
         return;
       }
+      const meshes: THREE.Object3D[] = [];
+      group.traverse(c => { if ((c as THREE.Mesh).isMesh && !c.userData.portId) meshes.push(c); });
+      const hits = raycaster.intersectObjects(meshes);
+      if (hits.length && modeRef.current === "explore") setSelected(PART_INFO["chassis"]);
+    };
 
-      const THREE = (window as any).THREE;
-      const W = mount.clientWidth || 900;
-      const H = mount.clientHeight || 460;
+    const onHover = (e: MouseEvent) => {
+      const r = mount.getBoundingClientRect();
+      mouse.x =  ((e.clientX-r.left)/r.width)*2-1;
+      mouse.y = -((e.clientY-r.top)/r.height)*2+1;
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(Object.values(portIndicators));
+      mount.style.cursor = hits.length ? "pointer" : (isDragging ? "grabbing" : "grab");
+    };
 
-      const renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setSize(W, H);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.outputEncoding = THREE.sRGBEncoding;
-      renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 1.2;
-      mount.appendChild(renderer.domElement);
-
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x0d1117);
-
-      // Use OrthographicCamera initially then switch — actually just use perspective with safe near
-      const camera = new THREE.PerspectiveCamera(45, W / H, 0.0001, 100000);
-      camera.position.set(0, 0, 10);
-      camera.lookAt(0, 0, 0);
-
-      // Strong lighting from all angles so nothing is black
-      scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-      const d1 = new THREE.DirectionalLight(0xffffff, 1.0); d1.position.set(5, 10, 10); scene.add(d1);
-      const d2 = new THREE.DirectionalLight(0xffffff, 0.8); d2.position.set(-5, 5, 10); scene.add(d2);
-      const d3 = new THREE.DirectionalLight(0xffffff, 0.6); d3.position.set(0, -5, 10); scene.add(d3);
-      const d4 = new THREE.DirectionalLight(0xffffff, 0.5); d4.position.set(0, 5, -10); scene.add(d4);
-
-      const group = new THREE.Group();
-      scene.add(group);
-      const portIndicators: Record<string, any> = {};
-      const cableMeshes: Record<string, any> = {};
-
-      const loader = new (THREE as any).GLTFLoader();
-      loader.load(
-        "/firewall.glb",
-        (gltf: any) => {
-          const model = gltf.scene;
-
-          // Log everything for debugging
-          console.log("GLB loaded. Traversing meshes:");
-          model.traverse((child: any) => {
-            if (child.isMesh) {
-              console.log("Mesh:", child.name, "pos:", child.position, "mat:", child.material?.type);
-            }
-          });
-
-          // Compute bounding box BEFORE scaling
-          const box0 = new THREE.Box3().setFromObject(model);
-          const size0 = new THREE.Vector3();
-          box0.getSize(size0);
-          console.log("Raw size:", size0, "Raw center:", box0.getCenter(new THREE.Vector3()));
-
-          // Scale to fit ~8 units
-          const maxDim = Math.max(size0.x, size0.y, size0.z);
-          const scale = maxDim > 0 ? 8 / maxDim : 1;
-          model.scale.setScalar(scale);
-
-          // Re-center after scale
-          const box1 = new THREE.Box3().setFromObject(model);
-          const center = new THREE.Vector3();
-          box1.getCenter(center);
-          model.position.sub(center);
-
-          group.add(model);
-
-          // Get final bounds
-          const box2 = new THREE.Box3().setFromObject(group);
-          const size2 = new THREE.Vector3();
-          box2.getSize(size2);
-          console.log("Final size:", size2);
-
-          // Position camera to frame the model
-          const maxS = Math.max(size2.x, size2.y, size2.z);
-          const dist = maxS / (2 * Math.tan((45 * Math.PI / 180) / 2)) * 1.5;
-          camera.position.set(0, size2.y * 0.3, dist);
-          camera.near = dist / 1000;
-          camera.far  = dist * 100;
-          camera.updateProjectionMatrix();
-          camera.lookAt(0, 0, 0);
-          console.log("Camera Z:", dist);
-
-          // Add port indicator spheres on front face
-          const frontZ = size2.z / 2;
-          const r = size2.y * 0.055;
-          const portDefs = [
-            { id:"reset",   part:"reset",   x:-0.46*size2.x, y:0,             color:"#dc2626" },
-            { id:"power",   part:"power",   x:-0.40*size2.x, y:0,             color:"#fbbf24" },
-            { id:"usb",     part:"usb",     x:-0.33*size2.x, y:0.04*size2.y,  color:"#60a5fa" },
-            { id:"console", part:"console", x:-0.26*size2.x, y:0,             color:"#94a3b8" },
-            { id:"wan2",    part:"wan2",    x:-0.19*size2.x, y:0,             color:"#f97316" },
-            { id:"wan1",    part:"wan1",    x:-0.12*size2.x, y:0,             color:"#f97316" },
-            { id:"dmz",     part:"dmz",     x:-0.05*size2.x, y:0,             color:"#0d9488" },
-            { id:"ha-b",    part:"ha",      x: 0.02*size2.x, y:0,             color:"#7c3aed" },
-            { id:"ha-a",    part:"ha",      x: 0.09*size2.x, y:0,             color:"#7c3aed" },
-            { id:"lan-5",   part:"lan",     x: 0.17*size2.x, y:0,             color:"#2563eb" },
-            { id:"lan-4",   part:"lan",     x: 0.24*size2.x, y:0,             color:"#2563eb" },
-            { id:"lan-3",   part:"lan",     x: 0.31*size2.x, y:0,             color:"#2563eb" },
-            { id:"lan-2",   part:"lan",     x: 0.38*size2.x, y:0,             color:"#2563eb" },
-            { id:"lan-1",   part:"lan",     x: 0.45*size2.x, y:0,             color:"#2563eb" },
-          ];
-
-          portDefs.forEach(({ id, part, x, y, color }) => {
-            const sphere = new THREE.Mesh(
-              new THREE.SphereGeometry(r, 12, 12),
-              new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 1.5, roughness: 0.2, metalness: 0.1 })
-            );
-            sphere.position.set(x, y, frontZ + r * 1.5);
-            sphere.userData.portId = id;
-            sphere.userData.part   = part;
-            group.add(sphere);
-            portIndicators[id] = sphere;
-          });
-
-          threeRef.current = { THREE, group, scene, portIndicators, cableMeshes, size: size2 };
-          setLoading(false);
-        },
-        undefined,
-        (err: any) => {
-          console.error("GLB load error:", err);
-          setLoadErr("Could not load firewall.glb — " + (err?.message ?? String(err)));
-          setLoading(false);
-        }
-      );
-
-      // Orbit
-      let rotX = 0.18, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
-      let autoRotate = true;
-      let idleTimer: ReturnType<typeof setTimeout> | null = null;
+    const onDown = (e: MouseEvent) => { isDragging=true; prevX=e.clientX; prevY=e.clientY; mount.style.cursor="grabbing"; resetIdleTimer(); };
+    const onUp   = () => { isDragging=false; mount.style.cursor="grab"; };
+    const onMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      rotY += (e.clientX-prevX)*0.007; rotX += (e.clientY-prevY)*0.005;
+      rotX = Math.max(-0.4, Math.min(1.0, rotX));
+      prevX=e.clientX; prevY=e.clientY;
       group.rotation.set(rotX, rotY, 0);
+    };
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault(); resetIdleTimer();
+      camera.position.z = Math.max(0.5, camera.position.z * (1 + e.deltaY*0.001));
+    };
 
-      function resetIdleTimer() {
-        autoRotate = false;
-        if (idleTimer) clearTimeout(idleTimer);
-        idleTimer = setTimeout(() => { autoRotate = true; }, 10000);
-      }
+    mount.addEventListener("click",      onClick);
+    mount.addEventListener("mousemove",  onHover);
+    mount.addEventListener("mousedown",  onDown);
+    window.addEventListener("mouseup",   onUp);
+    window.addEventListener("mousemove", onMove);
+    mount.addEventListener("wheel",      onWheel, { passive: false });
 
-      const raycaster = new THREE.Raycaster();
-      const mouse = new THREE.Vector2();
+    let animId: number;
+    const animate = () => {
+      animId = requestAnimationFrame(animate);
+      if (autoRotate && !isDragging) { rotY += 0.004; group.rotation.set(rotX, rotY, 0); }
+      renderer.render(scene, camera);
+    };
+    animate();
 
-      const onClick = (e: MouseEvent) => {
-        const r = mount.getBoundingClientRect();
-        mouse.x =  ((e.clientX-r.left)/r.width)*2-1;
-        mouse.y = -((e.clientY-r.top)/r.height)*2+1;
-        raycaster.setFromCamera(mouse, camera);
-        const indicators = Object.values(portIndicators);
-        const portHits = raycaster.intersectObjects(indicators);
-        if (portHits.length) {
-          const obj = portHits[0].object as any;
-          if (modeRef.current === "cable") handlePortClick(obj.userData.portId);
-          else setSelected(PART_INFO[obj.userData.part] ?? null);
-          return;
-        }
-        const allMeshes: any[] = [];
-        group.traverse((c: any) => { if (c.isMesh && !c.userData.portId) allMeshes.push(c); });
-        const hits = raycaster.intersectObjects(allMeshes);
-        if (hits.length && modeRef.current === "explore") setSelected(PART_INFO["chassis"]);
-      };
-
-      const onHover = (e: MouseEvent) => {
-        const r = mount.getBoundingClientRect();
-        mouse.x =  ((e.clientX-r.left)/r.width)*2-1;
-        mouse.y = -((e.clientY-r.top)/r.height)*2+1;
-        raycaster.setFromCamera(mouse, camera);
-        const hits = raycaster.intersectObjects(Object.values(portIndicators));
-        mount.style.cursor = hits.length ? "pointer" : (isDragging ? "grabbing" : "grab");
-      };
-
-      const onDown = (e: MouseEvent) => { isDragging=true; prevX=e.clientX; prevY=e.clientY; mount.style.cursor="grabbing"; resetIdleTimer(); };
-      const onUp   = () => { isDragging=false; mount.style.cursor="grab"; };
-      const onMove = (e: MouseEvent) => {
-        if (!isDragging) return;
-        rotY += (e.clientX-prevX)*0.007; rotX += (e.clientY-prevY)*0.005;
-        rotX = Math.max(-0.4, Math.min(1.0, rotX));
-        prevX=e.clientX; prevY=e.clientY;
-        group.rotation.set(rotX, rotY, 0);
-      };
-      const onWheel = (e: WheelEvent) => {
-        e.preventDefault(); resetIdleTimer();
-        camera.position.z = Math.max(0.1, camera.position.z * (1 + e.deltaY * 0.001));
-      };
-
-      mount.addEventListener("click",      onClick);
-      mount.addEventListener("mousemove",  onHover);
-      mount.addEventListener("mousedown",  onDown);
-      window.addEventListener("mouseup",   onUp);
-      window.addEventListener("mousemove", onMove);
-      mount.addEventListener("wheel",      onWheel, { passive: false });
-
-      let animId: number;
-      const animate = () => {
-        animId = requestAnimationFrame(animate);
-        if (autoRotate && !isDragging) { rotY += 0.004; group.rotation.set(rotX, rotY, 0); }
-        renderer.render(scene, camera);
-      };
-      animate();
-
-      return () => {
-        cancelAnimationFrame(animId);
-        if (idleTimer) clearTimeout(idleTimer);
-        mount.removeEventListener("click", onClick);
-        mount.removeEventListener("mousemove", onHover);
-        mount.removeEventListener("mousedown", onDown);
-        window.removeEventListener("mouseup", onUp);
-        window.removeEventListener("mousemove", onMove);
-        mount.removeEventListener("wheel", onWheel);
-        renderer.dispose();
-        if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
-      };
-    })();
+    return () => {
+      cancelAnimationFrame(animId);
+      if (idleTimer) clearTimeout(idleTimer);
+      mount.removeEventListener("click",      onClick);
+      mount.removeEventListener("mousemove",  onHover);
+      mount.removeEventListener("mousedown",  onDown);
+      window.removeEventListener("mouseup",   onUp);
+      window.removeEventListener("mousemove", onMove);
+      mount.removeEventListener("wheel",      onWheel);
+      renderer.dispose();
+      if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
+    };
   }, []);
 
-  // Cable tubes when plugged changes
+  // Update cables when plugged changes
   useEffect(() => {
     if (!threeRef.current) return;
-    const { THREE, group, portIndicators, cableMeshes, size } = threeRef.current;
+    const { group, portIndicators, cableMeshes, size } = threeRef.current;
     Object.values(cableMeshes).forEach((m: any) => group.remove(m));
     Object.keys(cableMeshes).forEach(k => delete cableMeshes[k]);
     Object.entries(portIndicators).forEach(([portId, mesh]: [string, any]) => {
       const cableId = plugged[portId];
       const cable   = CABLE_TYPES.find(c => c.id === cableId);
-      const col = new THREE.Color(cable?.color ?? mesh.material.color.getHex());
-      mesh.material.emissive.set(cable ? col : new THREE.Color(mesh.userData.baseColor ?? col));
-      mesh.material.emissiveIntensity = cable ? 2.0 : 1.2;
+      const col     = new THREE.Color(cable?.color ?? mesh.material.color);
+      mesh.material.emissiveIntensity = cable ? 2.2 : 1.2;
       if (cable && size) {
-        const sp = mesh.position.clone();
+        const sp   = mesh.position.clone();
+        const cCol = new THREE.Color(cable.color);
         const head = new THREE.Mesh(
           new THREE.BoxGeometry(size.y*0.09, size.y*0.07, size.y*0.05),
-          new THREE.MeshStandardMaterial({ color: col, roughness: 0.4, metalness: 0.3 })
+          new THREE.MeshStandardMaterial({ color: cCol, roughness: 0.4, metalness: 0.3 })
         );
         head.position.set(sp.x, sp.y, sp.z + size.y*0.1);
         group.add(head); cableMeshes[portId+"_head"] = head;
-        const pts = [];
+        const pts: THREE.Vector3[] = [];
         for (let t=0; t<=1; t+=0.05)
           pts.push(new THREE.Vector3(
             sp.x + (Math.random()*0.04-0.02)*t,
@@ -332,7 +319,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
           ));
         const tube = new THREE.Mesh(
           new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 20, size.y*0.014, 8, false),
-          new THREE.MeshStandardMaterial({ color: col, roughness: 0.6, metalness: 0.1 })
+          new THREE.MeshStandardMaterial({ color: cCol, roughness: 0.6, metalness: 0.1 })
         );
         group.add(tube); cableMeshes[portId+"_tube"] = tube;
       }
