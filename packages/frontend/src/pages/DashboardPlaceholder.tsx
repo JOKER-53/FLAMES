@@ -160,34 +160,38 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
         // Port indicator spheres on front face
         const frontZ = size2.z / 2;
         const r = size2.y * 0.055;
+        // Port x positions measured from real model front face (left=-x, right=+x)
+        // Y offset: ports are slightly below center on the front face
+        const portY = -size2.y * 0.05;
+        const portZ = frontZ + r * 1.2; // sit just proud of front face
         const portDefs = [
-          { id:"reset",   part:"reset",   x:-0.46*size2.x, y:0,             color:"#dc2626" },
-          { id:"power",   part:"power",   x:-0.40*size2.x, y:0,             color:"#fbbf24" },
-          { id:"usb",     part:"usb",     x:-0.33*size2.x, y:0.04*size2.y,  color:"#60a5fa" },
-          { id:"console", part:"console", x:-0.26*size2.x, y:0,             color:"#94a3b8" },
-          { id:"wan2",    part:"wan2",    x:-0.19*size2.x, y:0,             color:"#f97316" },
-          { id:"wan1",    part:"wan1",    x:-0.12*size2.x, y:0,             color:"#f97316" },
-          { id:"dmz",     part:"dmz",     x:-0.05*size2.x, y:0,             color:"#0d9488" },
-          { id:"ha-b",    part:"ha",      x: 0.02*size2.x, y:0,             color:"#7c3aed" },
-          { id:"ha-a",    part:"ha",      x: 0.09*size2.x, y:0,             color:"#7c3aed" },
-          { id:"lan-5",   part:"lan",     x: 0.17*size2.x, y:0,             color:"#2563eb" },
-          { id:"lan-4",   part:"lan",     x: 0.24*size2.x, y:0,             color:"#2563eb" },
-          { id:"lan-3",   part:"lan",     x: 0.31*size2.x, y:0,             color:"#2563eb" },
-          { id:"lan-2",   part:"lan",     x: 0.38*size2.x, y:0,             color:"#2563eb" },
-          { id:"lan-1",   part:"lan",     x: 0.45*size2.x, y:0,             color:"#2563eb" },
+          { id:"reset",   part:"reset",   x:-0.44*size2.x, y:portY, color:"#dc2626" },
+          { id:"power",   part:"power",   x:-0.37*size2.x, y:portY, color:"#fbbf24" },
+          { id:"usb",     part:"usb",     x:-0.29*size2.x, y:portY, color:"#60a5fa" },
+          { id:"console", part:"console", x:-0.22*size2.x, y:portY, color:"#94a3b8" },
+          { id:"wan2",    part:"wan2",    x:-0.15*size2.x, y:portY, color:"#f97316" },
+          { id:"wan1",    part:"wan1",    x:-0.08*size2.x, y:portY, color:"#f97316" },
+          { id:"dmz",     part:"dmz",     x:-0.01*size2.x, y:portY, color:"#0d9488" },
+          { id:"ha-b",    part:"ha",      x: 0.06*size2.x, y:portY, color:"#7c3aed" },
+          { id:"ha-a",    part:"ha",      x: 0.13*size2.x, y:portY, color:"#7c3aed" },
+          { id:"lan-5",   part:"lan",     x: 0.21*size2.x, y:portY, color:"#2563eb" },
+          { id:"lan-4",   part:"lan",     x: 0.28*size2.x, y:portY, color:"#2563eb" },
+          { id:"lan-3",   part:"lan",     x: 0.35*size2.x, y:portY, color:"#2563eb" },
+          { id:"lan-2",   part:"lan",     x: 0.42*size2.x, y:portY, color:"#2563eb" },
+          { id:"lan-1",   part:"lan",     x: 0.44*size2.x, y:portY, color:"#2563eb" },
         ];
 
         portDefs.forEach(({ id, part, x, y, color }) => {
           const sphere = new THREE.Mesh(
-            new THREE.SphereGeometry(r, 12, 12),
+            new THREE.SphereGeometry(r * 0.7, 12, 12),
             new THREE.MeshStandardMaterial({
               color: new THREE.Color(color),
               emissive: new THREE.Color(color),
-              emissiveIntensity: 1.5,
+              emissiveIntensity: 1.8,
               roughness: 0.2, metalness: 0.1,
             })
           );
-          sphere.position.set(x, y, frontZ + r * 1.5);
+          sphere.position.set(x, y, portZ);
           sphere.userData.portId = id;
           sphere.userData.part   = part;
           group.add(sphere);
