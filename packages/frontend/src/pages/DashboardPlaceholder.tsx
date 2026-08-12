@@ -342,33 +342,84 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
             {mode==="explore" ? "Auto-rotates · drag · scroll to zoom · click dots or body to learn" : "Select a cable — click the matching glowing port dot"}
           </p>
         </div>
-        <div style={{ display:"flex", gap:6 }}>
-          <button onClick={() => { setMode("explore"); setSelCable(null); setFeedback(null); }}
-            style={{ padding:"5px 12px", fontSize:12, borderRadius:4, border:"1px solid", cursor:"pointer",
-              background:mode==="explore"?"#ef4444":"transparent", color:mode==="explore"?"#fff":"var(--text-secondary)", borderColor:mode==="explore"?"#ef4444":"var(--border)" }}>Explore</button>
-          <button onClick={() => { setMode("cable"); setSelected(null); }}
-            style={{ padding:"5px 12px", fontSize:12, borderRadius:4, border:"1px solid", cursor:"pointer",
-              background:mode==="cable"?"#2563eb":"transparent", color:mode==="cable"?"#fff":"var(--text-secondary)", borderColor:mode==="cable"?"#2563eb":"var(--border)" }}>Cable Mode</button>
-          {mode==="cable" && Object.keys(plugged).length>0 && (
-            <button onClick={() => { setPlugged({}); setFeedback(null); }}
-              style={{ padding:"5px 12px", fontSize:12, borderRadius:4, border:"1px solid var(--border)", cursor:"pointer", color:"var(--text-secondary)", background:"transparent" }}>Reset</button>
-          )}
-        </div>
+        <div />
       </div>
 
-      <div ref={mountRef} style={{ flex:1, minHeight:0, borderRadius:8, overflow:"hidden", border:"1px solid #1e2d45", background:"#0d1117", cursor:"grab", position:"relative" }}>
-        {loading && !loadErr && (
-          <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
-            <div style={{ width:36, height:36, border:"3px solid #1e2d45", borderTopColor:"#ef4444", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
-            <span style={{ color:"#4b5563", fontSize:13 }}>Loading 3D model…</span>
-            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-          </div>
-        )}
-        {loadErr && (
-          <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"#f87171", fontSize:13, padding:24, textAlign:"center" }}>
-            {loadErr}
-          </div>
-        )}
+      <div style={{ flex:1, minHeight:0, position:"relative" }}>
+        <div ref={mountRef} style={{ width:"100%", height:"100%", borderRadius:8, overflow:"hidden", border:"1px solid #1e2d45", background:"#0d1117", cursor:"grab" }}>
+          {loading && !loadErr && (
+            <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
+              <div style={{ width:36, height:36, border:"3px solid #1e2d45", borderTopColor:"#ef4444", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
+              <span style={{ color:"#4b5563", fontSize:13 }}>Loading 3D model…</span>
+              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            </div>
+          )}
+          {loadErr && (
+            <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"#f87171", fontSize:13, padding:24, textAlign:"center" }}>
+              {loadErr}
+            </div>
+          )}
+        </div>
+
+        {/* ── 3D overlay controls ─────────────────────────────────────────── */}
+        {/* Zoom buttons — bottom right */}
+        <div style={{ position:"absolute", bottom:14, right:14, display:"flex", flexDirection:"column", gap:4 }}>
+          <button
+            onClick={() => {
+              const cam = (mountRef.current as any)?.__fg_camera;
+              if (cam) cam.position.z = Math.max(0.5, cam.position.z * 0.82);
+            }}
+            title="Zoom in"
+            style={{ width:34, height:34, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(6px)", color:"#e2e8f0", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>+</button>
+          <button
+            onClick={() => {
+              const cam = (mountRef.current as any)?.__fg_camera;
+              if (cam) cam.position.z = Math.min(50, cam.position.z * 1.22);
+            }}
+            title="Zoom out"
+            style={{ width:34, height:34, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(6px)", color:"#e2e8f0", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>−</button>
+          <button
+            onClick={() => {
+              const g = (window as any).__fg_group;
+              const cam = (mountRef.current as any)?.__fg_camera;
+              if (g)   { g.rotation.set(0.35, 0, 0); (window as any).__fg_rotX = 0.35; (window as any).__fg_rotY = 0; }
+              if (cam)  cam.position.z = 15.5;
+            }}
+            title="Reset view"
+            style={{ width:34, height:34, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(6px)", color:"#94a3b8", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:600 }}>⟳</button>
+        </div>
+
+        {/* Mode pill — bottom left */}
+        <div style={{ position:"absolute", bottom:14, left:14, display:"flex", gap:4 }}>
+          <button
+            onClick={() => { setMode("explore"); setSelCable(null); setFeedback(null); }}
+            style={{ padding:"5px 12px", fontSize:11, borderRadius:20, border:"1.5px solid", cursor:"pointer", backdropFilter:"blur(6px)",
+              background: mode==="explore" ? "#ef4444dd" : "rgba(13,17,23,0.8)",
+              color:      mode==="explore" ? "#fff"      : "#94a3b8",
+              borderColor:mode==="explore" ? "#ef4444"   : "#2d3f5a" }}>
+            🔍 Explore
+          </button>
+          <button
+            onClick={() => { setMode("cable"); setSelected(null); }}
+            style={{ padding:"5px 12px", fontSize:11, borderRadius:20, border:"1.5px solid", cursor:"pointer", backdropFilter:"blur(6px)",
+              background: mode==="cable" ? "#2563ebdd" : "rgba(13,17,23,0.8)",
+              color:      mode==="cable" ? "#fff"      : "#94a3b8",
+              borderColor:mode==="cable" ? "#2563eb"   : "#2d3f5a" }}>
+            🔌 Cable Mode
+          </button>
+          {mode==="cable" && Object.keys(plugged).length>0 && (
+            <button
+              onClick={() => { setPlugged({}); setFeedback(null); }}
+              style={{ padding:"5px 12px", fontSize:11, borderRadius:20, border:"1.5px solid #2d3f5a", cursor:"pointer", backdropFilter:"blur(6px)", background:"rgba(13,17,23,0.8)", color:"#94a3b8" }}>
+              ↺ Reset
+            </button>
+          )}
+        </div>
+
+        {/* Mode label — top left */}
+        <div style={{ position:"absolute", top:12, left:14, fontSize:11, color:"#4b6080", pointerEvents:"none" }}>
+          {mode==="explore" ? "drag · scroll · click to learn" : "select cable → click port dot"}
+        </div>
       </div>
 
       {feedback && (
