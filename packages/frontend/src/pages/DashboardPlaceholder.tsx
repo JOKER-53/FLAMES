@@ -366,24 +366,24 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
         <div style={{ position:"absolute", bottom:14, right:14, display:"flex", flexDirection:"column", gap:4 }}>
           <button
             onClick={() => {
-              const cam = (mountRef.current as any)?.__fg_camera;
+              const cam = (window as any).__fg_camera;
               if (cam) cam.position.z = Math.max(0.5, cam.position.z * 0.82);
             }}
             title="Zoom in"
             style={{ width:34, height:34, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(6px)", color:"#e2e8f0", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>+</button>
           <button
             onClick={() => {
-              const cam = (mountRef.current as any)?.__fg_camera;
+              const cam = (window as any).__fg_camera;
               if (cam) cam.position.z = Math.min(50, cam.position.z * 1.22);
             }}
             title="Zoom out"
             style={{ width:34, height:34, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(6px)", color:"#e2e8f0", fontSize:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", lineHeight:1 }}>−</button>
           <button
             onClick={() => {
-              const g = (window as any).__fg_group;
-              const cam = (mountRef.current as any)?.__fg_camera;
-              if (g)   { g.rotation.set(0.35, 0, 0); (window as any).__fg_rotX = 0.35; (window as any).__fg_rotY = 0; }
-              if (cam)  cam.position.z = 15.5;
+              (window as any).__fg_rotX = 0.35;
+              (window as any).__fg_rotY = 0;
+              const cam = (window as any).__fg_camera;
+              if (cam) cam.position.z = 15.5;
             }}
             title="Reset view"
             style={{ width:34, height:34, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(6px)", color:"#94a3b8", fontSize:11, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:600 }}>⟳</button>
