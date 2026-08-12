@@ -160,25 +160,28 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
         // Port indicator spheres on front face
         const frontZ = size2.z / 2;
         const r = size2.y * 0.055;
-        // Port x positions measured from real model front face (left=-x, right=+x)
-        // Y offset: ports are slightly below center on the front face
-        const portY = -size2.y * 0.05;
-        const portZ = frontZ + r * 1.2; // sit just proud of front face
+        // Exact positions from console: size x=8.02 y=1.99 z=5.72 frontZ=2.86
+        // Ports run left→right across front face, y slightly below center
+        // Spacing: ~0.52 units per port slot across 8 units width
+        const portY = -size2.y * 0.08;
+        const portZ = frontZ + 0.05;
+        const step  = size2.x * 0.067; // ~0.54 per slot
+        const startX = -size2.x * 0.44;
         const portDefs = [
-          { id:"reset",   part:"reset",   x:-0.44*size2.x, y:portY, color:"#dc2626" },
-          { id:"power",   part:"power",   x:-0.37*size2.x, y:portY, color:"#fbbf24" },
-          { id:"usb",     part:"usb",     x:-0.29*size2.x, y:portY, color:"#60a5fa" },
-          { id:"console", part:"console", x:-0.22*size2.x, y:portY, color:"#94a3b8" },
-          { id:"wan2",    part:"wan2",    x:-0.15*size2.x, y:portY, color:"#f97316" },
-          { id:"wan1",    part:"wan1",    x:-0.08*size2.x, y:portY, color:"#f97316" },
-          { id:"dmz",     part:"dmz",     x:-0.01*size2.x, y:portY, color:"#0d9488" },
-          { id:"ha-b",    part:"ha",      x: 0.06*size2.x, y:portY, color:"#7c3aed" },
-          { id:"ha-a",    part:"ha",      x: 0.13*size2.x, y:portY, color:"#7c3aed" },
-          { id:"lan-5",   part:"lan",     x: 0.21*size2.x, y:portY, color:"#2563eb" },
-          { id:"lan-4",   part:"lan",     x: 0.28*size2.x, y:portY, color:"#2563eb" },
-          { id:"lan-3",   part:"lan",     x: 0.35*size2.x, y:portY, color:"#2563eb" },
-          { id:"lan-2",   part:"lan",     x: 0.42*size2.x, y:portY, color:"#2563eb" },
-          { id:"lan-1",   part:"lan",     x: 0.44*size2.x, y:portY, color:"#2563eb" },
+          { id:"reset",   part:"reset",   x: startX + step*0,  y:portY, color:"#dc2626" },
+          { id:"power",   part:"power",   x: startX + step*1,  y:portY, color:"#fbbf24" },
+          { id:"usb",     part:"usb",     x: startX + step*2,  y:portY, color:"#60a5fa" },
+          { id:"console", part:"console", x: startX + step*3,  y:portY, color:"#94a3b8" },
+          { id:"wan2",    part:"wan2",    x: startX + step*4,  y:portY, color:"#f97316" },
+          { id:"wan1",    part:"wan1",    x: startX + step*5,  y:portY, color:"#f97316" },
+          { id:"dmz",     part:"dmz",     x: startX + step*6,  y:portY, color:"#0d9488" },
+          { id:"ha-b",    part:"ha",      x: startX + step*7,  y:portY, color:"#7c3aed" },
+          { id:"ha-a",    part:"ha",      x: startX + step*8,  y:portY, color:"#7c3aed" },
+          { id:"lan-5",   part:"lan",     x: startX + step*9,  y:portY, color:"#2563eb" },
+          { id:"lan-4",   part:"lan",     x: startX + step*10, y:portY, color:"#2563eb" },
+          { id:"lan-3",   part:"lan",     x: startX + step*11, y:portY, color:"#2563eb" },
+          { id:"lan-2",   part:"lan",     x: startX + step*12, y:portY, color:"#2563eb" },
+          { id:"lan-1",   part:"lan",     x: startX + step*13, y:portY, color:"#2563eb" },
         ];
 
         portDefs.forEach(({ id, part, x, y, color }) => {
