@@ -141,39 +141,36 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       if (threeRef.current) threeRef.current.size = sz;
 
       // Port indicator spheres
-      const frontZ = sz.z/2;
-      const r = sz.y * 0.055;
-      const portY = -sz.y * 0.08;
-      const portZ = frontZ + 0.05;
-      const step  = sz.x * 0.063;
-      const startX = -sz.x * 0.42;
-      const defs = [
-        { id:"reset",   part:"reset",   n:0,  color:"#dc2626" },
-        { id:"power",   part:"power",   n:1,  color:"#fbbf24" },
-        { id:"usb",     part:"usb",     n:2,  color:"#60a5fa" },
-        { id:"console", part:"console", n:3,  color:"#94a3b8" },
-        { id:"wan2",    part:"wan2",    n:4,  color:"#f97316" },
-        { id:"wan1",    part:"wan1",    n:5,  color:"#f97316" },
-        { id:"dmz",     part:"dmz",     n:6,  color:"#0d9488" },
-        { id:"ha-b",    part:"ha",      n:7,  color:"#7c3aed" },
-        { id:"ha-a",    part:"ha",      n:8,  color:"#7c3aed" },
-        { id:"lan-5",   part:"lan",     n:9,  color:"#2563eb" },
-        { id:"lan-4",   part:"lan",     n:10, color:"#2563eb" },
-        { id:"lan-3",   part:"lan",     n:11, color:"#2563eb" },
-        { id:"lan-2",   part:"lan",     n:12, color:"#2563eb" },
-        { id:"lan-1",   part:"lan",     n:13, color:"#2563eb" },
+      // Exact port positions from console log (size 8.089 x 2.899 x 5.719)
+      const r = sz.y * 0.045; // indicator sphere radius
+      const portY = -0.232;   // exact y from log
+      const portZ =  2.909;   // exact z from log (front face)
+      const exactDefs = [
+        { id:"reset",   part:"reset",   x:-3.397, color:"#dc2626" },
+        { id:"power",   part:"power",   x:-2.888, color:"#fbbf24" },
+        { id:"usb",     part:"usb",     x:-2.378, color:"#60a5fa" },
+        { id:"console", part:"console", x:-1.868, color:"#94a3b8" },
+        { id:"wan2",    part:"wan2",    x:-1.359, color:"#f97316" },
+        { id:"wan1",    part:"wan1",    x:-0.849, color:"#f97316" },
+        { id:"dmz",     part:"dmz",     x:-0.340, color:"#0d9488" },
+        { id:"ha-b",    part:"ha",      x: 0.170, color:"#7c3aed" },
+        { id:"ha-a",    part:"ha",      x: 0.679, color:"#7c3aed" },
+        { id:"lan-5",   part:"lan",     x: 1.189, color:"#2563eb" },
+        { id:"lan-4",   part:"lan",     x: 1.699, color:"#2563eb" },
+        { id:"lan-3",   part:"lan",     x: 2.208, color:"#2563eb" },
+        { id:"lan-2",   part:"lan",     x: 2.718, color:"#2563eb" },
+        { id:"lan-1",   part:"lan",     x: 3.227, color:"#2563eb" },
       ];
-      defs.forEach(({ id, part, n, color }) => {
+      exactDefs.forEach(({ id, part, x, color }) => {
         const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(r*0.65, 12, 12),
-          new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 1.5, roughness: 0.2, metalness: 0.1 })
+          new THREE.SphereGeometry(r, 12, 12),
+          new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 1.8, roughness: 0.2, metalness: 0.1 })
         );
-        sphere.position.set(startX + step*n, portY, portZ);
+        sphere.position.set(x, portY, portZ + r);
         sphere.userData.portId = id;
         sphere.userData.part   = part;
         group.add(sphere);
         portIndicators[id] = sphere;
-        console.log(id, "→", (startX+step*n).toFixed(3), portY.toFixed(3), portZ.toFixed(3));
       });
 
       setLoading(false);
@@ -183,7 +180,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     });
 
     // Orbit
-    let rotX = 0.35, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
+    let rotX = -0.18, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
     let autoRotate = true;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
     group.rotation.set(rotX, rotY, 0);
@@ -349,7 +346,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); }
   function resetView() {
     if (!threeRef.current) return;
-    threeRef.current.rotX = 0.35;
+    threeRef.current.rotX = -0.18;
     threeRef.current.rotY = 0;
     threeRef.current.camera.position.z = 15.5;
   }
