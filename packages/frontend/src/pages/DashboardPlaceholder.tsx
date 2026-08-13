@@ -132,7 +132,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       const sz = new THREE.Vector3(); box2.getSize(sz);
       const fov = camera.fov * Math.PI/180;
       const dist = (Math.max(sz.x,sz.y,sz.z)/2) / Math.tan(fov/2) * 1.6;
-      camera.position.set(0, -sz.y*0.1, dist);
+      camera.position.set(0, -sz.y*0.55, dist);
       camera.near = dist/1000; camera.far = dist*100;
       camera.updateProjectionMatrix();
 
