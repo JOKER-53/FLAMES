@@ -142,7 +142,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
 
       // Port indicator spheres
       // Exact port positions from console log (size 8.089 x 2.899 x 5.719)
-      const r = sz.y * 0.045; // indicator sphere radius
+      const r = sz.y * 0.028; // smaller — sits in port hole
       const portY = -0.232;   // exact y from log
       const portZ =  2.909;   // exact z from log (front face)
       const exactDefs = [
@@ -166,7 +166,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
           new THREE.SphereGeometry(r, 12, 12),
           new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 1.8, roughness: 0.2, metalness: 0.1 })
         );
-        sphere.position.set(x, portY, portZ + r);
+        sphere.position.set(x, portY, portZ + r * 0.5);
         sphere.userData.portId = id;
         sphere.userData.part   = part;
         group.add(sphere);
