@@ -3,6 +3,7 @@ import { useSearchParams, Link } from "react-router-dom";
 import type { AdminAccess, InterfaceConfig, InterfaceGradingReport, PortGradingReport } from "@fortisim/engine";
 import { ALL_INTERFACE_SCENARIOS, ALL_PORT_SCENARIOS, interfaceFullScenario, portFinalScenario } from "@fortisim/engine";
 import { ChassisDiagram } from "../components/policyObjects/ChassisDiagram";
+import { CableDragDiagram } from "../components/policyObjects/CableDragDiagram";
 import type { PortZone, PortAssignment } from "../components/policyObjects/ChassisDiagram";
 import { InterfaceTopology } from "../components/policyObjects/InterfaceTopology";
 import { HardQuestionCard } from "../components/HardQuestionCard";
@@ -331,7 +332,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
           <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
             <div className="text-[13px] font-medium text-gray-700 mb-1">{portScenario?.title}</div>
-            <ChassisDiagram ports={portAssignments} onChange={handlePortChange} />
+            <CableDragDiagram ports={portAssignments} onChange={handlePortChange} />
           </div>
 
           <div className="bg-white border border-gray-200 rounded-md p-4">

@@ -132,7 +132,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       const sz = new THREE.Vector3(); box2.getSize(sz);
       const fov = camera.fov * Math.PI/180;
       const dist = (Math.max(sz.x,sz.y,sz.z)/2) / Math.tan(fov/2) * 1.6;
-      camera.position.set(0, -sz.y*0.55, dist);
+      camera.position.set(0, -sz.y*0.15, dist);
       camera.near = dist/1000; camera.far = dist*100;
       camera.updateProjectionMatrix();
 
@@ -180,7 +180,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     });
 
     // Orbit
-    let rotX = -0.38, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
+    let rotX = -0.28, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
     let autoRotate = true;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
     group.rotation.set(rotX, rotY, 0);
@@ -346,7 +346,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); }
   function resetView() {
     if (!threeRef.current) return;
-    threeRef.current.rotX = -0.38;
+    threeRef.current.rotX = -0.28;
     threeRef.current.rotY = 0;
     threeRef.current.camera.position.z = 15.5;
   }
