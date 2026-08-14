@@ -143,7 +143,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   }
 
   return (
-    <div className="max-w-4xl">
+    <div className={track === "port" ? "w-full" : "max-w-4xl"}>
       {cameFromTask && (
         <Link to={`/tasks/${track}`} className="inline-block text-[12px] text-forti-red hover:underline mb-3">
           ← Back to Tasks
@@ -299,77 +299,82 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
       {track === "port" && (
         <>
-          <div className="bg-amber-50 border border-amber-200 rounded-md p-4 mb-5">
-            <div className="text-[13px] font-semibold text-amber-900 mb-1">{portScenario?.title}</div>
-            <p className="text-[12.5px] text-amber-800 leading-relaxed">{portScenario?.description}</p>
+          {/* Scenario description */}
+          <div className="bg-amber-50 border border-amber-200 rounded-md p-3 mb-4">
+            <div className="text-[13px] font-semibold text-amber-900 mb-0.5">{portScenario?.title}</div>
+            <p className="text-[12px] text-amber-800 leading-relaxed">{portScenario?.description}</p>
           </div>
 
-          {!cameFromTask && (
-          <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
-            <div className="text-[13px] font-medium text-gray-700 mb-3">Select Exercise</div>
-            <div className="space-y-2">
-              {ALL_PORT_SCENARIOS.map((s, idx) => {
-                const completed = session.completedTaskIds.has(s.id);
-                return (
-                  <div
-                    key={s.id}
-                    onClick={() => setActivePortScenarioId(s.id)}
-                    className={`flex items-start gap-3 p-3 rounded border cursor-pointer transition-colors ${activePortScenarioId === s.id ? "border-forti-red bg-red-50" : "border-gray-200 hover:bg-gray-50"}`}
-                  >
-                    <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 text-[11px] font-bold ${completed ? "bg-emerald-500 border-emerald-500 text-white" : activePortScenarioId === s.id ? "border-forti-red text-forti-red" : "border-gray-300 text-gray-400"}`}>
-                      {completed ? "✓" : idx + 1}
+          {/* Full-width two-column layout */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 340px", gap:16, alignItems:"start" }}>
+
+            {/* LEFT — full-width 3D cable drag */}
+            <div className="bg-white border border-gray-200 rounded-md p-4" style={{ minHeight:520 }}>
+              <CableDragDiagram ports={portAssignments} onChange={handlePortChange} fullHeight />
+            </div>
+
+            {/* RIGHT — exercise list + grading */}
+            <div className="space-y-4">
+
+              {/* Exercise selector */}
+              {!cameFromTask && (
+                <div className="bg-white border border-gray-200 rounded-md p-4">
+                  <div className="text-[12px] font-medium text-gray-700 mb-2">Exercises</div>
+                  <div className="space-y-1.5">
+                    {ALL_PORT_SCENARIOS.map((s, idx) => {
+                      const completed = session.completedTaskIds.has(s.id);
+                      return (
+                        <div key={s.id} onClick={() => setActivePortScenarioId(s.id)}
+                          className={`flex items-center gap-2.5 p-2 rounded border cursor-pointer transition-colors ${activePortScenarioId === s.id ? "border-forti-red bg-red-50" : "border-gray-200 hover:bg-gray-50"}`}>
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 text-[10px] font-bold ${completed ? "bg-emerald-500 border-emerald-500 text-white" : activePortScenarioId === s.id ? "border-forti-red text-forti-red" : "border-gray-300 text-gray-400"}`}>
+                            {completed ? "✓" : idx + 1}
+                          </div>
+                          <div className="text-[12px] font-medium text-gray-800 truncate">{s.title}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Grading */}
+              <div className="bg-white border border-gray-200 rounded-md p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[13px] font-medium text-gray-700">Submit for Grading</div>
+                  <button onClick={submitPortGrading} disabled={portGrading}
+                    className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90 disabled:opacity-50">
+                    {portGrading ? "Grading…" : "Submit"}
+                  </button>
+                </div>
+                {portError && <div className="text-red-600 text-[12.5px]">{portError}</div>}
+                {portReport && (
+                  <div>
+                    <div className={`text-[13px] font-medium mb-2 ${portReport.overallPassed ? "text-emerald-600" : "text-red-600"}`}>
+                      {portReport.overallPassed ? "✓ Passed" : "Not yet correct"} — {portReport.passedChecks}/{portReport.totalChecks} checks
                     </div>
-                    <div>
-                      <div className="text-[13px] font-medium text-gray-800">{s.title}</div>
-                      <div className="text-[12px] text-gray-500 mt-0.5">{s.description}</div>
+                    <div className="space-y-1.5">
+                      {portReport.results.map((r, idx) => (
+                        <div key={idx} className="flex items-center justify-between text-[12px] border-b border-gray-100 pb-1.5">
+                          <span className="text-gray-700 text-[11.5px]">{r.description}</span>
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${r.passed ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+                            {r.passed ? "PASS" : "FAIL"}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </div>
-          )}
-
-          <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
-            <div className="text-[13px] font-medium text-gray-700 mb-1">{portScenario?.title}</div>
-            <CableDragDiagram ports={portAssignments} onChange={handlePortChange} />
-          </div>
-
-          <div className="bg-white border border-gray-200 rounded-md p-4">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-[13px] font-medium text-gray-700">Submit for Grading</div>
-              <button onClick={submitPortGrading} disabled={portGrading} className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90 disabled:opacity-50">
-                {portGrading ? "Grading…" : "Submit"}
-              </button>
-            </div>
-            {portError && <div className="text-red-600 text-[12.5px]">{portError}</div>}
-            {portReport && (
-              <div>
-                <div className={`text-[13px] font-medium mb-2 ${portReport.overallPassed ? "text-emerald-600" : "text-red-600"}`}>
-                  {portReport.overallPassed ? "Passed" : "Not yet correct"} — {portReport.passedChecks}/{portReport.totalChecks} checks
-                </div>
-                <div className="space-y-1.5">
-                  {portReport.results.map((r, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-[12.5px] border-b border-gray-100 pb-1.5">
-                      <span className="text-gray-700">{r.description}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${r.passed ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
-                        {r.passed ? "PASS" : "FAIL"}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                )}
+                {portAiRemark && (
+                  <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[12px] text-amber-900 mt-3">
+                    <div className="font-medium mb-1">Tutor feedback</div>
+                    {portAiRemark}
+                  </div>
+                )}
               </div>
-            )}
-            {portAiRemark && (
-              <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[12.5px] text-amber-900 mt-3">
-                <div className="font-medium mb-1">Tutor feedback</div>
-                {portAiRemark}
-              </div>
-            )}
-          </div>
 
-          <div className="mt-4">
-            <HardQuestionCard taskId={portScenario?.id} session={session} />
+              {/* Knowledge check */}
+              <HardQuestionCard taskId={portScenario?.id} session={session} />
+            </div>
           </div>
         </>
       )}

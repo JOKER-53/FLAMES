@@ -13,6 +13,7 @@ import type { PortZone, PortAssignment } from "./ChassisDiagram";
 interface CableDragDiagramProps {
   ports: PortAssignment[];
   onChange: (portId: string, zone: PortZone) => void;
+  fullHeight?: boolean;
 }
 
 const ZONE_COLOR: Record<PortZone, string> = {
@@ -40,7 +41,7 @@ const GLB_TO_PORT: Record<string, string> = {
   "ha-b": "port6", "ha-a": "port6",
 };
 
-export function CableDragDiagram({ ports, onChange }: CableDragDiagramProps) {
+export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagramProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const threeRef = useRef<any>(null);
   const [dragging, setDragging] = useState<{ zone: PortZone; label: string } | null>(null);
@@ -327,7 +328,7 @@ export function CableDragDiagram({ ports, onChange }: CableDragDiagramProps) {
       <div style={{ position:"relative" }}>
         <div
           ref={mountRef}
-          style={{ width:"100%", height:320, borderRadius:8, overflow:"hidden", border:"1px solid #1f2937",
+          style={{ width:"100%", height: fullHeight ? 480 : 320, borderRadius:8, overflow:"hidden", border:"1px solid #1f2937",
             cursor: dragging ? "crosshair" : "grab", background:"#111827" }}
         />
         <div style={{ position:"absolute", top:8, left:10, fontSize:11, color:"#374151", pointerEvents:"none" }}>
