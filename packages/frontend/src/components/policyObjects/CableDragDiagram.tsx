@@ -17,7 +17,7 @@ interface CableDragDiagramProps {
 }
 
 const ZONE_COLOR: Record<PortZone, string> = {
-  WAN: "#f97316", LAN: "#22c55e", DMZ: "#3b82f6", unassigned: "#6b7280",
+  WAN: "#f97316", LAN: "#22c55e", DMZ: "#3b82f6", unassigned: "#4b5563",
 };
 const ZONE_EMISSIVE: Record<PortZone, string> = {
   WAN: "#f97316", LAN: "#22c55e", DMZ: "#3b82f6", unassigned: "#374151",
@@ -33,12 +33,19 @@ const PORT_X: Record<string, number> = {
 const PORT_Y = -0.232;
 const PORT_Z =  2.874;
 
-// Map portId → PortAssignment portId
+// Map GLB visual port id → engine portId (must match portScenario.ports[].portId)
+// GLB front face left→right: reset,power,usb,console,wan2,wan1,dmz,ha-b,ha-a,lan-5,lan-4,lan-3,lan-2,lan-1
+// Engine scenario port-assignment-01: port1-4=LAN, port5=DMZ, wan1/wan2=WAN, port6=unassigned
 const GLB_TO_PORT: Record<string, string> = {
-  wan1: "wan1", wan2: "wan2",
-  dmz: "port5",
-  "lan-1": "port1", "lan-2": "port2", "lan-3": "port3", "lan-4": "port4",
-  "ha-b": "port6", "ha-a": "port6",
+  wan1:    "wan1",   // WAN1 uplink
+  wan2:    "wan2",   // WAN2 uplink
+  dmz:     "port5",  // Port 5 → DMZ
+  "lan-1": "port1",  // Port 1 → LAN
+  "lan-2": "port2",  // Port 2 → LAN
+  "lan-3": "port3",  // Port 3 → LAN
+  "lan-4": "port4",  // Port 4 → LAN
+  "lan-5": "port6",  // Port 6 → unassigned (extra port)
+  // ha-b, ha-a, console, usb, reset, power — not in port assignment exercises
 };
 
 export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagramProps) {
@@ -283,9 +290,10 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
 
   // Cable zones
   const cableRack: { zone: PortZone; label: string; desc: string }[] = [
-    { zone:"WAN", label:"WAN Cable",  desc:"Internet uplink — connect to WAN1 or WAN2" },
-    { zone:"LAN", label:"LAN Cable",  desc:"Internal network — connect to ports 1-4"   },
-    { zone:"DMZ", label:"DMZ Cable",  desc:"Public servers — connect to port 5 (DMZ)"  },
+    { zone:"WAN",        label:"WAN Cable",        desc:"Internet uplink — connect to WAN1 or WAN2" },
+    { zone:"LAN",        label:"LAN Cable",         desc:"Internal network — connect to ports 1-4"   },
+    { zone:"DMZ",        label:"DMZ Cable",         desc:"Public servers — connect to port 5 (DMZ)"  },
+    { zone:"unassigned", label:"Leave Unassigned",  desc:"Port not used — leave unassigned (port 6)" },
   ];
 
   return (
