@@ -172,10 +172,10 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
       const sz2 = new THREE.Vector3(); box2.getSize(sz2);
       const fov = camera.fov*Math.PI/180;
       const dist = (Math.max(sz2.x,sz2.y,sz2.z)/2)/Math.tan(fov/2)*1.5;
-      camera.position.set(0, -sz2.y*0.25, dist);
+      camera.position.set(0, -sz2.y*0.05, dist * 0.95);
       camera.near = dist/1000; camera.far = dist*100;
       camera.updateProjectionMatrix();
-      camera.lookAt(0, -sz2.y*0.1, 0);
+      camera.lookAt(0, -sz2.y*0.2, 0);
 
       // Port drop-zone spheres
       const r = sz2.y*0.028;
@@ -232,7 +232,8 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
         mat.color.set(col); mat.emissive.set(col);
         return next;
       });
-      showFeedback(`✓ ${drag.label} connected to ${portId.toUpperCase()}`, true);
+      const portLabel = portId === "wan1" ? "WAN1" : portId === "wan2" ? "WAN2" : portId.replace("port","Port ");
+      showFeedback(`✓ ${drag.label} → ${portLabel} (${zone})`, true);
       setDragging(null);
     };
 
@@ -309,9 +310,13 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
               onDragStart={() => setDragging({ zone, label })}
               onDragEnd={() => { if (!feedback) setDragging(null); }}
               onMouseDown={() => setDragging({ zone, label })}
+              onMouseUp={() => setDragging(null)}
               title={desc}
               className="flex items-center gap-2 px-3 py-2 rounded cursor-grab active:cursor-grabbing select-none transition-transform hover:scale-105"
-              style={{ background: ZONE_COLOR[zone]+"22", border:`1.5px solid ${ZONE_COLOR[zone]}`, color: ZONE_COLOR[zone] }}
+              style={{ background: dragging?.zone===zone ? ZONE_COLOR[zone]+"44" : ZONE_COLOR[zone]+"22",
+                border:`1.5px solid ${ZONE_COLOR[zone]}`, color: ZONE_COLOR[zone],
+                transform: dragging?.zone===zone ? "scale(1.08)" : undefined,
+                boxShadow: dragging?.zone===zone ? `0 0 12px ${ZONE_COLOR[zone]}66` : undefined }}
             >
               {/* Cable icon */}
               <svg width="28" height="20" viewBox="0 0 28 20">
