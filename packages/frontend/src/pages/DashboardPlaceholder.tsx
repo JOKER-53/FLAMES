@@ -22,13 +22,10 @@ const PART_INFO: Record<string, PartInfo> = {
 };
 
 const CABLE_TYPES = [
-  { id: "rj45-wan",     label: "RJ-45 WAN",     color: "#f97316", accepts: ["wan1","wan2"], desc: "Ethernet cable for internet uplink." },
-  { id: "rj45-lan",     label: "RJ-45 LAN",     color: "#2563eb", accepts: ["lan"],         desc: "Patch cable for internal workstations." },
-  { id: "rj45-dmz",     label: "RJ-45 DMZ",     color: "#0d9488", accepts: ["dmz"],         desc: "Cable for DMZ public-facing servers." },
-  { id: "rj45-console", label: "Console Cable", color: "#94a3b8", accepts: ["console"],     desc: "Rollover cable for serial console." },
-  { id: "rj45-ha",      label: "HA Cable",      color: "#7c3aed", accepts: ["ha"],          desc: "Direct crossover between HA peers." },
-  { id: "usb-a",        label: "USB Drive",     color: "#60a5fa", accepts: ["usb"],         desc: "USB drive for firmware recovery." },
-  { id: "dc-power",     label: "DC Power",      color: "#fbbf24", accepts: ["power"],       desc: "12V DC barrel connector." },
+  { id: "rj45-wan", label: "RJ-45 WAN", color: "#f97316", accepts: ["wan1","wan2"], desc: "Ethernet uplink to ISP — connect to WAN1 or WAN2." },
+  { id: "rj45-lan", label: "RJ-45 LAN", color: "#2563eb", accepts: ["lan"],         desc: "Internal network patch cable — connect to LAN ports." },
+  { id: "rj45-dmz", label: "RJ-45 DMZ", color: "#0d9488", accepts: ["dmz"],         desc: "DMZ cable for public-facing servers." },
+  { id: "rj45-ha",  label: "HA Cable",  color: "#7c3aed", accepts: ["ha"],          desc: "High-availability heartbeat — direct crossover between HA peers." },
 ];
 
 export function DashboardPlaceholder({ session: _ }: DashboardProps) {
