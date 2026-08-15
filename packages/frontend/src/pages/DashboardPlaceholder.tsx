@@ -132,7 +132,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       const sz = new THREE.Vector3(); box2.getSize(sz);
       const fov = camera.fov * Math.PI/180;
       const dist = (Math.max(sz.x,sz.y,sz.z)/2) / Math.tan(fov/2) * 1.6;
-      camera.position.set(0, -sz.y*0.15, dist);
+      camera.position.set(0, -sz.y*0.08, dist * 0.78);
       camera.near = dist/1000; camera.far = dist*100;
       camera.updateProjectionMatrix();
 
@@ -180,7 +180,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     });
 
     // Orbit
-    let rotX = -0.28, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
+    let rotX = -0.22, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
     let autoRotate = true;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
     group.rotation.set(rotX, rotY, 0);

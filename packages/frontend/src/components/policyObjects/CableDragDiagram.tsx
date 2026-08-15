@@ -156,7 +156,7 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
     const camera = new THREE.PerspectiveCamera(40, W / H, 0.001, 10000);
 
     scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-    [[3,8,10],[−4,4,8],[0,−4,8],[0,5,−8]].forEach(([x,y,z],i) => {
+    [[3,8,10],[-4,4,8],[0,-4,8],[0,5,-8]].forEach(([x,y,z],i) => {
       const l = new THREE.DirectionalLight(0xffffff, [0.9,0.7,0.4,0.3][i]);
       l.position.set(x,y,z); scene.add(l);
     });
@@ -218,7 +218,7 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
       });
 
       threeRef.current = { group, portSpheres, cableMeshes, sz: sz2, camera };
-      group.rotation.set(-0.28, 0, 0);
+      group.rotation.set(-0.22, 0, 0);
     }, undefined, () => {});
 
     // ── CLICK handler: select port when a zone is selected ─────────────────
@@ -460,7 +460,7 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
         {/* Zoom controls */}
         <div style={{ position:"absolute", bottom:10, right:10, display:"flex", flexDirection:"column", gap:3 }}>
           {[{l:"+",f:()=>{const c=threeRef.current?.camera;if(c)c.position.z*=0.82;}},
-            {l:"−",f:()=>{const c=threeRef.current?.camera;if(c)c.position.z*=1.22;}}
+            {l:"-",f:()=>{const c=threeRef.current?.camera;if(c)c.position.z*=1.22;}}
           ].map(({l,f}) => (
             <button key={l} onClick={f}
               style={{width:28,height:28,borderRadius:4,border:"1px solid #374151",
