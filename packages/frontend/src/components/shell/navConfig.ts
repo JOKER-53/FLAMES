@@ -8,17 +8,17 @@ export interface NavItem {
 export const NAV_STRUCTURE: NavItem[] = [
   {
     label: "Hardware Reference",
-    path: "/",
+    path: "/fortigate",
     icon: "hardware",
   },
   {
     label: "Tasks",
-    path: "/tasks",
+    path: "/fortigate/tasks",
     icon: "dashboard",
     children: [
-      { label: "Firewall Policy", path: "/tasks/policy", icon: "shield" },
-      { label: "Interface Config", path: "/tasks/interface", icon: "network" },
-      { label: "Port Assignment", path: "/tasks/port", icon: "sdwan" },
+      { label: "Firewall Policy", path: "/fortigate/tasks/policy", icon: "shield" },
+      { label: "Interface Config", path: "/fortigate/tasks/interface", icon: "network" },
+      { label: "Port Assignment", path: "/fortigate/tasks/port", icon: "sdwan" },
     ],
   },
 ];

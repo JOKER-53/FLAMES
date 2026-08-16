@@ -116,6 +116,9 @@ export function AppShell({ children }: AppShellProps) {
         </nav>
 
         <div className="px-4 py-2.5 border-t border-white/10 text-[11px] text-gray-500 leading-relaxed">
+          <a href="/" className="block mb-2 px-2 py-1 text-center rounded border border-white/10 text-gray-500 hover:text-gray-300 hover:border-white/20 transition-colors" style={{textDecoration:"none",fontSize:10}}>
+            ← Switch Platform
+          </a>
           <div>FortiOS v7.6 (Simulated)</div>
           <div>Training Mode — No Live Traffic</div>
         </div>

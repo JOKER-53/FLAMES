@@ -108,7 +108,7 @@ export function TrackTasksPage({ session, track }: TrackTasksPageProps) {
   function handleSelect(task: TaskEntry) {
     if (track === "policy") {
       session.selectScenario(task.id);
-      navigate("/policy/firewall-policy");
+      navigate("/fortigate/policy/firewall-policy");
     } else {
       navigate(`/network/interfaces?track=${track}&scenario=${task.id}`);
     }

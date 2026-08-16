@@ -114,7 +114,7 @@ export function TasksPage({ session }: TasksPageProps) {
     if (locked) return;
     if (task.track === "policy") {
       session.selectScenario(task.id);
-      navigate("/policy/firewall-policy");
+      navigate("/fortigate/policy/firewall-policy");
     } else {
       navigate(`/network/interfaces?track=${task.track}&scenario=${task.id}`);
     }
