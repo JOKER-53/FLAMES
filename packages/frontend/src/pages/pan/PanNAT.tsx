@@ -14,7 +14,8 @@ interface NATRule {
   active: boolean;
 }
 
-export function PanNAT() {
+import { PanSession } from "../../hooks/usePanSession";
+export function PanNAT({ session: _ }: { session: PanSession }) {
   const [rules, setRules] = useState<NATRule[]>([
     { id:1, name:"Outbound-SNAT",  type:"source",      srcZone:"Trust",   dstZone:"Untrust", srcAddr:"10.0.0.0/24", dstAddr:"any",         translated:"interface(ethernet1/1)", active:true },
     { id:2, name:"Web-Server-DNAT",type:"destination",  srcZone:"Untrust", dstZone:"Trust",   srcAddr:"any",         dstAddr:"203.0.113.10", translated:"10.0.0.100:443",         active:true },

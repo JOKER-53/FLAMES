@@ -70,7 +70,8 @@ const SCENARIOS = [
 
 const RISK_COLOR: Record<string,string> = { low:"#22c55e", medium:"#f97316", high:"#ef4444", "—":"#94a3b8" };
 
-export function PanSecurityPolicy() {
+import { PanSession } from "../../hooks/usePanSession";
+export function PanSecurityPolicy({ session }: { session: PanSession }) {
   const [scenarioIdx, setScenarioIdx] = useState(0);
   const scenario = SCENARIOS[scenarioIdx];
   const [rules, setRules] = useState<Rule[]>([]);
@@ -94,7 +95,9 @@ export function PanSecurityPolicy() {
   function moveDown(idx:number) { if(idx===rules.length-1)return; const r=[...rules]; [r[idx],r[idx+1]]=[r[idx+1],r[idx]]; setRules(r); setResults(null); }
 
   function grade() {
-    setResults(scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(rules) })));
+    const res = scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(rules) }));
+    setResults(res);
+    if (res.every(r=>r.pass)) session.markTaskComplete(scenario.id);
   }
 
   function toggleApp(app:string) {

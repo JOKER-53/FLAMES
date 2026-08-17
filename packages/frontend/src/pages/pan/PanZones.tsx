@@ -14,7 +14,8 @@ interface Zone {
 
 const INTERFACES = ["ethernet1/1","ethernet1/2","ethernet1/3","ethernet1/4","ethernet1/5","ethernet1/6","ethernet1/7","ethernet1/8"];
 
-export function PanZones() {
+import { PanSession } from "../../hooks/usePanSession";
+export function PanZones({ session: _ }: { session: PanSession }) {
   const [zones, setZones] = useState<Zone[]>([
     { id:1, name:"Trust",   type:"layer3", profile:"default", interfaces:["ethernet1/5","ethernet1/6"], logForwarding:true },
     { id:2, name:"Untrust", type:"layer3", profile:"strict",  interfaces:["ethernet1/1"], logForwarding:true },
