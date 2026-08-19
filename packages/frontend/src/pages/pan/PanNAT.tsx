@@ -1,195 +1,181 @@
 import { useState } from "react";
+import { PanSession } from "../../hooks/usePanSession";
 
 type NATType = "source" | "destination" | "static";
+interface NATRule { id:number; name:string; type:NATType; srcZone:string; dstZone:string; dstAddr:string; translated:string; }
 
-interface NATRule {
-  id: number;
-  name: string;
-  type: NATType;
-  srcZone: string;
-  dstZone: string;
-  srcAddr: string;
-  dstAddr: string;
-  translated: string;
-  active: boolean;
-}
+const SCENARIOS = [
+  { id:"pan-nat-01", title:"Outbound SNAT",
+    desc:"Configure Source NAT so Trust hosts (10.0.0.0/24) access the internet via the WAN interface IP. Use 'interface' as translated address.",
+    checks:[
+      { desc:"SNAT rule exists",                fn:(r:NATRule[])=>r.some(x=>x.type==="source") },
+      { desc:"Source zone is Trust",            fn:(r:NATRule[])=>r.some(x=>x.type==="source"&&x.srcZone==="Trust") },
+      { desc:"Dest zone is Untrust",            fn:(r:NATRule[])=>r.some(x=>x.type==="source"&&x.dstZone==="Untrust") },
+      { desc:"Translated to interface IP",      fn:(r:NATRule[])=>r.some(x=>x.type==="source"&&x.translated.toLowerCase().includes("interface")) },
+    ]
+  },
+  { id:"pan-nat-02", title:"Web Server DNAT",
+    desc:"Forward HTTPS on public IP 203.0.113.10 to internal DMZ server 10.0.1.10:443. Create a Destination NAT rule.",
+    checks:[
+      { desc:"DNAT rule exists",                fn:(r:NATRule[])=>r.some(x=>x.type==="destination") },
+      { desc:"Original dst is 203.0.113.10",    fn:(r:NATRule[])=>r.some(x=>x.type==="destination"&&x.dstAddr.includes("203.0.113.10")) },
+      { desc:"Translated to 10.0.1.10",         fn:(r:NATRule[])=>r.some(x=>x.type==="destination"&&x.translated.includes("10.0.1.10")) },
+    ]
+  },
+  { id:"pan-nat-03", title:"Static NAT",
+    desc:"Create a 1:1 static NAT mapping 203.0.113.20 ↔ 10.0.1.20 for a mail server needing a dedicated public IP.",
+    checks:[
+      { desc:"Static NAT rule exists",          fn:(r:NATRule[])=>r.some(x=>x.type==="static") },
+      { desc:"Original address includes .20",   fn:(r:NATRule[])=>r.some(x=>x.type==="static"&&x.dstAddr.includes(".20")) },
+      { desc:"Translated includes 10.0.1.20",   fn:(r:NATRule[])=>r.some(x=>x.type==="static"&&x.translated.includes("10.0.1.20")) },
+    ]
+  },
+];
 
-import { PanSession } from "../../hooks/usePanSession";
-export function PanNAT({ session: _ }: { session: PanSession }) {
-  const [rules, setRules] = useState<NATRule[]>([
-    { id:1, name:"Outbound-SNAT",  type:"source",      srcZone:"Trust",   dstZone:"Untrust", srcAddr:"10.0.0.0/24", dstAddr:"any",         translated:"interface(ethernet1/1)", active:true },
-    { id:2, name:"Web-Server-DNAT",type:"destination",  srcZone:"Untrust", dstZone:"Trust",   srcAddr:"any",         dstAddr:"203.0.113.10", translated:"10.0.0.100:443",         active:true },
-  ]);
+const TYPE_COLOR: Record<NATType,string> = { source:"#3b82f6", destination:"#f97316", static:"#7c3aed" };
+
+export function PanNAT({ session }: { session: PanSession }) {
+  const [scenIdx, setSceIdx] = useState(0);
+  const scenario = SCENARIOS[scenIdx];
+  const [rules, setRules] = useState<NATRule[]>([]);
+  const [nextId, setNextId] = useState(1);
   const [adding, setAdding] = useState(false);
-  const [newRule, setNewRule] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", srcAddr:"", dstAddr:"any", translated:"", active:true });
-  const [nextId, setNextId] = useState(3);
-  const [activeTab, setActiveTab] = useState<"rules"|"concept">("rules");
+  const [nr, setNr] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
+  const [results, setResults] = useState<{desc:string;pass:boolean}[]|null>(null);
 
   function addRule() {
-    if (!newRule.name||!newRule.translated) return;
-    setRules(r=>[...r,{ id:nextId, name:newRule.name!, type:newRule.type!, srcZone:newRule.srcZone!, dstZone:newRule.dstZone!, srcAddr:newRule.srcAddr||"any", dstAddr:newRule.dstAddr||"any", translated:newRule.translated!, active:true }]);
-    setNextId(n=>n+1);
-    setNewRule({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", srcAddr:"", dstAddr:"any", translated:"", active:true });
-    setAdding(false);
+    if (!nr.name||!nr.translated) return;
+    setRules(r=>[...r,{ id:nextId, name:nr.name!, type:nr.type!, srcZone:nr.srcZone!, dstZone:nr.dstZone!, dstAddr:nr.dstAddr||"any", translated:nr.translated! }]);
+    setNextId(n=>n+1); setAdding(false); setResults(null);
+    setNr({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   }
 
-  const TYPE_COLOR: Record<NATType,string> = { source:"#3b82f6", destination:"#f97316", static:"#7c3aed" };
+  function grade() {
+    const res = scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(rules) }));
+    setResults(res);
+    if (res.every(r=>r.pass)) session.markTaskComplete(scenario.id);
+  }
+
+  const passed = results?.filter(r=>r.pass).length??0;
 
   return (
     <div style={{ maxWidth:900 }}>
       <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
         <div>
           <h1 style={{ fontSize:18, fontWeight:700, color:"#1e293b", margin:0 }}>NAT Policy</h1>
-          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>
-            Network Address Translation rules. Evaluated after security policy — traffic must be allowed first.
-          </p>
+          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>Evaluated AFTER security policy. Traffic must be allowed first.</p>
         </div>
         <div style={{ display:"flex", gap:6 }}>
-          {(["rules","concept"] as const).map(t=>(
-            <button key={t} onClick={()=>setActiveTab(t)}
-              style={{ padding:"5px 12px", fontSize:11, borderRadius:4, cursor:"pointer",
-                background:activeTab===t?"#fa4616":"transparent",
-                color:activeTab===t?"#fff":"#64748b",
-                border:`1px solid ${activeTab===t?"#fa4616":"#e2e8f0"}` }}>
-              {t==="rules"?"NAT Rules":"Concepts"}
+          {SCENARIOS.map((s,i)=>(
+            <button key={s.id} onClick={()=>{ setSceIdx(i); setRules([]); setResults(null); }}
+              style={{ padding:"4px 10px", fontSize:11, borderRadius:4, cursor:"pointer",
+                background:scenIdx===i?"#7c3aed":"transparent", color:scenIdx===i?"#fff":"#64748b",
+                border:`1px solid ${scenIdx===i?"#7c3aed":"#e2e8f0"}` }}>
+              {i+1}. {s.title.split(" ").slice(0,2).join(" ")}
             </button>
           ))}
         </div>
       </div>
 
-      {activeTab==="concept" && (
-        <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12, marginBottom:16 }}>
-          {[
-            { type:"Source NAT (SNAT)", color:"#3b82f6", icon:"→",
-              desc:"Translates the source IP of outgoing packets. Used when internal hosts need internet access via a single public IP.",
-              example:"10.0.0.50 → internet becomes 203.0.113.1 → internet",
-              when:"Outbound traffic from Trust → Untrust. Hides internal addressing." },
-            { type:"Destination NAT (DNAT)", color:"#f97316", icon:"←",
-              desc:"Translates the destination IP of incoming packets. Used to expose internal servers to the internet.",
-              example:"203.0.113.10:443 becomes 10.0.0.100:443",
-              when:"Inbound traffic from Untrust → DMZ/Trust. Port forwarding." },
-            { type:"Static NAT", color:"#7c3aed", icon:"⇌",
-              desc:"1-to-1 mapping between a public IP and private IP. Bidirectional — works for both inbound and outbound.",
-              example:"203.0.113.20 ↔ 10.0.0.200",
-              when:"Servers needing a dedicated public IP for both inbound and outbound." },
-            { type:"PAN-OS vs FortiOS", color:"#22c55e", icon:"≠",
-              desc:"In PAN-OS, NAT is evaluated AFTER security policy. FortiOS NAT can be embedded in policy rules (SNAT checkbox). PAN-OS keeps them completely separate.",
-              example:"Security policy must ALLOW the traffic first, then NAT translates it.",
-              when:"Always create a security policy rule before the NAT rule in PAN-OS." },
-          ].map(({type,color,icon,desc,example,when})=>(
-            <div key={type} style={{ background:"#fff", border:`1px solid ${color}33`, borderRadius:8, padding:14 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:8 }}>
-                <span style={{ fontSize:18, color }}>{icon}</span>
-                <span style={{ fontSize:13, fontWeight:700, color:"#374151" }}>{type}</span>
-              </div>
-              <p style={{ fontSize:12, color:"#64748b", margin:"0 0 8px", lineHeight:1.5 }}>{desc}</p>
-              <div style={{ background:"#f8fafc", borderRadius:4, padding:8, fontSize:11, fontFamily:"monospace", color:"#374151", marginBottom:6 }}>{example}</div>
-              <div style={{ fontSize:11, color:color }}>Use when: {when}</div>
-            </div>
-          ))}
-        </div>
-      )}
+      <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:14, marginBottom:16 }}>
+        <div style={{ fontSize:13, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>{scenario.title}</div>
+        <p style={{ fontSize:12, color:"#581c87", margin:0 }}>{scenario.desc}</p>
+      </div>
 
-      {activeTab==="rules" && (
-        <>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 260px", gap:16 }}>
+        <div>
           <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden", marginBottom:12 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderBottom:"1px solid #f1f5f9" }}>
               <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>NAT Rules ({rules.length})</span>
               <button onClick={()=>setAdding(!adding)}
-                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>
-                + Add NAT Rule
-              </button>
+                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>+ Add Rule</button>
             </div>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
-              <thead>
-                <tr style={{ background:"#f8fafc", borderBottom:"1px solid #e2e8f0" }}>
-                  {["#","Name","Type","Src Zone","Dst Zone","Original Dst","Translated To","Status"].map(h=>(
-                    <th key={h} style={{ padding:"8px 12px", textAlign:"left", color:"#64748b", fontWeight:600, fontSize:11, textTransform:"uppercase" }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rules.map((r,i)=>(
-                  <tr key={r.id} style={{ borderBottom:"1px solid #f1f5f9" }}>
-                    <td style={{ padding:"9px 12px", color:"#94a3b8" }}>{i+1}</td>
-                    <td style={{ padding:"9px 12px", fontWeight:500, color:"#374151" }}>{r.name}</td>
-                    <td style={{ padding:"9px 12px" }}>
-                      <span style={{ padding:"2px 8px", borderRadius:4, fontSize:10, fontWeight:600,
-                        background:TYPE_COLOR[r.type]+"22", color:TYPE_COLOR[r.type] }}>
-                        {r.type.toUpperCase()}
-                      </span>
-                    </td>
-                    <td style={{ padding:"9px 12px", color:"#64748b", fontSize:11 }}>{r.srcZone}</td>
-                    <td style={{ padding:"9px 12px", color:"#64748b", fontSize:11 }}>{r.dstZone}</td>
-                    <td style={{ padding:"9px 12px", fontFamily:"monospace", fontSize:11, color:"#374151" }}>{r.dstAddr}</td>
-                    <td style={{ padding:"9px 12px", fontFamily:"monospace", fontSize:11, color:"#fa4616" }}>{r.translated}</td>
-                    <td style={{ padding:"9px 12px" }}>
-                      <span style={{ color:r.active?"#166534":"#94a3b8", fontSize:11 }}>{r.active?"● Active":"○ Disabled"}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {rules.length===0 && <div style={{ padding:20, textAlign:"center", color:"#94a3b8", fontSize:12 }}>No rules yet</div>}
+            {rules.map((r,i)=>(
+              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", borderBottom:"1px solid #f8fafc", fontSize:12 }}>
+                <span style={{ color:"#94a3b8", width:20 }}>{i+1}</span>
+                <span style={{ fontWeight:500, color:"#374151", minWidth:140 }}>{r.name}</span>
+                <span style={{ padding:"2px 7px", borderRadius:3, fontSize:10, fontWeight:600, background:TYPE_COLOR[r.type]+"22", color:TYPE_COLOR[r.type] }}>{r.type}</span>
+                <span style={{ color:"#64748b", fontSize:11 }}>{r.srcZone}→{r.dstZone}</span>
+                <span style={{ color:"#94a3b8", fontSize:11, flex:1 }}>{r.dstAddr}</span>
+                <span style={{ color:"#7c3aed", fontFamily:"monospace", fontSize:11 }}>→ {r.translated}</span>
+                <button onClick={()=>{ setRules(x=>x.filter(y=>y.id!==r.id)); setResults(null); }}
+                  style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444" }}>✕</button>
+              </div>
+            ))}
           </div>
 
           {adding && (
-            <div style={{ background:"#fff", border:"1px solid #fa461644", borderRadius:8, padding:16, marginBottom:12 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:12 }}>New NAT Rule</div>
+            <div style={{ background:"#fff", border:"1px solid #7c3aed44", borderRadius:8, padding:14, marginBottom:12 }}>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
-                <div>
-                  <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>Rule Name</label>
-                  <input value={newRule.name??""} onChange={e=>setNewRule(r=>({...r,name:e.target.value}))}
-                    style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" }}/>
-                </div>
-                <div>
-                  <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>NAT Type</label>
-                  <select value={newRule.type} onChange={e=>setNewRule(r=>({...r,type:e.target.value as NATType}))}
-                    style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                    <option value="source">Source NAT</option>
-                    <option value="destination">Destination NAT</option>
-                    <option value="static">Static NAT</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>Translated Address/Port</label>
-                  <input value={newRule.translated??""} onChange={e=>setNewRule(r=>({...r,translated:e.target.value}))}
-                    placeholder="e.g. 10.0.0.100:443 or interface(eth1/1)"
-                    style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" }}/>
-                </div>
-              </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr 1fr", gap:10, marginBottom:10 }}>
-                {[["Source Zone","srcZone",["Trust","Untrust","DMZ","any"]],["Dest Zone","dstZone",["Trust","Untrust","DMZ","any"]],["Source Address","srcAddr"],["Dest Address","dstAddr"]].map(([label,key,opts])=>(
-                  <div key={key as string}>
-                    <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>{label as string}</label>
-                    {opts ? (
-                      <select value={(newRule as any)[key as string]??""} onChange={e=>setNewRule(r=>({...r,[key as string]:e.target.value}))}
-                        style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                        {(opts as string[]).map(o=><option key={o}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <input value={(newRule as any)[key as string]??""} onChange={e=>setNewRule(r=>({...r,[key as string]:e.target.value}))}
-                        placeholder="any"
-                        style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" }}/>
-                    )}
+                {[["Name","name","text"],["NAT Type","type","sel-type"],["Translated To","translated","text"],
+                  ["Src Zone","srcZone","sel-zone"],["Dst Zone","dstZone","sel-zone"],["Original Dst","dstAddr","text"]].map(([label,key,type])=>(
+                  <div key={key}>
+                    <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>{label}</label>
+                    {type==="text"
+                      ? <input value={(nr as any)[key]??""} onChange={e=>setNr(x=>({...x,[key]:e.target.value}))}
+                          placeholder={key==="translated"?"e.g. interface / 10.0.1.10":""}
+                          style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" as any }}/>
+                      : type==="sel-type"
+                        ? <select value={nr.type} onChange={e=>setNr(x=>({...x,type:e.target.value as NATType}))}
+                            style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
+                            {["source","destination","static"].map(o=><option key={o}>{o}</option>)}
+                          </select>
+                        : <select value={(nr as any)[key]} onChange={e=>setNr(x=>({...x,[key]:e.target.value}))}
+                            style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
+                            {["Trust","Untrust","DMZ","any"].map(o=><option key={o}>{o}</option>)}
+                          </select>
+                    }
                   </div>
                 ))}
               </div>
               <div style={{ display:"flex", justifyContent:"flex-end", gap:6 }}>
                 <button onClick={()=>setAdding(false)} style={{ padding:"5px 12px", fontSize:11, borderRadius:4, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", color:"#64748b" }}>Cancel</button>
-                <button onClick={addRule} disabled={!newRule.name||!newRule.translated}
-                  style={{ padding:"5px 12px", fontSize:11, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer", opacity:(!newRule.name||!newRule.translated)?0.4:1 }}>
-                  Add Rule
-                </button>
+                <button onClick={addRule} disabled={!nr.name||!nr.translated}
+                  style={{ padding:"5px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer", opacity:(!nr.name||!nr.translated)?0.4:1 }}>Add</button>
               </div>
             </div>
           )}
 
-          <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:12, fontSize:12, color:"#7c2d12" }}>
-            <strong>⚠ Important:</strong> In PAN-OS, NAT policy is evaluated AFTER security policy.
-            You must have a matching security policy rule that allows the traffic before the NAT rule will take effect.
+          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
+              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
+              <button onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
+            </div>
+            {results && (
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===scenario.checks.length?"#166534":"#dc2626" }}>
+                  {passed===scenario.checks.length?"✓ Passed!":"Not yet"} — {passed}/{scenario.checks.length}
+                </div>
+                {results.map((r,i)=>(
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
+                    <span style={{ color:"#374151" }}>{r.desc}</span>
+                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600, background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>{r.pass?"PASS":"FAIL"}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </>
-      )}
+        </div>
+
+        <div>
+          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
+            <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:10 }}>NAT Types</div>
+            {[["source","#3b82f6","SNAT — translate source IP outbound"],["destination","#f97316","DNAT — redirect inbound traffic"],["static","#7c3aed","1:1 bidirectional mapping"]].map(([t,c,d])=>(
+              <div key={t} style={{ marginBottom:8, paddingBottom:8, borderBottom:"1px solid #f8fafc" }}>
+                <span style={{ background:c+"22", color:c, padding:"1px 6px", borderRadius:3, fontSize:10, fontWeight:600 }}>{t}</span>
+                <div style={{ fontSize:11, color:"#64748b", marginTop:3 }}>{d}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:12 }}>
+            <div style={{ fontSize:11, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>⚠ PAN-OS Order</div>
+            <p style={{ fontSize:11, color:"#581c87", margin:0, lineHeight:1.5 }}>
+              Security policy is checked FIRST. NAT is applied AFTER. Always create a security rule allowing the traffic before creating the NAT rule.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

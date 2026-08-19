@@ -44,7 +44,7 @@ function PaloAltoApp() {
   return (
     <PanAppShell>
       <Routes>
-        <Route path="/"                  element={<PanDashboard />} />
+        <Route path="/"                  element={<PanDashboard session={session} />} />
         <Route path="/tasks"             element={<PanTasksOverview session={session} />} />
         <Route path="/tasks/security"    element={<PanTrackTasks session={session} track="security" />} />
         <Route path="/tasks/zones"       element={<PanTrackTasks session={session} track="zones" />} />
