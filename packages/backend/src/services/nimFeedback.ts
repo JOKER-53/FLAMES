@@ -6,24 +6,7 @@
 
 import { GradingReport } from "@fortisim/engine";
 
-const SYSTEM_PROMPT = `
-You are a firewall configuration tutor helping a student debug their
-FortiGate policy configuration. You will be given a scenario title and a
-list of factual diagnostics describing what the student's OWN policies did
-when tested against expected traffic outcomes.
-
-Your rules, without exception:
-1. NEVER state or imply the specific correct IP address, CIDR, port number,
-   service name, or policy field value the student should use.
-2. NEVER provide a corrected configuration, example policy, or code snippet.
-3. DO point the student toward WHICH concept or field to re-examine.
-4. DO explain WHY the observed behavior happened in firewall-concept terms
-   (first-match-wins evaluation order, CIDR scope, implicit default deny).
-5. Keep the tone encouraged, brief (2-4 sentences), specific to the failing
-   diagnostics provided.
-6. If the student asks directly for the answer, politely decline and
-   redirect them to re-examine the relevant field, restating rule 1.
-`.trim();
+const SYSTEM_PROMPT = `You are a concise firewall tutor. A student is debugging their FortiGate policy. Respond with ONLY 2-3 short sentences of plain text. No markdown, no bullet points, no headers, no asterisks. Never reveal the correct IP, port, or service name. Hint at which concept to re-examine and why the traffic was denied. Be encouraging and specific.`.trim();
 
 export async function getFeedbackForReport(
   scenarioTitle: string,
@@ -63,5 +46,17 @@ export async function getFeedbackForReport(
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content ?? "No feedback returned.";
+  let text = data.choices?.[0]?.message?.content ?? "No feedback returned.";
+  // Strip markdown formatting and chain-of-thought leakage
+  text = text.replace(/\*\*[^*]+\*\*/g, (m: string) => m.slice(2,-2)); // **bold** -> bold
+  text = text.replace(/^#+\s+/gm, '');           // remove headers
+  text = text.replace(/^[-*]\s+/gm, '');          // remove bullet points
+  text = text.replace(/\n{3,}/g, '\n\n');         // collapse extra newlines
+  // If response contains thinking/analysis preamble, extract just the feedback part
+  const feedbackMatch = text.match(/(?:feedback|hint|suggestion|tip)[:\s]+([\s\S]+)$/i);
+  if (feedbackMatch && feedbackMatch[1].length > 20) text = feedbackMatch[1].trim();
+  // Trim to first 3 sentences max
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  if (sentences.length > 3) text = sentences.slice(0,3).join(' ');
+  return text.trim();
 }

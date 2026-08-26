@@ -110,7 +110,7 @@ export function TrackTasksPage({ session, track }: TrackTasksPageProps) {
       session.selectScenario(task.id);
       navigate("/fortigate/policy/firewall-policy");
     } else {
-      navigate(`/network/interfaces?track=${track}&scenario=${task.id}`);
+      navigate(`/fortigate/network/interfaces?track=${track}&scenario=${task.id}`);
     }
   }
 

@@ -89,7 +89,7 @@ export function TasksOverviewPage({ session }: TasksOverviewPageProps) {
           return (
             <button
               key={track}
-              onClick={() => navigate(`/tasks/${track}`)}
+              onClick={() => navigate(`/fortigate/tasks/${track}`)}
               className="text-left bg-white border border-gray-200 rounded-md p-4 hover:bg-gray-50 transition-colors"
             >
               <div className="flex items-center gap-2 mb-2">

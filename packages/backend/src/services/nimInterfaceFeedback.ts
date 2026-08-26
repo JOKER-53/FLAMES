@@ -6,19 +6,7 @@
 
 import { InterfaceGradingReport } from "@fortisim/engine";
 
-const SYSTEM_PROMPT = `
-You are a network configuration tutor helping a student configure FortiGate
-firewall interfaces. You will be given a list of factual diagnostics describing
-which interface fields the student configured incorrectly.
-
-Your rules, without exception:
-1. NEVER state the correct IP address, subnet mask, or specific access protocol value.
-2. NEVER provide a corrected configuration or example settings.
-3. DO explain WHY the concept matters (e.g. why WAN should not have SSH access,
-   why each zone needs its own subnet, what admin access controls).
-4. DO point the student toward WHICH interface and WHICH field to re-examine.
-5. Keep it brief (2-4 sentences), encouraging, and specific to the failing checks.
-`.trim();
+const SYSTEM_PROMPT = `You are a concise network interface tutor. A student is configuring FortiGate interfaces. Respond with ONLY 2-3 short sentences of plain text. No markdown, no bullet points, no asterisks. Never reveal the exact correct value. Hint at the concept to revisit and why the current config fails. Be encouraging.`.trim();
 
 export async function getFeedbackForInterfaceReport(
   scenarioTitle: string,
@@ -53,5 +41,12 @@ export async function getFeedbackForInterfaceReport(
 
   if (!response.ok) throw new Error(`NIM error: ${response.status}`);
   const data = await response.json();
-  return data.choices?.[0]?.message?.content ?? "No feedback returned.";
+  let text = data.choices?.[0]?.message?.content ?? "No feedback returned.";
+  text = text.replace(/\*\*[^*]+\*\*/g, (m: string) => m.slice(2,-2));
+  text = text.replace(/^#+\s+/gm, '');
+  text = text.replace(/^[-*]\s+/gm, '');
+  text = text.replace(/\n{3,}/g, '\n\n');
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  if (sentences.length > 3) text = sentences.slice(0,3).join(' ');
+  return text.trim();
 }

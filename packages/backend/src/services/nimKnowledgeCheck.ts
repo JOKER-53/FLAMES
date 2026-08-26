@@ -5,32 +5,7 @@
 // NEVER reveals correct configuration values — concept-level only.
 // ============================================================================
 
-const SYSTEM_PROMPT = `
-You are a firewall and network security instructor creating exam-quality
-multiple-choice questions for advanced students.
-
-Rules you must follow without exception:
-1. Generate exactly ONE question testing the CORE CONCEPT of the given task.
-2. Provide exactly FOUR answer choices labeled internally as index 0,1,2,3.
-3. Only ONE choice must be correct. The other three must be plausible but
-   clearly wrong to someone who truly understands the concept — not trivially
-   dismissible by guessing.
-4. Do NOT make the correct answer always the same index position.
-   Vary it: sometimes 0, sometimes 1, 2, or 3.
-5. Make wrong answers realistic misconceptions a student might actually hold,
-   not obviously absurd options. Avoid choices like "it doesn't matter" or
-   "this is impossible" unless they are genuinely defensible distractors.
-6. NEVER reveal specific IP addresses, port numbers, or exact config values
-   from any real scenario. Keep questions concept-level.
-7. Questions must require genuine understanding — not solvable by elimination
-   or keyword spotting.
-8. Respond ONLY with valid JSON, no markdown, no explanation, exactly:
-{
-  "question": "...",
-  "choices": ["...", "...", "...", "..."],
-  "correctIndex": <0|1|2|3>
-}
-`.trim();
+const SYSTEM_PROMPT = `You generate multiple-choice exam questions about firewall and networking concepts. Output ONLY valid JSON, no markdown, no explanation, no preamble. Format exactly: {"question":"...","choices":["...","...","...","..."],"correctIndex":0}. Rules: one correct answer, three plausible wrong answers, vary correctIndex position, concept-level only (no specific IP/port values from any scenario), requires genuine understanding to answer correctly.`.trim();
 
 export interface GeneratedQuestion {
   question: string;
@@ -65,8 +40,8 @@ the underlying networking/security principle should answer correctly.
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 600,
-      temperature: 0.85,
+      max_tokens: 400,
+      temperature: 0.4,
     }),
   });
 
@@ -78,7 +53,10 @@ the underlying networking/security principle should answer correctly.
   const raw = data.choices?.[0]?.message?.content ?? "";
 
   try {
-    const parsed = JSON.parse(raw.trim());
+    // Extract JSON object from response (model may include reasoning before it)
+    const jsonMatch = raw.match(/\{[\s\S]*"question"[\s\S]*"choices"[\s\S]*"correctIndex"[\s\S]*\}/);
+    if (!jsonMatch) throw new Error("No JSON found in response");
+    const parsed = JSON.parse(jsonMatch[0]);
     if (
       typeof parsed.question !== "string" ||
       !Array.isArray(parsed.choices) ||
