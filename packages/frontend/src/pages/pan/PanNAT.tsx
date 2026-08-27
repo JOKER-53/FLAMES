@@ -42,6 +42,14 @@ export function PanNAT({ session }: { session: PanSession }) {
   const [adding, setAdding] = useState(false);
   const [nr, setNr] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   const [results, setResults] = useState<{desc:string;pass:boolean}[]|null>(null);
+  const [aiFeedback, setAiFeedback] = useState<string|null>(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [kqLoading, setKqLoading] = useState(false);
+  const [kqError, setKqError] = useState<string|null>(null);
+  const [kqData, setKqData] = useState<{question:string;choices:string[];correctIndex:number}|null>(null);
+  const [kqSelected, setKqSelected] = useState<number|null>(null);
+  const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
+  const [kqLocked, setKqLocked] = useState(false);
 
   function addRule() {
     if (!nr.name||!nr.translated) return;
@@ -53,7 +61,26 @@ export function PanNAT({ session }: { session: PanSession }) {
   function grade() {
     const res = scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(rules) }));
     setResults(res);
-    if (res.every(r=>r.pass)) session.markTaskComplete(scenario.id);
+    if (res.every(r=>r.pass)) { session.markTaskComplete(scenario.id); }
+    else {
+      const failing = res.filter(r=>!r.pass).map(r=>r.desc);
+      setLoadingFeedback(true); setAiFeedback(null);
+      fetch("/api/pan/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exerciseTitle:scenario.title,failingChecks:failing})})
+        .then(r=>r.json()).then(d=>setAiFeedback(d.feedback??null)).catch(()=>setAiFeedback(null)).finally(()=>setLoadingFeedback(false));
+    }
+  }
+
+  function loadKQ() {
+    setKqLoading(true);setKqError(null);setKqData(null);setKqSelected(null);setKqResult(null);setKqLocked(false);
+    fetch(`/api/pan/knowledge-check/${scenario.id}`)
+      .then(r=>r.ok?r.json():Promise.reject(r.status))
+      .then(d=>setKqData(d)).catch(e=>setKqError("Failed: "+e)).finally(()=>setKqLoading(false));
+  }
+
+  function answerKQ() {
+    if (kqSelected===null||!kqData||kqLocked) return;
+    if (kqSelected===kqData.correctIndex){setKqResult("correct");session.markTaskComplete(scenario.id);}
+    else{setKqResult("incorrect");setKqLocked(true);}
   }
 
   const passed = results?.filter(r=>r.pass).length??0;
@@ -137,6 +164,39 @@ export function PanNAT({ session }: { session: PanSession }) {
             </div>
           )}
 
+          {(aiFeedback||loadingFeedback)&&(
+            <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:14, marginBottom:12 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>Tutor Feedback</div>
+              {loadingFeedback?<div style={{ fontSize:12, color:"#7c3aed", fontStyle:"italic" }}>Analysing…</div>:<p style={{ fontSize:12, color:"#581c87", margin:0, lineHeight:1.6 }}>{aiFeedback}</p>}
+            </div>
+          )}
+          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Knowledge Check</span>
+              {session.completedTaskIds.has(scenario.id)&&<span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:"#dcfce7", color:"#166534", fontWeight:600 }}>Complete</span>}
+            </div>
+            <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>Answer correctly to complete without hands-on. <span style={{ color:"#ef4444", fontWeight:500 }}>One attempt only.</span></p>
+            {!kqData&&!kqLoading&&!kqError&&<button onClick={loadKQ} style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Load Question</button>}
+            {kqLoading&&<div style={{ fontSize:12, color:"#94a3b8", fontStyle:"italic" }}>Generating…</div>}
+            {kqError&&<div style={{ fontSize:12, color:"#ef4444" }}>{kqError}</div>}
+            {kqData&&(<>
+              <p style={{ fontSize:12, color:"#374151", fontWeight:500, margin:"0 0 8px", lineHeight:1.5 }}>{kqData.question}</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
+                {kqData.choices.map((c,i)=>(
+                  <label key={i} style={{ display:"flex", gap:8, padding:"6px 10px", borderRadius:5, border:`1px solid ${kqSelected===i?"#7c3aed":"#e2e8f0"}`, background:kqSelected===i?"#faf5ff":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12 }}>
+                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);setKqResult(null);}}}/>
+                    {c}
+                  </label>
+                ))}
+              </div>
+              <button onClick={answerKQ} disabled={kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id)}
+                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer", opacity:(kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id))?0.4:1 }}>
+                Answer
+              </button>
+              {kqResult==="correct"&&<div style={{ marginTop:6, fontSize:12, color:"#166534", fontWeight:500 }}>✓ Correct — task complete.</div>}
+              {kqResult==="incorrect"&&<div style={{ marginTop:6, fontSize:12, color:"#ef4444", fontWeight:500 }}>✗ Incorrect — locked.</div>}
+            </>)}
+          </div>
           <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
               <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
