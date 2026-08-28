@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { PanSession } from "../../hooks/usePanSession";
+import { PanChassisDiagram, PanPortAssignment } from "../../components/policyObjects/PanChassisDiagram";
 import { TRACK_META, TRACK_TASKS, TRACK_FINALS, PanTrack } from "./panTasks";
 
 export function PanDashboard({ session }: { session: PanSession }) {
@@ -69,40 +70,27 @@ export function PanDashboard({ session }: { session: PanSession }) {
       </div>
 
       {/* PA-220 front panel */}
-      <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 20, marginBottom: 20 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 14 }}>PA-220 — Front Panel</div>
-        <div style={{ background: "#ccc9c0", borderRadius: 6, padding: "14px 18px", display: "flex", alignItems: "center", gap: 10, fontFamily: "monospace" }}>
-          <div style={{ background: "#fa4616", borderRadius: 4, padding: "4px 8px", color: "white", fontSize: 11, fontWeight: 700, marginRight: 6 }}>PA</div>
-          {["MGT"].map(p => (
-            <div key={p} style={{ textAlign: "center" }}>
-              <div style={{ width: 24, height: 18, background: "#111", borderRadius: 2, border: "1px solid #7c3aed", marginBottom: 2 }} />
-              <div style={{ fontSize: 8, color: "#555" }}>{p}</div>
-            </div>
-          ))}
-          {["HA1","HA2"].map(p => (
-            <div key={p} style={{ textAlign: "center" }}>
-              <div style={{ width: 24, height: 18, background: "#111", borderRadius: 2, border: "1px solid #3b82f6", marginBottom: 2 }} />
-              <div style={{ fontSize: 8, color: "#555" }}>{p}</div>
-            </div>
-          ))}
-          <div style={{ width: 1, height: 30, background: "#aaa", margin: "0 4px" }} />
-          {["1","2","3","4","5","6","7","8"].map((p, i) => (
-            <div key={p} style={{ textAlign: "center" }}>
-              <div style={{ width: 24, height: 18, background: "#111", borderRadius: 2, border: `1px solid ${i < 4 ? "#ef444488" : "#22c55e88"}`, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <div style={{ width: 16, height: 11, background: "#0a0f1a", borderRadius: 1 }} />
-              </div>
-              <div style={{ fontSize: 8, color: "#555" }}>E1/{p}</div>
-            </div>
-          ))}
-          <div style={{ marginLeft: "auto", display: "flex", flexDirection: "column", gap: 3 }}>
-            {["#22c55e","#22c55e","#374151"].map((c,i) => (
-              <div key={i} style={{ width: 8, height: 8, borderRadius: "50%", background: c, boxShadow: c !== "#374151" ? `0 0 5px ${c}` : "none" }} />
-            ))}
-          </div>
+      <div style={{ background: "#0d1117", border: "1px solid #1e2d45", borderRadius: 10, padding: 20, marginBottom: 20 }}>
+        <div style={{ fontSize: 12, fontWeight: 600, color: "#94a3b8", marginBottom: 14 }}>PA-220 — 3D Hardware View</div>
+        <div style={{ height: 350, borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
+          <PanChassisDiagram 
+            ports={[
+              { id: "ethernet1/1", zone: "Untrust", label: "eth1/1" },
+              { id: "ethernet1/2", zone: "Untrust", label: "eth1/2" },
+              { id: "ethernet1/3", zone: "Untrust", label: "eth1/3" },
+              { id: "ethernet1/4", zone: "Untrust", label: "eth1/4" },
+              { id: "ethernet1/5", zone: "Trust", label: "eth1/5" },
+              { id: "ethernet1/6", zone: "Trust", label: "eth1/6" },
+              { id: "ethernet1/7", zone: "Trust", label: "eth1/7" },
+              { id: "ethernet1/8", zone: "Trust", label: "eth1/8" },
+              { id: "management",  zone: "Management", label: "MGT" }
+            ] as PanPortAssignment[]} 
+            onChange={() => {}} 
+          />
         </div>
-        <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 16, marginTop: 12, flexWrap: "wrap", justifyContent: "center" }}>
           {[["#7c3aed","Management/HA"],["#ef4444","Untrust (E1/1-4)"],["#22c55e","Trust (E1/5-8)"]].map(([c,l]) => (
-            <span key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#64748b" }}>
+            <span key={l} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#94a3b8" }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: c, display: "inline-block" }} />{l}
             </span>
           ))}
