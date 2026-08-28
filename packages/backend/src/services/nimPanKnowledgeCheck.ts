@@ -39,6 +39,8 @@ const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
   "pan-nat-02": { title:"Web Server DNAT",  concept:"How Destination NAT redirects inbound traffic to internal servers — why both a security policy AND a NAT rule are required, and the order of evaluation." },
   "pan-nat-03": { title:"Static NAT",       concept:"When to use 1:1 static NAT vs DNAT — the bidirectional nature of static NAT and why it creates both inbound and outbound translation automatically." },
   "pan-nat-final": { title:"NAT Policy Final", concept:"Complete PAN-OS NAT design with SNAT for outbound, DNAT for services, and static NAT — plus the critical rule that security policy is evaluated before NAT." },
+  // Interfaces
+  "pan-iface-01": { title:"Interface Configuration", concept:"How Palo Alto interface types (Layer2, Layer3, Virtual Wire, Tap) work, and why an interface must be assigned to a zone before security policies apply." },
 };
 
 export async function generatePanKnowledgeCheck(taskId: string): Promise<GeneratedQuestion> {

@@ -53,7 +53,7 @@ function PaloAltoApp() {
         <Route path="/zones"             element={<PanZones session={session} />} />
         <Route path="/appid"             element={<PanAppID />} />
         <Route path="/nat"               element={<PanNAT session={session} />} />
-        <Route path="/interfaces"        element={<PanInterfaces />} />
+        <Route path="/interfaces"        element={<PanInterfaces session={session} />} />
       </Routes>
     </PanAppShell>
   );
