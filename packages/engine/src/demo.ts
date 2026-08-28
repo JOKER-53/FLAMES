@@ -13,8 +13,8 @@ function printReport(label: string, submission: StudentSubmission) {
   for (const d of report.diagnostics) {
     const status = d.passed ? "PASS" : "FAIL";
     console.log(
-      `  [${status}] ${d.description}: expected=${d.expectedAction} actual=${d.actualAction}` +
-        (d.matchedPolicyName ? ` (matched policy: "${d.matchedPolicyName}")` : " (no policy matched, default deny)")
+      `  [${status}] ${d.description}: expected=${d.expectedAction} actual=${d.studentAction}` +
+        (d.matchedPolicyId ? ` (matched policy: "${d.matchedPolicyId}")` : " (no policy matched, default deny)")
     );
   }
 }

@@ -9,7 +9,6 @@ build/
 
 # Secrets -- never commit real .env files, only .env.example
 .env
-.env.example
 .env.local
 **/.env
 **/.env.local
