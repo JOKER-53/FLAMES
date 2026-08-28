@@ -54,6 +54,14 @@ export function PanZones({ session }: { session: PanSession }) {
   const [kqSelected, setKqSelected] = useState<number|null>(null);
   const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
   const [kqLocked, setKqLocked] = useState(false);
+  const [aiFeedback, setAiFeedback] = useState<string|null>(null);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [kqLoading, setKqLoading] = useState(false);
+  const [kqError, setKqError] = useState<string|null>(null);
+  const [kqData, setKqData] = useState<{question:string;choices:string[];correctIndex:number}|null>(null);
+  const [kqSelected, setKqSelected] = useState<number|null>(null);
+  const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
+  const [kqLocked, setKqLocked] = useState(false);
   const [selected, setSelected] = useState<Zone|null>(null);
 
   function addZone() {
@@ -209,6 +217,43 @@ export function PanZones({ session }: { session: PanSession }) {
               </div>
             </div>
           )}
+
+          {/* AI Feedback */}
+          {(aiFeedback||loadingFeedback) && (
+            <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:14, marginBottom:12 }}>
+              <div style={{ fontSize:12, fontWeight:600, color:"#9a3412", marginBottom:4 }}>Tutor Feedback</div>
+              {loadingFeedback?<div style={{ fontSize:12, color:"#c2410c", fontStyle:"italic" }}>Analysing…</div>:<p style={{ fontSize:12, color:"#7c2d12", margin:0, lineHeight:1.6 }}>{aiFeedback}</p>}
+            </div>
+          )}
+
+          {/* Knowledge Check */}
+          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Knowledge Check</span>
+              {session.completedTaskIds.has(scenario.id) && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:"#dcfce7", color:"#166534", fontWeight:600 }}>Complete</span>}
+            </div>
+            <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>Answer correctly to complete without hands-on. <span style={{ color:"#ef4444", fontWeight:500 }}>One attempt only.</span></p>
+            {!kqData&&!kqLoading&&!kqError&&<button onClick={loadKQ} style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer" }}>Load Question</button>}
+            {kqLoading&&<div style={{ fontSize:12, color:"#94a3b8", fontStyle:"italic" }}>Generating…</div>}
+            {kqError&&<div style={{ fontSize:12, color:"#ef4444" }}>{kqError}</div>}
+            {kqData&&(<>
+              <p style={{ fontSize:12, color:"#374151", fontWeight:500, margin:"0 0 8px", lineHeight:1.5 }}>{kqData.question}</p>
+              <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
+                {kqData.choices.map((c,i)=>(
+                  <label key={i} style={{ display:"flex", gap:8, padding:"6px 10px", borderRadius:5, border:`1px solid ${kqSelected===i?"#3b82f6":"#e2e8f0"}`, background:kqSelected===i?"#eff6ff":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12 }}>
+                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);setKqResult(null);}}}/>
+                    {c}
+                  </label>
+                ))}
+              </div>
+              <button onClick={answerKQ} disabled={kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id)}
+                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer", opacity:(kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id))?0.4:1 }}>
+                Answer
+              </button>
+              {kqResult==="correct"&&<div style={{ marginTop:6, fontSize:12, color:"#166534", fontWeight:500 }}>✓ Correct — task complete.</div>}
+              {kqResult==="incorrect"&&<div style={{ marginTop:6, fontSize:12, color:"#ef4444", fontWeight:500 }}>✗ Incorrect — locked. Complete the hands-on exercise.</div>}
+            </>)}
+          </div>
 
           {/* AI Feedback */}
           {(aiFeedback||loadingFeedback) && (
