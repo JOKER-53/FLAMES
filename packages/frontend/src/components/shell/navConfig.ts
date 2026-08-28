@@ -21,4 +21,13 @@ export const NAV_STRUCTURE: NavItem[] = [
       { label: "Port Assignment", path: "/fortigate/tasks/port", icon: "sdwan" },
     ],
   },
+  {
+    label: "Network",
+    path: "/fortigate/network",
+    icon: "network",
+    children: [
+      { label: "Interfaces", path: "/network/interfaces", icon: "network" },
+      { label: "Static Routes", path: "/network/routing", icon: "network" }
+    ]
+  }
 ];

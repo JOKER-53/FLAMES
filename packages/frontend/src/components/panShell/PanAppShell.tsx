@@ -24,6 +24,7 @@ const NAV: NavItem[] = [
   { label: "NAT Policy",      path: "/paloalto/nat",       icon: "↔" },
   { label: "Zones",           path: "/paloalto/zones",     icon: "◎" },
   { label: "Interfaces",      path: "/paloalto/interfaces",icon: "⚡" },
+  { label: "Port Assignment", path: "/paloalto/port",      icon: "🔌" },
   { label: "App-ID",          path: "/paloalto/appid",     icon: "🔍" },
 ];
 

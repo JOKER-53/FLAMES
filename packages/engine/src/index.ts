@@ -17,3 +17,5 @@ export * from "./interfaceScenarios";
 export * from "./portGrader";
 export * from "./portScenarios";
 export * from "./hardQuestions";
+export * from "./evaluators/routingEvaluator";
+export * from "./scenarios/routingScenarios";

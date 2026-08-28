@@ -17,6 +17,7 @@ import { PanZones }              from "./pages/pan/PanZones";
 import { PanAppID }              from "./pages/pan/PanAppID";
 import { PanNAT }                from "./pages/pan/PanNAT";
 import { PanInterfaces }         from "./pages/pan/PanInterfaces";
+import { PanPortAssignment }     from "./pages/pan/PanPortAssignment";
 import { useScenarioSession }    from "./hooks/useScenarioSession";
 import { usePanSession }         from "./hooks/usePanSession";
 
@@ -34,6 +35,7 @@ function FortiGateApp() {
         <Route path="/policy/addresses"       element={<AddressesPage session={session} />} />
         <Route path="/policy/services"        element={<ServicesPage session={session} />} />
         <Route path="/network/interfaces"     element={<InterfacesPage session={session} />} />
+        <Route path="/network/routing"        element={<RoutingPage session={session} />} />
       </Routes>
     </AppShell>
   );
@@ -54,6 +56,7 @@ function PaloAltoApp() {
         <Route path="/appid"             element={<PanAppID />} />
         <Route path="/nat"               element={<PanNAT session={session} />} />
         <Route path="/interfaces"        element={<PanInterfaces session={session} />} />
+        <Route path="/port"              element={<PanPortAssignment session={session} />} />
       </Routes>
     </PanAppShell>
   );
