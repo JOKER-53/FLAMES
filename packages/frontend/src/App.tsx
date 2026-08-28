@@ -9,6 +9,7 @@ import { FirewallPolicyPage }    from "./pages/FirewallPolicyPage";
 import { AddressesPage }         from "./pages/AddressesPage";
 import { ServicesPage }          from "./pages/ServicesPage";
 import { InterfacesPage }        from "./pages/InterfacesPage";
+import { RoutingPage }           from "./pages/RoutingPage";
 import { PanDashboard }          from "./pages/pan/PanDashboard";
 import { PanTasksOverview }      from "./pages/pan/PanTasksOverview";
 import { PanTrackTasks }         from "./pages/pan/PanTrackTasks";
