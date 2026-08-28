@@ -224,9 +224,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
               </div>
             )}
           </div>
-        </div>
 
-        <div>
           {(aiFeedback||loadingFeedback) && (
             <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:14, marginBottom:12 }}>
               <div style={{ fontSize:12, fontWeight:600, color:"#9a3412", marginBottom:4 }}>Tutor Feedback</div>
@@ -267,6 +265,9 @@ export function PanInterfaces({ session }: { session: PanSession }) {
               </>
             )}
           </div>
+        </div>
+
+        <div>
 
           <div style={{ background:"#f0f9ff", border:"1px solid #bae6fd", borderRadius:8, padding:12, fontSize:12, color:"#0c4a6e" }}>
             <strong>Key point:</strong> In PAN-OS, an interface must be assigned to a zone before any security policy applies to traffic on it.

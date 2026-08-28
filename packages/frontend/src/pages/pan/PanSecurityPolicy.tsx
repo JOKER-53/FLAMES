@@ -28,7 +28,7 @@ interface Rule {
 
 const SCENARIOS = [
   {
-    id: "pan-basic-01",
+    id: "pan-sec-01",
     title: "Basic Outbound Access",
     description: "Allow internal users (Trust zone) to browse the web and use DNS. Block everything else. Remember: PAN-OS uses App-ID — specify the application, not the port.",
     hint: "You need two rules: one allowing web-browsing+ssl+dns from Trust→Untrust, and a deny-all at the bottom.",
@@ -40,7 +40,7 @@ const SCENARIOS = [
     ],
   },
   {
-    id: "pan-dmz-01",
+    id: "pan-sec-02",
     title: "DMZ Web Server Access",
     description: "A web server in the DMZ must accept HTTPS (ssl) from Untrust (internet). Internal Trust users can also reach it via HTTP (web-browsing) and HTTPS. DMZ must NOT initiate connections to Trust.",
     hint: "Three rules: Untrust→DMZ allow ssl; Trust→DMZ allow web-browsing+ssl; DMZ→Trust deny.",
@@ -51,7 +51,7 @@ const SCENARIOS = [
     ],
   },
   {
-    id: "pan-appid-01",
+    id: "pan-sec-03",
     title: "App-ID Enforcement",
     description: "Block high-risk applications (bittorrent, rdp) for all users while allowing general web access. Show why App-ID beats port-based rules: RDP on TCP/3389 could be renamed — App-ID catches it regardless.",
     hint: "Block bittorrent and rdp explicitly (any→any deny), then allow web-browsing+ssl from Trust→Untrust.",
@@ -280,6 +280,33 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
             </div>
           )}
 
+          {/* Submit */}
+          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: results?12:0 }}>
+              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
+              <button onClick={grade}
+                style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>
+                Submit
+              </button>
+            </div>
+            {results && (
+              <div>
+                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===total?"#166534":"#dc2626" }}>
+                  {passed===total?"✓ All checks passed!":"Not yet correct"} — {passed}/{total} checks
+                </div>
+                {results.map((r,i)=>(
+                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
+                    <span style={{ color:"#374151" }}>{r.desc}</span>
+                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600,
+                      background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>
+                      {r.pass?"PASS":"FAIL"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* AI Feedback */}
           {(aiFeedback||loadingFeedback) && (
             <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:14, marginBottom:12 }}>
@@ -325,32 +352,6 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
 
 
 
-          {/* Submit */}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: results?12:0 }}>
-              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button onClick={grade}
-                style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>
-                Submit
-              </button>
-            </div>
-            {results && (
-              <div>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===total?"#166534":"#dc2626" }}>
-                  {passed===total?"✓ All checks passed!":"Not yet correct"} — {passed}/{total} checks
-                </div>
-                {results.map((r,i)=>(
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
-                    <span style={{ color:"#374151" }}>{r.desc}</span>
-                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600,
-                      background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>
-                      {r.pass?"PASS":"FAIL"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Right: App-ID reference */}
