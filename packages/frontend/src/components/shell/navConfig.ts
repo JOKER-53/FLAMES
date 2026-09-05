@@ -26,8 +26,8 @@ export const NAV_STRUCTURE: NavItem[] = [
     path: "/fortigate/network",
     icon: "network",
     children: [
-      { label: "Interfaces", path: "/network/interfaces", icon: "network" },
-      { label: "Static Routes", path: "/network/routing", icon: "network" }
+      { label: "Interfaces", path: "/fortigate/network/interfaces", icon: "network" },
+      { label: "Static Routes", path: "/fortigate/network/routing", icon: "network" }
     ]
   }
 ];

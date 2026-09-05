@@ -35,6 +35,7 @@ function FortiGateApp() {
         <Route path="/policy/firewall-policy" element={<FirewallPolicyPage session={session} />} />
         <Route path="/policy/addresses"       element={<AddressesPage session={session} />} />
         <Route path="/policy/services"        element={<ServicesPage session={session} />} />
+        <Route path="/network"              element={<Navigate to="/fortigate/network/interfaces" replace />} />
         <Route path="/network/interfaces"     element={<InterfacesPage session={session} />} />
         <Route path="/network/routing"        element={<RoutingPage session={session} />} />
       </Routes>
