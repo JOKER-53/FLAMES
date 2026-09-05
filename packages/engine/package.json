@@ -5,10 +5,14 @@
   "description": "Tool-agnostic first-match-wins policy evaluation and behavioral grading engine for FortiSim.",
   "main": "src/index.ts",
   "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
     "demo": "ts-node src/demo.ts"
   },
   "devDependencies": {
+    "@vitest/coverage-v8": "^5.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "vitest": "^5.0.0"
   }
 }

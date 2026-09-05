@@ -1,23 +1,13 @@
-# FLAMES - Firewall Learning And Monitoring Engine Simulater
+# FortiSim - Dual-Vendor Firewall Simulator
 
->An interactive web-based training platform where students learn firewall and
->network configuration by working in a FortiOS and PAN-OS styled interfaces, get graded
->on the *behavior* and *correctness* of their configuration (not exact text
->matching), and receive Socratic, non-answer-revealing hints from an AI tutor
->when they get something wrong.
+> An interactive web-based training platform where students learn firewall and network configuration by working in Fortinet FortiOS and Palo Alto Networks PAN-OS styled interfaces. Students are graded on the *behavior* and *correctness* of their configuration (not exact text matching), and receive Socratic, non-answer-revealing hints from an AI tutor when they get something wrong.
 
-Built for classroom use alongside a real FortiGate 6000F lab unit, so the
-visual language and workflow are intentionally modeled on the real FortiOS
-web admin console.
+Built for classroom use alongside real hardware lab units, the visual language and workflow are intentionally modeled on the real web admin consoles.
 
-## What students can practice? 
+## Features & Scenarios
 
-### Firewall Policy (5 scenarios) to learn
-Students configure firewall policies — source/destination addresses,
-services, actions, logging — and the engine runs a battery of simulated
-test packets against their configuration to verify the resulting traffic
-behavior matches what the exercise requires.
-
+### Firewall Policy (5 scenarios)
+Students configure firewall policies — source/destination addresses, services, actions, logging — and the engine runs a battery of simulated test packets against their configuration to verify the resulting traffic behavior matches what the exercise requires.
 1. **Web Server Access** — interface direction, service matching, default-deny
 2. **Database Server Lockdown** — rule-order sensitivity (first-match-wins)
 3. **DMZ Multi-Service** — configuring multiple required services correctly
@@ -25,30 +15,24 @@ behavior matches what the exercise requires.
 5. **Full Network Policy** — composing a complete multi-zone policy set
 
 ### Network Interfaces (3 scenarios)
-Students configure interface IP addresses, subnets, and administrative
-access settings for the WAN/LAN/DMZ zones.
-
+Students configure interface IP addresses, subnets, and administrative access settings for the WAN/LAN/DMZ zones.
 1. **Interface IP Assignment** — assigning correct IPs and subnets
 2. **Administrative Access Control** — restricting management protocols per zone
 3. **Full Interface Setup** — complete interface configuration from scratch
 
 ### Port Assignment (5 scenarios)
-Students assign physical chassis ports to logical zones using a visual
-FortiGate-style chassis diagram.
-
+Students assign physical chassis ports to logical zones using a visual chassis diagram (with interactive 3D hardware views).
 1. **Basic Port Assignment**
 2. **Multi-Server DMZ**
 3. **Redundant WAN Uplinks**
 4. **Larger Office Network**
 5. **Don't Assume by Position**
 
-All exercises are accessible at any time — there is no locked progression.
-Every submission is graded immediately, and on a failed submission an AI
-tutor (via NVIDIA NIM) gives conceptual, non-prescriptive feedback: it
-explains *why* something is wrong without ever stating the correct value.
+All exercises are accessible at any time — there is no locked progression. Every submission is graded immediately, and on a failed submission an AI tutor (via NVIDIA NIM Llama 3.1) gives conceptual, non-prescriptive feedback: it explains *why* something is wrong without ever stating the correct value.
 
-## Project structure
-See `Architecture.md` for a detailed breakdown of the new MVC architecture.
+## Project Structure & Architecture
+
+FortiSim is built as an npm workspace monorepo. See [`Architecture.md`](./Architecture.md) for a detailed breakdown.
 
 ```mermaid
 flowchart TB
@@ -60,7 +44,7 @@ flowchart TB
     classDef process fill:#16a085,stroke:#2ecc71,stroke-width:2px,color:#fff;
 
     subgraph FE [Frontend: React + Vite]
-        UI[FortiOS Console UI]:::frontend
+        UI[Console UI]:::frontend
         LocEng[Local Engine Instance]:::engine
     end
 
@@ -90,7 +74,8 @@ flowchart TB
     Diag --> NIM
     NIM -- Feedback --> API
 ```
-## Running locally
+
+## Running Locally
 
 Requires Docker and Docker Compose.
 
@@ -101,50 +86,33 @@ cp packages/backend/.env.example packages/backend/.env
 docker compose up
 ```
 
+- **Frontend**: http://localhost:5173
+- **Backend health check**: http://localhost:4000/api/health
 
-Frontend: http://localhost:5173
-Backend health check: http://localhost:4000/api/health
+The frontend dev server proxies `/api` requests to the backend container over the Docker Compose network (`http://backend:4000`), not `localhost`, since the proxy config runs inside the frontend container.
 
-The frontend dev server proxies `/api` requests to the backend container
-over the Docker Compose network (`http://backend:4000`), not `localhost`,
-since the proxy config runs inside the frontend container.
-
-## Why answer keys and API keys never reach the browser
+## Security & AI Guidelines
 
 This is a structural guarantee, not just a convention:
+- `getStudentFacingScenario()` in the backend strips `expectedOutcomes` (the answer key) before any scenario is sent to the frontend.
+- The AI feedback service only ever receives a `GradingReport` — diagnostic facts about what the *student's own* configuration did — never the scenario's correct values. The AI cannot leak what it was never given.
+- The NVIDIA NIM API key lives only in the backend's `.env` file and is never included in any response sent to the client.
 
-- `getStudentFacingScenario()` in the backend strips `expectedOutcomes`
-  (the answer key) before any scenario is sent to the frontend.
-- The AI feedback service only ever receives a `GradingReport` —
-  diagnostic facts about what the *student's own* configuration did —
-  never the scenario's correct values. The AI cannot leak what it was
-  never given.
-- The NVIDIA NIM API key lives only in the backend's `.env` file and is
-  never included in any response sent to the client.
+## Design Principles
 
-See `docs/ARCHITECTURE.md` for the full request flow diagram.
+- **Minimal, focused scope.** This is a teaching tool for firewall and network fundamentals — not an attempt to replicate every feature. 
+- **Behavioral grading over exact-match grading.** Firewall policy scenarios are graded on the resulting traffic behavior (does the right traffic get accepted/denied), not on matching a specific configuration text — multiple valid configurations should all pass.
+- **One evaluator, two consumers.** The same matching/grading logic backs both the student's instant local feedback and the backend's authoritative grade, so they can never disagree.
+- **AI as a Socratic guide, never an answer key.** The AI tutor is structurally prevented from seeing correct values, not just prompted not to reveal them.
 
-## Design principles this project follows
-
-- **Minimal, focused scope.** This is a teaching tool for firewall and
-  network fundamentals — not an attempt to replicate every FortiOS
-  feature. Sections not yet built (Security Profiles, VPN, SD-WAN, etc.)
-  are deliberately left out rather than added as broken placeholders.
-- **Behavioral grading over exact-match grading.** Firewall policy
-  scenarios are graded on the resulting traffic behavior (does the right
-  traffic get accepted/denied), not on matching a specific configuration
-  text — multiple valid configurations should all pass.
-- **One evaluator, two consumers.** The same matching/grading logic
-  backs both the student's instant local feedback and the backend's
-  authoritative grade, so they can never disagree.
-- **AI as a Socratic guide, never an answer key.** The AI tutor is
-  structurally prevented from seeing correct values, not just prompted
-  not to reveal them.
-
-## Tech stack
+## Tech Stack
 
 - **Engine:** TypeScript, no runtime dependencies
 - **Backend:** Node.js, Express
-- **Frontend:** React, Vite, Tailwind CSS, React Router
+- **Frontend:** React, Vite, Tailwind CSS, React Router, Three.js
 - **AI:** NVIDIA NIM (Llama 3.1 70B Instruct)
 - **Infrastructure:** Docker Compose, npm workspaces monorepo
+
+## Current Roadmap & Development
+
+See [`Notes.md`](./Notes.md) for the active sprint focus, which includes expanding Routing, Security Profiles, App-ID Interactivity, and Interactive 3D Hardware Views.
