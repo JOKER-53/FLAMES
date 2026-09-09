@@ -98,7 +98,7 @@ export function TrackTasksPage({ session, track }: TrackTasksPageProps) {
       : track === "interface"
        ? { id: interfaceFullScenario.id, title: "🏆 Interface Config Final", description: "...", difficulty: 10, isFinal: true }
       : ps[10]?.id
-      ? { id: ps[10].id, title: "🏆 Firewall Policy Final", description: "The ultimate challenge: multiple systems, DMZ servers, guest isolation, web filtering, and inter-zone security all in one.", difficulty: 10, isFinal: true }
+      ? { id: ps[10].id, title: "🏆 Firewall Policy Final", description: "...", difficulty: 10, isFinal: true }
       : null;
 
   const finalDone = finalTask ? session.completedTaskIds.has(finalTask.id) : false;
