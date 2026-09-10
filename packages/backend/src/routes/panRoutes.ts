@@ -1,7 +1,8 @@
 import { Router } from "express";
-import { panFeedback, panKnowledgeCheck } from "../controllers/panController";
+import { panFeedback, panKnowledgeCheck, panKnowledgeCheckAnswer } from "../controllers/panController";
 
 export const panRouter = Router();
 
 panRouter.post("/feedback", panFeedback);
 panRouter.get("/knowledge-check/:taskId", panKnowledgeCheck);
+panRouter.post("/knowledge-check/answer", panKnowledgeCheckAnswer);

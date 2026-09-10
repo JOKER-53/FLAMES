@@ -65,17 +65,22 @@ export function ipMatchesAddressValue(
 }
 
 export function portMatchesServiceValue(port: number, portSpec: string): boolean {
+  if (!Number.isInteger(port) || port < 0 || port > 65535) {
+    throw new Error(`Invalid packet port: "${port}"`);
+  }
   if (portSpec.includes("-")) {
-    const [startStr, endStr] = portSpec.split("-").map((s) => s.trim());
+    const parts = portSpec.split("-").map((s) => s.trim());
+    if (parts.length !== 2) throw new Error(`Invalid port range: "${portSpec}"`);
+    const [startStr, endStr] = parts;
     const start = Number(startStr);
     const end = Number(endStr);
-    if (!Number.isInteger(start) || !Number.isInteger(end)) {
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 65535 || start > end) {
       throw new Error(`Invalid port range: "${portSpec}"`);
     }
     return port >= start && port <= end;
   }
   const single = Number(portSpec.trim());
-  if (!Number.isInteger(single)) {
+  if (!Number.isInteger(single) || single < 0 || single > 65535) {
     throw new Error(`Invalid port value: "${portSpec}"`);
   }
   return port === single;

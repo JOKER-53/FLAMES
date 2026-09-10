@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { gradePortSubmission, PortSubmission, ALL_PORT_SCENARIOS, portFinalScenario } from "@fortisim/engine";
+import { gradePortSubmission, ALL_PORT_SCENARIOS, portFinalScenario } from "@fortisim/engine";
+import { ensureScenarioMatches, parsePortSubmission } from "../validation";
 
 export const portSubmissionsRouter = Router();
 
@@ -57,14 +58,26 @@ function getScenario(id: string) {
 portSubmissionsRouter.post("/:scenarioId/grade", (req, res) => {
   const scenario = getScenario(req.params.scenarioId);
   if (!scenario) return res.status(404).json({ error: "Scenario not found" });
-  const report = gradePortSubmission(scenario, req.body as PortSubmission);
-  res.json(report);
+  try {
+    const submission = parsePortSubmission(req.body);
+    ensureScenarioMatches(req.params.scenarioId, submission.scenarioId);
+    res.json(gradePortSubmission(scenario, submission));
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
+  }
 });
 
 portSubmissionsRouter.post("/:scenarioId/feedback", async (req, res) => {
   const scenario = getScenario(req.params.scenarioId);
   if (!scenario) return res.status(404).json({ error: "Scenario not found" });
-  const report = gradePortSubmission(scenario, req.body as PortSubmission);
+  let report;
+  try {
+    const submission = parsePortSubmission(req.body);
+    ensureScenarioMatches(req.params.scenarioId, submission.scenarioId);
+    report = gradePortSubmission(scenario, submission);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
+  }
   if (report.overallPassed) return res.json({ report });
   const aiRemark = await getAiFeedback(scenario.title, report);
   res.json({ report, aiRemark });

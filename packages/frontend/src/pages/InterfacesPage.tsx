@@ -145,7 +145,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   return (
     <div className={track === "port" ? "w-full" : "max-w-4xl"}>
       {cameFromTask && (
-        <Link to={`/tasks/${track}`} className="inline-block text-[12px] text-forti-red hover:underline mb-3">
+        <Link to={`/fortigate/tasks/${track}`} className="inline-block text-[12px] text-forti-red hover:underline mb-3">
           ← Back to Tasks
         </Link>
       )}

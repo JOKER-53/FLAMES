@@ -46,9 +46,48 @@ export function evaluateRoutingConfiguration(
   config: RoutingConfiguration,
   expectedConfig: Partial<RoutingConfiguration>
 ): RoutingEvaluationResult {
-  // Dummy evaluation logic
   if (!config) {
     return { success: false, message: "No routing configuration provided." };
   }
+  if (expectedConfig.staticRoutes) {
+    const missing = expectedConfig.staticRoutes.find(expected =>
+      !config.staticRoutes.some(route =>
+        route.destination === expected.destination &&
+        route.gateway === expected.gateway &&
+        route.interfaceName === expected.interfaceName &&
+        route.distance === expected.distance
+      )
+    );
+    if (missing) return { success: false, message: "A required static route is missing or has incorrect settings." };
+  }
+
+  if (expectedConfig.ospf) {
+    if (!config.ospf || config.ospf.routerId !== expectedConfig.ospf.routerId) {
+      return { success: false, message: "The OSPF router ID is missing or incorrect." };
+    }
+    const missingNetwork = expectedConfig.ospf.networks.find(expected =>
+      !config.ospf!.networks.some(network => network.prefix === expected.prefix && network.area === expected.area)
+    );
+    if (missingNetwork) return { success: false, message: "A required OSPF network or area is missing." };
+  }
+
+  if (expectedConfig.sdwanMembers) {
+    const missingMember = expectedConfig.sdwanMembers.find(expected =>
+      !config.sdwanMembers.some(member => member.interfaceName === expected.interfaceName && member.gateway === expected.gateway)
+    );
+    if (missingMember) return { success: false, message: "A required SD-WAN member is missing or incorrect." };
+  }
+
+  if (expectedConfig.sdwanRules) {
+    const missingRule = expectedConfig.sdwanRules.find(expected =>
+      !config.sdwanRules.some(rule =>
+        rule.name === expected.name && rule.srcAddress === expected.srcAddress &&
+        rule.dstAddress === expected.dstAddress && rule.strategy === expected.strategy &&
+        expected.preferredMembers.every(member => rule.preferredMembers.includes(member))
+      )
+    );
+    if (missingRule) return { success: false, message: "A required SD-WAN rule is missing or incorrect." };
+  }
+
   return { success: true, message: "Routing configuration passes." };
 }

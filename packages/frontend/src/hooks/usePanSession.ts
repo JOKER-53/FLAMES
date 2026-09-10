@@ -7,7 +7,14 @@ export interface PanSession {
 
 export function usePanSession(): PanSession {
   const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(
-    () => new Set(JSON.parse(localStorage.getItem("pan-completed") ?? "[]"))
+    () => {
+      try {
+        const saved = JSON.parse(localStorage.getItem("pan-completed") ?? "[]");
+        return new Set(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : []);
+      } catch {
+        return new Set<string>();
+      }
+    }
   );
 
   const markTaskComplete = useCallback((id: string) => {

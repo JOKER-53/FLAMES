@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { useScenarioSession } from "../hooks/useScenarioSession";
 import { HardQuestionCard } from "../components/HardQuestionCard";
-import { StaticRoute, evaluateRoutingConfiguration } from "@fortisim/engine";
+import { StaticRoute, evaluateRoutingConfiguration, staticRoutingScenario } from "@fortisim/engine";
 
 export function RoutingPage({ session }: { session: ReturnType<typeof useScenarioSession> }) {
   const [routes, setRoutes] = useState<StaticRoute[]>([]);
   const [newDest, setNewDest] = useState("");
   const [newGw, setNewGw] = useState("");
-  const [newIface, setNewIface] = useState("wan1");
+  const [newIface, setNewIface] = useState("port1");
   const [results, setResults] = useState<any>(null);
   
-  const scenarioId = "routing-01"; // matches dummy scenario in engine
+  const scenarioId = staticRoutingScenario.id;
 
   function addRoute() {
     setRoutes(prev => [...prev, { id: Math.random().toString(), destination: newDest, gateway: newGw, interfaceName: newIface, distance: 10 }]);
@@ -20,7 +20,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
   function grade() {
     // We call the backend or evaluate locally
     // For now we just mock a call since the backend needs a specific route or we evaluate locally
-    const report = evaluateRoutingConfiguration({ staticRoutes: routes, sdwanMembers: [], sdwanRules: [] }, {});
+    const report = evaluateRoutingConfiguration({ staticRoutes: routes, sdwanMembers: [], sdwanRules: [] }, staticRoutingScenario.expectedConfig);
     setResults(report);
   }
 
@@ -43,8 +43,8 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
           <div>
             <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4 }}>Interface</div>
             <select value={newIface} onChange={e => setNewIface(e.target.value)} style={{ padding: "6px 10px", border: "1px solid #cbd5e1", borderRadius: 4 }}>
-              <option value="wan1">wan1</option>
-              <option value="wan2">wan2</option>
+              <option value="port1">port1</option>
+              <option value="port2">port2</option>
               <option value="lan">lan</option>
             </select>
           </div>

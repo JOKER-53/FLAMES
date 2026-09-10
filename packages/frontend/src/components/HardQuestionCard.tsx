@@ -12,9 +12,9 @@ interface HardQuestionCardProps {
 }
 
 interface Question {
+  questionId: string;
   question: string;
   choices: string[];
-  correctIndex: number;
 }
 
 export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
@@ -49,14 +49,23 @@ export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
   const id: string = taskId;
   const completed = session.completedTaskIds.has(id);
 
-  function handleAnswer() {
+  async function handleAnswer() {
     if (selected === null || locked || !question) return;
-    if (selected === question.correctIndex) {
+    setLocked(true);
+    const response = await fetch("/api/knowledge-check/answer", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ questionId: question.questionId, selectedIndex: selected }),
+    });
+    if (!response.ok) {
+      setFetchError("Could not verify answer");
+      return;
+    }
+    const { correct } = await response.json();
+    if (correct) {
       setResult("correct");
       session.markTaskComplete(id);
     } else {
       setResult("incorrect");
-      setLocked(true);
     }
   }
 

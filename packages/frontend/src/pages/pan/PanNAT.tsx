@@ -46,7 +46,7 @@ export function PanNAT({ session }: { session: PanSession }) {
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [kqLoading, setKqLoading] = useState(false);
   const [kqError, setKqError] = useState<string|null>(null);
-  const [kqData, setKqData] = useState<{question:string;choices:string[];correctIndex:number}|null>(null);
+  const [kqData, setKqData] = useState<{questionId:string;question:string;choices:string[]}|null>(null);
   const [kqSelected, setKqSelected] = useState<number|null>(null);
   const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
   const [kqLocked, setKqLocked] = useState(false);
@@ -78,10 +78,12 @@ export function PanNAT({ session }: { session: PanSession }) {
       .then(d=>setKqData(d)).catch(e=>setKqError("Failed: "+e)).finally(()=>setKqLoading(false));
   }
 
-  function answerKQ() {
+  async function answerKQ() {
     if (kqSelected===null||!kqData||kqLocked) return;
-    if (kqSelected===kqData.correctIndex){setKqResult("correct");session.markTaskComplete(scenario.id);}
-    else{setKqResult("incorrect");setKqLocked(true);}
+    setKqLocked(true);
+    const r=await fetch("/api/pan/knowledge-check/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:kqData.questionId,selectedIndex:kqSelected})});
+    if(!r.ok){setKqError("Could not verify answer");return;} const d=await r.json();
+    if(d.correct){setKqResult("correct");session.markTaskComplete(scenario.id);} else setKqResult("incorrect");
   }
 
   const passed = results?.filter(r=>r.pass).length??0;

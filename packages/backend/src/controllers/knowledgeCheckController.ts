@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { generateKnowledgeCheck } from "../services/nimKnowledgeCheck";
+import { checkAnswer, hideAnswer } from "../services/questionStore";
 
 const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
   // Port Assignment
@@ -77,6 +78,9 @@ const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
     title: "Multi-Server DMZ Access Control",
     concept: "Restricting a management server to LAN-only SSH access while other DMZ servers accept WAN traffic — and why the absence of a WAN rule is itself the security control.",
   },
+  "firewall-final-01": { title: "Firewall Policy Final", concept: "Composing least-privilege, ordered firewall policies across WAN, LAN, DMZ, guest, and filtered web traffic." },
+  "interface-full-01": { title: "Interface Config Final", concept: "Applying correct interface addressing, roles, subnet masks, and minimal administrative access across security zones." },
+  "port-final-01": { title: "Port Assignment Final", concept: "Assigning physical links to trust zones based on connected systems and security boundaries rather than chassis position." },
 };
 
 export const getKnowledgeCheck = async (req: Request, res: Response) => {
@@ -90,9 +94,17 @@ export const getKnowledgeCheck = async (req: Request, res: Response) => {
 
   try {
     const question = await generateKnowledgeCheck(taskId, meta.title, meta.concept);
-    res.json(question);
+    res.json(hideAnswer(question));
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(500).json({ error: message });
+  }
+};
+
+export const answerKnowledgeCheck = (req: Request, res: Response) => {
+  try {
+    res.json({ correct: checkAnswer(req.body?.questionId, req.body?.selectedIndex) });
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid answer" });
   }
 };

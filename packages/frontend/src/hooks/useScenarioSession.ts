@@ -39,7 +39,14 @@ export function useScenarioSession(): ScenarioSession {
   const [services, setServices] = useState<ServiceObject[]>([]);
   const [policies, setPolicies] = useState<FirewallPolicy[]>([]);
   const [webFilterProfiles, setWebFilterProfiles] = useState<WebFilterProfile[]>([]);
-  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(new Set());
+  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem("fortigate-completed") ?? "[]");
+      return new Set(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : []);
+    } catch {
+      return new Set();
+    }
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -68,6 +75,7 @@ export function useScenarioSession(): ScenarioSession {
       if (prev.has(taskId)) return prev;
       const next = new Set(prev);
       next.add(taskId);
+      localStorage.setItem("fortigate-completed", JSON.stringify([...next]));
       return next;
     });
   }, []);

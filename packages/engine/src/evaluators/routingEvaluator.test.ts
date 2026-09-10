@@ -16,4 +16,12 @@ describe('evaluateRoutingConfiguration', () => {
     expect(result.success).toBe(true);
     expect(result.message).toBe("Routing configuration passes.");
   });
+
+  it('should reject a missing required static route', () => {
+    const result = evaluateRoutingConfiguration(
+      { staticRoutes: [], sdwanMembers: [], sdwanRules: [] },
+      { staticRoutes: [{ id: 'expected', destination: '0.0.0.0/0', gateway: '192.168.1.254', interfaceName: 'port1', distance: 10 }] }
+    );
+    expect(result.success).toBe(false);
+  });
 });

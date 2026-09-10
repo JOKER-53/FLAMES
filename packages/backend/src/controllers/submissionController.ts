@@ -1,16 +1,21 @@
 import { Request, Response } from "express";
-import { gradeSubmission, StudentSubmission } from "@fortisim/engine";
+import { gradeSubmission } from "@fortisim/engine";
 import { getScenarioById } from "../scenarios/registry";
 import { getFeedbackForReport } from "../services/nimFeedback";
+import { ensureScenarioMatches, parseStudentSubmission } from "../validation";
 
 export const gradeScenario = (req: Request, res: Response) => {
   const scenario = getScenarioById(req.params.scenarioId);
   if (!scenario) {
     return res.status(404).json({ error: `Scenario "${req.params.scenarioId}" not found` });
   }
-  const submission = req.body as StudentSubmission;
-  const report = gradeSubmission(scenario, submission);
-  res.json(report);
+  try {
+    const submission = parseStudentSubmission(req.body);
+    ensureScenarioMatches(req.params.scenarioId, submission.scenarioId);
+    res.json(gradeSubmission(scenario, submission));
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
+  }
 };
 
 export const gradeWithFeedback = async (req: Request, res: Response) => {
@@ -18,8 +23,14 @@ export const gradeWithFeedback = async (req: Request, res: Response) => {
   if (!scenario) {
     return res.status(404).json({ error: `Scenario "${req.params.scenarioId}" not found` });
   }
-  const submission = req.body as StudentSubmission;
-  const report = gradeSubmission(scenario, submission);
+  let report;
+  try {
+    const submission = parseStudentSubmission(req.body);
+    ensureScenarioMatches(req.params.scenarioId, submission.scenarioId);
+    report = gradeSubmission(scenario, submission);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
+  }
 
   if (report.overallPassed) {
     return res.json({ report });

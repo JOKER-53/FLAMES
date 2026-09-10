@@ -45,9 +45,22 @@ export function evaluatePacket(
     const dstAddrs = policy.dstAddrIds.map((id) => addresses.find((a) => a.id === id)).filter(Boolean) as AddressObject[];
     const svcs = policy.serviceIds.map((id) => services.find((s) => s.id === id)).filter(Boolean) as ServiceObject[];
 
+    // A dangling reference is an invalid policy, never an implicit wildcard.
+    if (
+      srcAddrs.length !== policy.srcAddrIds.length ||
+      dstAddrs.length !== policy.dstAddrIds.length ||
+      svcs.length !== policy.serviceIds.length
+    ) {
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: "Policy references an unknown address or service object" });
+      continue;
+    }
+
     const srcMatch = srcAddrs.length === 0 || srcAddrs.some((a) => ipMatchesAddressValue(packet.srcIp, a.type, a.value));
     const dstMatch = dstAddrs.length === 0 || dstAddrs.some((a) => ipMatchesAddressValue(packet.dstIp, a.type, a.value));
-    const svcMatch = svcs.length === 0 || svcs.some((s) => s.protocol === packet.protocol && (packet.port === undefined || !s.port || portMatchesServiceValue(packet.port, s.port)));
+    const svcMatch = svcs.length === 0 || svcs.some((s) =>
+      s.protocol === packet.protocol &&
+      (!s.port || (packet.port !== undefined && portMatchesServiceValue(packet.port, s.port)))
+    );
 
     if (!srcMatch || !dstMatch || !svcMatch) {
       trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: !srcMatch ? "Source address no match" : !dstMatch ? "Destination address no match" : "Service no match" });

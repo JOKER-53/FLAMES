@@ -6,8 +6,9 @@
 // ============================================================================
 
 import { Router } from "express";
-import { gradeInterfaceSubmission, InterfaceSubmission, ALL_INTERFACE_SCENARIOS, interfaceFullScenario } from "@fortisim/engine";
+import { gradeInterfaceSubmission, ALL_INTERFACE_SCENARIOS, interfaceFullScenario } from "@fortisim/engine";
 import { getFeedbackForInterfaceReport } from "../services/nimInterfaceFeedback";
+import { ensureScenarioMatches, parseInterfaceSubmission } from "../validation";
 
 export const interfaceSubmissionsRouter = Router();
 
@@ -23,14 +24,26 @@ function getScenario(id: string) {
 interfaceSubmissionsRouter.post("/:scenarioId/grade", (req, res) => {
   const scenario = getScenario(req.params.scenarioId);
   if (!scenario) return res.status(404).json({ error: `Scenario "${req.params.scenarioId}" not found` });
-  const report = gradeInterfaceSubmission(scenario, req.body as InterfaceSubmission);
-  res.json(report);
+  try {
+    const submission = parseInterfaceSubmission(req.body);
+    ensureScenarioMatches(req.params.scenarioId, submission.scenarioId);
+    res.json(gradeInterfaceSubmission(scenario, submission));
+  } catch (err) {
+    res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
+  }
 });
 
 interfaceSubmissionsRouter.post("/:scenarioId/feedback", async (req, res) => {
   const scenario = getScenario(req.params.scenarioId);
   if (!scenario) return res.status(404).json({ error: `Scenario "${req.params.scenarioId}" not found` });
-  const report = gradeInterfaceSubmission(scenario, req.body as InterfaceSubmission);
+  let report;
+  try {
+    const submission = parseInterfaceSubmission(req.body);
+    ensureScenarioMatches(req.params.scenarioId, submission.scenarioId);
+    report = gradeInterfaceSubmission(scenario, submission);
+  } catch (err) {
+    return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
+  }
   if (report.overallPassed) return res.json({ report });
   try {
     const aiRemark = await getFeedbackForInterfaceReport(scenario.title, report);

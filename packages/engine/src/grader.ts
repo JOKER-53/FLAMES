@@ -26,7 +26,9 @@ export function gradeSubmission(scenario: Scenario, submission: StudentSubmissio
       return { testPacketId: expected.testPacketId, description: "(unknown packet)", passed: false, studentAction: "DENY", expectedAction: expected.expectedAction, webFiltered: false, matchedPolicyId: null };
     }
     const result = evaluatePacket(packet, submission.policies, submission.addresses, submission.services, submission.webFilterProfiles ?? []);
-    return { testPacketId: packet.id, description: packet.description, passed: result.finalAction === expected.expectedAction, studentAction: result.finalAction, expectedAction: expected.expectedAction, webFiltered: result.webFiltered, matchedPolicyId: result.matchedPolicyId };
+    const matchedPolicy = result.matchedPolicyId ? submission.policies.find((policy) => policy.id === result.matchedPolicyId) : undefined;
+    const logPassed = expected.expectedLog === undefined || matchedPolicy?.log === expected.expectedLog;
+    return { testPacketId: packet.id, description: packet.description, passed: result.finalAction === expected.expectedAction && logPassed, studentAction: result.finalAction, expectedAction: expected.expectedAction, webFiltered: result.webFiltered, matchedPolicyId: result.matchedPolicyId };
   });
 
   const passedChecks = diagnostics.filter((d) => d.passed).length;
