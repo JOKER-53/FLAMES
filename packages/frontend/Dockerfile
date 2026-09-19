@@ -3,12 +3,12 @@
 FROM node:20-slim AS base
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json ./
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/backend/package.json packages/backend/package.json
 COPY packages/frontend/package.json packages/frontend/package.json
 
-RUN npm install --workspaces --include-workspace-root
+RUN npm ci --workspaces --include-workspace-root
 
 COPY packages/engine packages/engine
 COPY packages/frontend packages/frontend
