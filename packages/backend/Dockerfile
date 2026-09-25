@@ -7,7 +7,7 @@ WORKDIR /app
 
 # Copy root + all package manifests first (better layer caching: this layer
 # only invalidates when dependencies change, not on every source edit).
-COPY package.json ./
+COPY package.json package-lock.json* ./
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/backend/package.json packages/backend/package.json
 COPY packages/frontend/package.json packages/frontend/package.json

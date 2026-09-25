@@ -3,7 +3,7 @@
 FROM node:20-slim AS base
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json* ./
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/backend/package.json packages/backend/package.json
 COPY packages/frontend/package.json packages/frontend/package.json
