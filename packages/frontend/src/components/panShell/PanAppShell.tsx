@@ -1,5 +1,6 @@
 import { ReactNode, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { AccountLink } from "../AccountLink";
 
 interface PanAppShellProps { children: ReactNode; }
 
@@ -32,6 +33,7 @@ export function PanAppShell({ children }: PanAppShellProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState<Record<string,boolean>>({ "/paloalto/tasks": true });
+  const [menuOpen, setMenuOpen] = useState(false);
 
   function isActive(path: string) {
     return location.pathname === path || (path !== "/paloalto" && location.pathname.startsWith(path));
@@ -39,7 +41,7 @@ export function PanAppShell({ children }: PanAppShellProps) {
 
   return (
     <div style={{ display:"flex", height:"100vh", width:"100vw", fontFamily:"system-ui,sans-serif", fontSize:13, background:"#f0f2f5" }}>
-      <aside style={{ width:220, background:"#1a2332", display:"flex", flexDirection:"column", flexShrink:0 }}>
+      <aside className={`lab-sidebar ${menuOpen ? "lab-sidebar-open" : ""}`} style={{ width:220, background:"#1a2332", display:"flex", flexDirection:"column", flexShrink:0 }}>
         {/* Logo */}
         <div style={{ padding:"16px 16px 12px", borderBottom:"1px solid #ffffff14" }}>
           <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -57,7 +59,7 @@ export function PanAppShell({ children }: PanAppShellProps) {
         </div>
 
         {/* Nav */}
-        <nav style={{ flex:1, padding:"8px 0", overflowY:"auto" }}>
+        <nav aria-label="Palo Alto navigation" onClick={event => { if ((event.target as HTMLElement).closest("a")) setMenuOpen(false); }} style={{ flex:1, padding:"8px 0", overflowY:"auto" }}>
           {NAV.map(item => {
             const active = isActive(item.path);
             const open   = expanded[item.path] ?? active;
@@ -108,11 +110,13 @@ export function PanAppShell({ children }: PanAppShellProps) {
       <div style={{ flex:1, display:"flex", flexDirection:"column", minWidth:0 }}>
         <header style={{ height:44, background:"#fff", borderBottom:"1px solid #e2e8f0", display:"flex", alignItems:"center", padding:"0 20px", justifyContent:"space-between", flexShrink:0 }}>
           <div style={{ color:"#64748b", fontSize:12 }}>
-            {NAV.flatMap(n=>[n,...(n.children??[])]).find(n=>location.pathname===n.path||location.pathname.startsWith(n.path+"/"))?.label ?? "PAN-OS Sim"}
+            <button className="lab-menu-button" aria-label="Toggle navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>☰</button>
+            {NAV.flatMap(n=>[n,...(n.children??[])]).find(n=>location.pathname===n.path)?.label ?? "PAN-OS Sim"}
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-            <span style={{ fontSize:12, color:"#94a3b8" }}>Student View</span>
-            <div style={{ width:28, height:28, borderRadius:"50%", background:"#fa4616", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:11, fontWeight:600 }}>ST</div>
+            <AccountLink />
+            <span className="lab-view-label" style={{ fontSize:12, color:"#94a3b8" }}>Student View</span>
+            <div className="lab-view-label" style={{ width:28, height:28, borderRadius:"50%", background:"#fa4616", display:"flex", alignItems:"center", justifyContent:"center", color:"white", fontSize:11, fontWeight:600 }}>ST</div>
           </div>
         </header>
         <main style={{ flex:1, overflowY:"auto", padding:20 }}>{children}</main>

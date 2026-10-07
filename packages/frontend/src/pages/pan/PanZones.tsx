@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { usePanGrading } from "../../hooks/usePanGrading";
+import { PAN_ZONE_SCENARIOS as SCENARIOS } from "@fortisim/engine";
+import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { PanSession } from "../../hooks/usePanSession";
 
 type ZoneType = "layer3" | "layer2" | "tap" | "ha" | "management";
@@ -9,53 +13,26 @@ const INTERFACES = ["ethernet1/1","ethernet1/2","ethernet1/3","ethernet1/4","eth
 const ZONE_COLOR: Record<string,string> = { Trust:"#22c55e", Untrust:"#ef4444", DMZ:"#f97316", Management:"#7c3aed", HA:"#3b82f6" };
 function getColor(name:string){ return ZONE_COLOR[name]??"#3b82f6"; }
 
-const SCENARIOS = [
-  { id:"pan-zone-01", title:"Basic Zone Setup",
-    desc:"Create Trust (layer3, eth1/2), Untrust (layer3, eth1/1, strict profile), DMZ (layer3, eth1/3) zones.",
-    checks:[
-      { desc:"Trust zone exists (layer3)", fn:(z:Zone[])=>z.some(x=>x.name==="Trust"&&x.type==="layer3") },
-      { desc:"Untrust zone exists with strict profile", fn:(z:Zone[])=>z.some(x=>x.name==="Untrust"&&x.profile==="strict") },
-      { desc:"DMZ zone exists (layer3)", fn:(z:Zone[])=>z.some(x=>x.name==="DMZ"&&x.type==="layer3") },
-      { desc:"ethernet1/1 assigned to Untrust", fn:(z:Zone[])=>z.some(x=>x.name==="Untrust"&&x.interfaces.includes("ethernet1/1")) },
-      { desc:"ethernet1/2 assigned to Trust",   fn:(z:Zone[])=>z.some(x=>x.name==="Trust"&&x.interfaces.includes("ethernet1/2")) },
-    ]
-  },
-  { id:"pan-zone-02", title:"HA Zone Configuration",
-    desc:"Assign ethernet1/6 to HA zone (type=ha). Assign ethernet1/7 to HA zone as well.",
-    checks:[
-      { desc:"HA zone exists with type=ha", fn:(z:Zone[])=>z.some(x=>x.name==="HA"&&x.type==="ha") },
-      { desc:"ethernet1/6 in HA zone",      fn:(z:Zone[])=>z.some(x=>x.name==="HA"&&x.interfaces.includes("ethernet1/6")) },
-      { desc:"ethernet1/7 in HA zone",      fn:(z:Zone[])=>z.some(x=>x.name==="HA"&&x.interfaces.includes("ethernet1/7")) },
-    ]
-  },
-  { id:"pan-zone-03", title:"Management Zone Isolation",
-    desc:"Create a Management zone (type=management) on ethernet1/8 with log forwarding enabled.",
-    checks:[
-      { desc:"Management zone exists",                fn:(z:Zone[])=>z.some(x=>x.name==="Management"&&x.type==="management") },
-      { desc:"ethernet1/8 in Management zone",        fn:(z:Zone[])=>z.some(x=>x.name==="Management"&&x.interfaces.includes("ethernet1/8")) },
-      { desc:"Management zone has log forwarding",    fn:(z:Zone[])=>z.some(x=>x.name==="Management"&&x.logForwarding) },
-    ]
-  },
-];
 
 export function PanZones({ session }: { session: PanSession }) {
-  const [scenIdx, setSceIdx] = useState(0);
+  const location = useLocation();
+  const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
   const [zones, setZones] = useState<Zone[]>([]);
   const [nextId, setNextId] = useState(1);
   const [adding, setAdding] = useState(false);
   const [nz, setNz] = useState<Partial<Zone>>({ name:"", type:"layer3", profile:"none", interfaces:[], logForwarding:false });
-  const [results, setResults] = useState<{desc:string;pass:boolean}[]|null>(null);
-  const [aiFeedback, setAiFeedback] = useState<string|null>(null);
-  const [loadingFeedback, setLoadingFeedback] = useState(false);
-  const [kqLoading, setKqLoading] = useState(false);
-  const [kqError, setKqError] = useState<string|null>(null);
-  const [kqData, setKqData] = useState<{questionId:string;question:string;choices:string[]}|null>(null);
-  const [kqSelected, setKqSelected] = useState<number|null>(null);
-  const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
-  const [kqLocked, setKqLocked] = useState(false);
+  const { results, setResults, aiFeedback, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
+  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", scenario.id, session.markTaskComplete);
 
   const [selected, setSelected] = useState<Zone|null>(null);
+
+  useEffect(() => {
+    const id = location.state?.taskId ?? new URLSearchParams(location.search).get("task");
+    const index = SCENARIOS.findIndex(scenario => scenario.id === id);
+    if (index >= 0) setSceIdx(index);
+  }, [location.key]);
+  useEffect(() => { setZones([]); setResults(null); }, [scenario.id]);
 
   function addZone() {
     if (!nz.name) return;
@@ -66,41 +43,18 @@ export function PanZones({ session }: { session: PanSession }) {
   function delZone(id:number){ setZones(z=>z.filter(x=>x.id!==id)); setResults(null); }
   function toggleIface(i:string){ setNz(z=>({...z,interfaces:z.interfaces?.includes(i)?z.interfaces.filter(x=>x!==i):[...(z.interfaces??[]),i]})); }
 
-  function grade() {
-    const res = scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(zones) }));
-    setResults(res);
-    if (res.every(r=>r.pass)) { session.markTaskComplete(scenario.id); }
-    else {
-      const failing = res.filter(r=>!r.pass).map(r=>r.desc);
-      setLoadingFeedback(true); setAiFeedback(null);
-      fetch("/api/pan/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exerciseTitle:scenario.title,failingChecks:failing})})
-        .then(r=>r.json()).then(d=>setAiFeedback(d.feedback??null)).catch(()=>setAiFeedback(null)).finally(()=>setLoadingFeedback(false));
-    }
-  }
+  function grade() { void submitGrade(zones); }
 
-  function loadKQ() {
-    setKqLoading(true);setKqError(null);setKqData(null);setKqSelected(null);setKqResult(null);setKqLocked(false);
-    fetch(`/api/pan/knowledge-check/${scenario.id}`)
-      .then(r=>r.ok?r.json():Promise.reject(r.status))
-      .then(d=>setKqData(d)).catch(e=>setKqError("Failed: "+e)).finally(()=>setKqLoading(false));
-  }
-
-  async function answerKQ() {
-    if (kqSelected===null||!kqData||kqLocked) return;
-    setKqLocked(true);
-    const r=await fetch("/api/pan/knowledge-check/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:kqData.questionId,selectedIndex:kqSelected})});
-    if(!r.ok){setKqError("Could not verify answer");return;} const d=await r.json();
-    if(d.correct){setKqResult("correct");session.markTaskComplete(scenario.id);} else setKqResult("incorrect");
-  }
 
   const passed = results?.filter(r=>r.pass).length??0;
 
   return (
     <div style={{ maxWidth:900 }}>
+      {gradeError && <p className="platform-error" role="alert">{gradeError}</p>}
       <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
         <div>
           <h1 style={{ fontSize:18, fontWeight:700, color:"#1e293b", margin:0 }}>Security Zones</h1>
-          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>All inter-zone traffic is denied by default in PAN-OS.</p>
+          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>HA and Management are synthetic practice buckets here, not native PAN-OS security-zone types.</p>
         </div>
         <div style={{ display:"flex", gap:6 }}>
           {SCENARIOS.map((s,i)=>(
@@ -216,7 +170,7 @@ export function PanZones({ session }: { session: PanSession }) {
           <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
               <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
+              <button disabled={grading} onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
             </div>
             {results && (
               <div>
@@ -259,7 +213,7 @@ export function PanZones({ session }: { session: PanSession }) {
               <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
                 {kqData.choices.map((c,i)=>(
                   <label key={i} style={{ display:"flex", gap:8, padding:"6px 10px", borderRadius:5, border:`1px solid ${kqSelected===i?"#3b82f6":"#e2e8f0"}`, background:kqSelected===i?"#eff6ff":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12 }}>
-                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);setKqResult(null);}}}/>
+                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);}}}/>
                     {c}
                   </label>
                 ))}

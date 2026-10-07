@@ -1,3 +1,5 @@
+import { nimRequest } from "./nimRequest";
+
 // ============================================================================
 // Generates a fresh, AI-crafted multiple-choice knowledge check question
 // for a given task concept via NVIDIA NIM. Questions are generated on-demand
@@ -28,13 +30,7 @@ A student who merely memorised terminology should fail. Only someone who truly u
 the underlying networking/security principle should answer correctly.
 `.trim();
 
-  const response = await fetch(`${process.env.NVIDIA_NIM_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NVIDIA_NIM_API_KEY}`,
-    },
-    body: JSON.stringify({
+  const response = await nimRequest({
       model: process.env.NVIDIA_NIM_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -42,11 +38,10 @@ the underlying networking/security principle should answer correctly.
       ],
       max_tokens: 400,
       temperature: 0.4,
-    }),
   });
 
   if (!response.ok) {
-    throw new Error(`NIM API error: ${response.status} ${await response.text()}`);
+    throw new Error(`NIM API error: ${response.status}`);
   }
 
   const data = await response.json();
@@ -67,6 +62,6 @@ the underlying networking/security principle should answer correctly.
     }
     return parsed as GeneratedQuestion;
   } catch {
-    throw new Error(`Failed to parse NIM question response: ${raw}`);
+    throw new Error("The question generator returned unreadable output.");
   }
 }

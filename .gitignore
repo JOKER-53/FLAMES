@@ -12,8 +12,18 @@ build/
 .env.local
 **/.env
 **/.env.local
+.env.*
+**/.env.*
+!.env.example
+!.env.production.example
+!**/.env.example
 
 # Editor/OS noise
 .DS_Store
 .vscode/
 *.log
+**/data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+docs/.~lock.*#

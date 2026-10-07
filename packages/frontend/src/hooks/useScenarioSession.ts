@@ -1,6 +1,7 @@
 import { useEffect, useState, Dispatch, SetStateAction, useCallback } from "react";
 import type { AddressObject, ServiceObject, FirewallPolicy, TestPacket, WebFilterProfile } from "@fortisim/engine";
 import { fetchScenario } from "../api/client";
+import { useProgress } from "./useProgress";
 
 export const DEFAULT_SCENARIO_ID = "web-server-access-01";
 
@@ -29,6 +30,7 @@ export interface ScenarioSession {
   selectScenario: (id: string) => void;
   completedTaskIds: Set<string>;
   markTaskComplete: (taskId: string) => void;
+  syncError: string | null;
 }
 
 export function useScenarioSession(): ScenarioSession {
@@ -39,19 +41,16 @@ export function useScenarioSession(): ScenarioSession {
   const [services, setServices] = useState<ServiceObject[]>([]);
   const [policies, setPolicies] = useState<FirewallPolicy[]>([]);
   const [webFilterProfiles, setWebFilterProfiles] = useState<WebFilterProfile[]>([]);
-  const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem("fortigate-completed") ?? "[]");
-      return new Set(Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : []);
-    } catch {
-      return new Set();
-    }
-  });
+  const { completedTaskIds, markTaskComplete, syncError } = useProgress("fortigate");
 
   useEffect(() => {
     let cancelled = false;
     setScenario(null);
     setLoadError(null);
+    setAddresses([]);
+    setServices([]);
+    setPolicies([]);
+    setWebFilterProfiles([]);
     fetchScenario(scenarioId)
       .then((data: ScenarioData) => {
         if (cancelled) return;
@@ -70,20 +69,10 @@ export function useScenarioSession(): ScenarioSession {
 
   const selectScenario = useCallback((id: string) => { setScenarioId(id); }, []);
 
-  const markTaskComplete = useCallback((taskId: string) => {
-    setCompletedTaskIds((prev) => {
-      if (prev.has(taskId)) return prev;
-      const next = new Set(prev);
-      next.add(taskId);
-      localStorage.setItem("fortigate-completed", JSON.stringify([...next]));
-      return next;
-    });
-  }, []);
-
   return {
     scenarioId, scenario, loadError,
     addresses, services, policies, webFilterProfiles,
     setAddresses, setServices, setPolicies, setWebFilterProfiles,
-    selectScenario, completedTaskIds, markTaskComplete,
+    selectScenario, completedTaskIds, markTaskComplete, syncError,
   };
 }

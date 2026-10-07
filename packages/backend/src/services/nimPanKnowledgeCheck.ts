@@ -1,3 +1,5 @@
+import { nimRequest } from "./nimRequest";
+
 // ============================================================================
 // AI-generated knowledge check questions for PAN-OS exercises.
 // Returns a fresh MCQ on each call — one attempt only.
@@ -38,7 +40,7 @@ const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
   "pan-nat-01": { title:"Outbound SNAT",    concept:"How dynamic-ip-and-port Source NAT works in PAN-OS, why it must be configured separately from security policy, and when to use interface vs static IP as the translated address." },
   "pan-nat-02": { title:"Web Server DNAT",  concept:"How Destination NAT redirects inbound traffic to internal servers — why both a security policy AND a NAT rule are required, and the order of evaluation." },
   "pan-nat-03": { title:"Static NAT",       concept:"When to use 1:1 static NAT vs DNAT — the bidirectional nature of static NAT and why it creates both inbound and outbound translation automatically." },
-  "pan-nat-final": { title:"NAT Policy Final", concept:"Complete PAN-OS NAT design with SNAT for outbound, DNAT for services, and static NAT — plus the critical rule that security policy is evaluated before NAT." },
+  "pan-nat-final": { title:"NAT Policy Final", concept:"Complete PAN-OS NAT design with SNAT, DNAT, and static NAT; NAT policy matches pre-NAT zones, while security policy matches original addresses and post-NAT zones. Translation alone does not authorize traffic." },
   // Interfaces
   "pan-iface-01": { title:"Interface Configuration", concept:"How Palo Alto interface types (Layer2, Layer3, Virtual Wire, Tap) work, and why an interface must be assigned to a zone before security policies apply." },
 };
@@ -49,13 +51,7 @@ export async function generatePanKnowledgeCheck(taskId: string): Promise<Generat
 
   const userContent = `Task: ${meta.title}\nConcept to test: ${meta.concept}\n\nGenerate a hard multiple-choice question. Wrong answers should be plausible misconceptions a student might actually hold.`;
 
-  const response = await fetch(`${process.env.NVIDIA_NIM_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NVIDIA_NIM_API_KEY}`,
-    },
-    body: JSON.stringify({
+  const response = await nimRequest({
       model: process.env.NVIDIA_NIM_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -63,7 +59,6 @@ export async function generatePanKnowledgeCheck(taskId: string): Promise<Generat
       ],
       max_tokens: 400,
       temperature: 0.7,
-    }),
   });
 
   if (!response.ok) throw new Error(`NIM API error: ${response.status}`);
@@ -79,6 +74,6 @@ export async function generatePanKnowledgeCheck(taskId: string): Promise<Generat
       throw new Error("Invalid shape");
     return parsed;
   } catch {
-    throw new Error(`Failed to parse question: ${raw.slice(0, 100)}`);
+    throw new Error("The question generator returned unreadable output.");
   }
 }

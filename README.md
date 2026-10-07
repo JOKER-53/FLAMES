@@ -1,118 +1,54 @@
-# FortiSim - Dual-Vendor Firewall Simulator
+# FortiSim
 
-> An interactive web-based training platform where students learn firewall and network configuration by working in Fortinet FortiOS and Palo Alto Networks PAN-OS styled interfaces. Students are graded on the *behavior* and *correctness* of their configuration (not exact text matching), and receive Socratic, non-answer-revealing hints from an AI tutor when they get something wrong.
+A dual-vendor firewall training lab with FortiOS-style and PAN-OS-style consoles. It simulates configuration and traffic checks; it does not connect to or configure real firewalls.
 
-Built for classroom use alongside real hardware lab units, the visual language and workflow are intentionally modeled on the real web admin consoles.
+## What works
 
-## Features & Scenarios
+- FortiGate: 11 policy exercises including a final, three interface exercises plus a final, five port exercises plus a final, and a static-routing exercise.
+- Palo Alto: five security exercises plus a final, three zone exercises plus a final, three NAT exercises plus a final, interface practice, port assignment, and App-ID reference.
+- FortiGate hardware: clean Explore mode, empty-by-default cable practice, seven cable categories across 13 sockets, manual rotation, reset, and keyboard-accessible port controls. Power, USB, and RJ-45 have distinct connector shapes.
+- Optional student accounts, password hashing, expiring HTTP-only sessions, SQLite-saved completion across devices, and an instructor roster. Guests retain device-local completion.
+- Optional NVIDIA NIM tutoring and one-use generated knowledge questions. Grading remains usable when AI is unavailable.
+- Responsive navigation and account/classroom screens; page-level code splitting, error recovery, tests, and CI.
 
-### Firewall Policy (5 scenarios)
-Students configure firewall policies — source/destination addresses, services, actions, logging — and the engine runs a battery of simulated test packets against their configuration to verify the resulting traffic behavior matches what the exercise requires.
-1. **Web Server Access** — interface direction, service matching, default-deny
-2. **Database Server Lockdown** — rule-order sensitivity (first-match-wins)
-3. **DMZ Multi-Service** — configuring multiple required services correctly
-4. **Inter-Zone Trust** — asymmetric zone rules (one direction allowed, not the reverse)
-5. **Full Network Policy** — composing a complete multi-zone policy set
+## Run locally
 
-### Network Interfaces (3 scenarios)
-Students configure interface IP addresses, subnets, and administrative access settings for the WAN/LAN/DMZ zones.
-1. **Interface IP Assignment** — assigning correct IPs and subnets
-2. **Administrative Access Control** — restricting management protocols per zone
-3. **Full Interface Setup** — complete interface configuration from scratch
-
-### Port Assignment (5 scenarios)
-Students assign physical chassis ports to logical zones using a visual chassis diagram (with interactive 3D hardware views).
-1. **Basic Port Assignment**
-2. **Multi-Server DMZ**
-3. **Redundant WAN Uplinks**
-4. **Larger Office Network**
-5. **Don't Assume by Position**
-
-All exercises are accessible at any time — there is no locked progression. Every submission is graded immediately, and on a failed submission an AI tutor (via NVIDIA NIM Llama 3.1) gives conceptual, non-prescriptive feedback: it explains *why* something is wrong without ever stating the correct value.
-
-## Project Structure & Architecture
-
-FortiSim is built as an npm workspace monorepo. See [`Architecture.md`](./Architecture.md) for a detailed breakdown.
-
-```mermaid
-flowchart TB
-    classDef frontend fill:#333,stroke:#666,stroke-width:2px,color:#fff;
-    classDef backend fill:#222,stroke:#444,stroke-width:2px,color:#fff;
-    classDef engine fill:#8e44ad,stroke:#fff,stroke-width:2px,color:#fff;
-    classDef keys fill:#c0392b,stroke:#e74c3c,stroke-width:2px,color:#fff,stroke-dasharray: 5 5;
-    classDef external fill:#2980b9,stroke:#3498db,stroke-width:2px,color:#fff;
-    classDef process fill:#16a085,stroke:#2ecc71,stroke-width:2px,color:#fff;
-
-    subgraph FE [Frontend: React + Vite]
-        UI[Console UI]:::frontend
-        LocEng[Local Engine Instance]:::engine
-    end
-
-    subgraph BE [Backend: Express API]
-        API[API Endpoints]:::backend
-        Eval(Evaluate):::process
-        Ret(Retrieve):::process
-        Diag(Request Diagnostics):::process
-        Key[(Answer Keys & NIM API Key)]:::keys
-        ServEng[Server Engine Instance]:::engine
-    end
-
-    subgraph EXT [External]
-        NIM[NVIDIA NIM AI Service]:::external
-    end
-
-    UI -- User Submission --> API
-    UI -- Simulate --> LocEng
-    UI -- Result --> API
-    
-    API --> Eval
-    API --> Ret
-    API --> Diag
-    
-    Eval --> ServEng
-    Ret --> Key
-    Diag --> NIM
-    NIM -- Feedback --> API
-```
-
-## Running Locally
-
-Requires Docker and Docker Compose.
+Use Node 22.13 or newer and npm. No browser automation or extra browser installation is required.
 
 ```bash
+npm ci
 cp packages/backend/.env.example packages/backend/.env
-# edit packages/backend/.env and set a real NVIDIA_NIM_API_KEY
-
-docker compose up
+npm run backend:dev
 ```
 
-- **Frontend**: http://localhost:5173
-- **Backend health check**: http://localhost:4000/api/health
+In a second terminal:
 
-The frontend dev server proxies `/api` requests to the backend container over the Docker Compose network (`http://backend:4000`), not `localhost`, since the proxy config runs inside the frontend container.
+```bash
+npm run frontend:dev
+```
 
-## Security & AI Guidelines
+Open http://localhost:5173. The development proxy defaults to 127.0.0.1:4000. For Docker networking it uses API_PROXY_TARGET=http://backend:4000.
 
-This is a structural guarantee, not just a convention:
-- `getStudentFacingScenario()` in the backend strips `expectedOutcomes` (the answer key) before any scenario is sent to the frontend.
-- The AI feedback service only ever receives a `GradingReport` — diagnostic facts about what the *student's own* configuration did — never the scenario's correct values. The AI cannot leak what it was never given.
-- The NVIDIA NIM API key lives only in the backend's `.env` file and is never included in any response sent to the client.
+AI settings are optional. Never put an API key in a VITE_ variable. To create the first instructor, set INSTRUCTOR_EMAIL and a unique 12–128 character INSTRUCTOR_PASSWORD in the backend environment before starting. The bootstrap does not change an existing account's password or promote students. Remove both bootstrap fields from the environment after creating the account.
 
-## Design Principles
+For development containers, copy the example environment file and run `docker compose up --build`. Ports bind to localhost; completion uses a persistent volume. Engine source edits in Docker require rebuilding its compiled output; frontend source edits hot-reload.
 
-- **Minimal, focused scope.** This is a teaching tool for firewall and network fundamentals — not an attempt to replicate every feature. 
-- **Behavioral grading over exact-match grading.** Firewall policy scenarios are graded on the resulting traffic behavior (does the right traffic get accepted/denied), not on matching a specific configuration text — multiple valid configurations should all pass.
-- **One evaluator, two consumers.** The same matching/grading logic backs both the student's instant local feedback and the backend's authoritative grade, so they can never disagree.
-- **AI as a Socratic guide, never an answer key.** The AI tutor is structurally prevented from seeing correct values, not just prompted not to reveal them.
+## Verify
 
-## Tech Stack
+```bash
+npm run verify
+```
 
-- **Engine:** TypeScript, no runtime dependencies
-- **Backend:** Node.js, Express
-- **Frontend:** React, Vite, Tailwind CSS, React Router, Three.js
-- **AI:** NVIDIA NIM (Llama 3.1 70B Instruct)
-- **Infrastructure:** Docker Compose, npm workspaces monorepo
+This builds the shared engine and API, runs engine/API/render-smoke regression tests, type-checks the frontend, and builds the production SPA. API tests open a temporary localhost listener. CI also validates the production Compose configuration and builds deployment images.
 
-## Current Roadmap & Development
+Production setup: [deployment guide](docs/DEPLOYMENT.md). Architecture: [architecture guide](docs/ARCHITECTURE.md). Changes and verification: [upgrade report](docs/UPGRADE_2026-10-02.md).
 
-See [`Notes.md`](./Notes.md) for the active sprint focus, which includes expanding Routing, Security Profiles, App-ID Interactivity, and Interactive 3D Hardware Views.
+## Teaching and security boundaries
+
+Completion is student-reported practice progress, not a certified exam score. Policy/interface/port grading uses backend endpoints; Palo Alto security, zones, and NAT use a shared engine and server grading. Some reference/practice tools, including routing and Palo Alto interface practice, evaluate locally. Configuration drafts are not saved to the account; only completion markers are synchronized.
+
+Scenario definitions used by browser exercises are included in frontend bundles. The scenario API removes expected outcomes, but this is not an answer-key secrecy guarantee. Tutor prompts request conceptual hints; they cannot guarantee that an LLM never supplies an answer. Secrets stay in backend environment variables, and provider requests have a 15-second timeout.
+
+The PAN model is intentionally simplified: HA and Management are synthetic practice buckets rather than native security-zone types, NAT does not simulate a full packet/session pipeline, and App-ID is represented by a selected application label. NAT guidance distinguishes pre-NAT policy zones from post-NAT security zones; see [Palo Alto's NAT policy documentation](https://docs.paloaltonetworks.com/ngfw/networking/nat/nat-policy-rules).
+
+A public deployment still needs HTTPS, backup/restore operations, an operator-defined account recovery process, and visual acceptance on actual devices. No deployment or GitHub push is performed by these changes.

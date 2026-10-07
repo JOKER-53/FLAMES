@@ -10,7 +10,7 @@ export interface RoutingScenario {
 export const staticRoutingScenario: RoutingScenario = {
   id: "routing-static-01",
   title: "Basic Static Routing",
-  description: "Configure a default static route pointing to the ISP gateway.",
+  description: "Add a default route (0.0.0.0/0) via ISP gateway 192.168.1.254 on port1, with administrative distance 10.",
   expectedConfig: {
     staticRoutes: [
       {

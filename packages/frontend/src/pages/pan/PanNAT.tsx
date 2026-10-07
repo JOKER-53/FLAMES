@@ -1,56 +1,34 @@
-import { useState } from "react";
+import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { usePanGrading } from "../../hooks/usePanGrading";
+import { PAN_NAT_SCENARIOS as SCENARIOS } from "@fortisim/engine";
+import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { PanSession } from "../../hooks/usePanSession";
 
 type NATType = "source" | "destination" | "static";
 interface NATRule { id:number; name:string; type:NATType; srcZone:string; dstZone:string; dstAddr:string; translated:string; }
 
-const SCENARIOS = [
-  { id:"pan-nat-01", title:"Outbound SNAT",
-    desc:"Configure Source NAT so Trust hosts (10.0.0.0/24) access the internet via the WAN interface IP. Use 'interface' as translated address.",
-    checks:[
-      { desc:"SNAT rule exists",                fn:(r:NATRule[])=>r.some(x=>x.type==="source") },
-      { desc:"Source zone is Trust",            fn:(r:NATRule[])=>r.some(x=>x.type==="source"&&x.srcZone==="Trust") },
-      { desc:"Dest zone is Untrust",            fn:(r:NATRule[])=>r.some(x=>x.type==="source"&&x.dstZone==="Untrust") },
-      { desc:"Translated to interface IP",      fn:(r:NATRule[])=>r.some(x=>x.type==="source"&&x.translated.toLowerCase().includes("interface")) },
-    ]
-  },
-  { id:"pan-nat-02", title:"Web Server DNAT",
-    desc:"Forward HTTPS on public IP 203.0.113.10 to internal DMZ server 10.0.1.10:443. Create a Destination NAT rule.",
-    checks:[
-      { desc:"DNAT rule exists",                fn:(r:NATRule[])=>r.some(x=>x.type==="destination") },
-      { desc:"Original dst is 203.0.113.10",    fn:(r:NATRule[])=>r.some(x=>x.type==="destination"&&x.dstAddr.includes("203.0.113.10")) },
-      { desc:"Translated to 10.0.1.10",         fn:(r:NATRule[])=>r.some(x=>x.type==="destination"&&x.translated.includes("10.0.1.10")) },
-    ]
-  },
-  { id:"pan-nat-03", title:"Static NAT",
-    desc:"Create a 1:1 static NAT mapping 203.0.113.20 ↔ 10.0.1.20 for a mail server needing a dedicated public IP.",
-    checks:[
-      { desc:"Static NAT rule exists",          fn:(r:NATRule[])=>r.some(x=>x.type==="static") },
-      { desc:"Original address includes .20",   fn:(r:NATRule[])=>r.some(x=>x.type==="static"&&x.dstAddr.includes(".20")) },
-      { desc:"Translated includes 10.0.1.20",   fn:(r:NATRule[])=>r.some(x=>x.type==="static"&&x.translated.includes("10.0.1.20")) },
-    ]
-  },
-];
 
 const TYPE_COLOR: Record<NATType,string> = { source:"#3b82f6", destination:"#f97316", static:"#7c3aed" };
 
 export function PanNAT({ session }: { session: PanSession }) {
-  const [scenIdx, setSceIdx] = useState(0);
+  const location = useLocation();
+  const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
   const [rules, setRules] = useState<NATRule[]>([]);
   const [nextId, setNextId] = useState(1);
   const [adding, setAdding] = useState(false);
   const [nr, setNr] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
-  const [results, setResults] = useState<{desc:string;pass:boolean}[]|null>(null);
-  const [aiFeedback, setAiFeedback] = useState<string|null>(null);
-  const [loadingFeedback, setLoadingFeedback] = useState(false);
-  const [kqLoading, setKqLoading] = useState(false);
-  const [kqError, setKqError] = useState<string|null>(null);
-  const [kqData, setKqData] = useState<{questionId:string;question:string;choices:string[]}|null>(null);
-  const [kqSelected, setKqSelected] = useState<number|null>(null);
-  const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
-  const [kqLocked, setKqLocked] = useState(false);
+  const { results, setResults, aiFeedback, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
+  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", scenario.id, session.markTaskComplete);
 
+
+  useEffect(() => {
+    const id = location.state?.taskId ?? new URLSearchParams(location.search).get("task");
+    const index = SCENARIOS.findIndex(scenario => scenario.id === id);
+    if (index >= 0) setSceIdx(index);
+  }, [location.key]);
+  useEffect(() => { setRules([]); setResults(null); }, [scenario.id]);
 
   function addRule() {
     if (!nr.name||!nr.translated) return;
@@ -59,41 +37,18 @@ export function PanNAT({ session }: { session: PanSession }) {
     setNr({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   }
 
-  function grade() {
-    const res = scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(rules) }));
-    setResults(res);
-    if (res.every(r=>r.pass)) { session.markTaskComplete(scenario.id); }
-    else {
-      const failing = res.filter(r=>!r.pass).map(r=>r.desc);
-      setLoadingFeedback(true); setAiFeedback(null);
-      fetch("/api/pan/feedback",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({exerciseTitle:scenario.title,failingChecks:failing})})
-        .then(r=>r.json()).then(d=>setAiFeedback(d.feedback??null)).catch(()=>setAiFeedback(null)).finally(()=>setLoadingFeedback(false));
-    }
-  }
+  function grade() { void submitGrade(rules); }
 
-  function loadKQ() {
-    setKqLoading(true);setKqError(null);setKqData(null);setKqSelected(null);setKqResult(null);setKqLocked(false);
-    fetch(`/api/pan/knowledge-check/${scenario.id}`)
-      .then(r=>r.ok?r.json():Promise.reject(r.status))
-      .then(d=>setKqData(d)).catch(e=>setKqError("Failed: "+e)).finally(()=>setKqLoading(false));
-  }
-
-  async function answerKQ() {
-    if (kqSelected===null||!kqData||kqLocked) return;
-    setKqLocked(true);
-    const r=await fetch("/api/pan/knowledge-check/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:kqData.questionId,selectedIndex:kqSelected})});
-    if(!r.ok){setKqError("Could not verify answer");return;} const d=await r.json();
-    if(d.correct){setKqResult("correct");session.markTaskComplete(scenario.id);} else setKqResult("incorrect");
-  }
 
   const passed = results?.filter(r=>r.pass).length??0;
 
   return (
     <div style={{ maxWidth:900 }}>
+      {gradeError && <p className="platform-error" role="alert">{gradeError}</p>}
       <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
         <div>
           <h1 style={{ fontSize:18, fontWeight:700, color:"#1e293b", margin:0 }}>NAT Policy</h1>
-          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>Evaluated AFTER security policy. Traffic must be allowed first.</p>
+          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>NAT uses pre-NAT zones. Security policy uses original addresses and post-NAT zones. Translation alone does not permit traffic.</p>
         </div>
         <div style={{ display:"flex", gap:6 }}>
           {SCENARIOS.map((s,i)=>(
@@ -170,7 +125,7 @@ export function PanNAT({ session }: { session: PanSession }) {
           <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
               <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
+              <button disabled={grading} onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
             </div>
             {results && (
               <div>
@@ -207,7 +162,7 @@ export function PanNAT({ session }: { session: PanSession }) {
               <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
                 {kqData.choices.map((c,i)=>(
                   <label key={i} style={{ display:"flex", gap:8, padding:"6px 10px", borderRadius:5, border:`1px solid ${kqSelected===i?"#7c3aed":"#e2e8f0"}`, background:kqSelected===i?"#faf5ff":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12 }}>
-                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);setKqResult(null);}}}/>
+                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);}}}/>
                     {c}
                   </label>
                 ))}

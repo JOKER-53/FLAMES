@@ -1,3 +1,4 @@
+import { apiFetch } from "../api/http";
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import type { AdminAccess, InterfaceConfig, InterfaceGradingReport, PortGradingReport } from "@fortisim/engine";
@@ -12,11 +13,8 @@ import { ScenarioSession } from "../hooks/useScenarioSession";
 const ADMIN_ACCESS_OPTIONS: AdminAccess[] = ["PING", "HTTPS", "SSH", "HTTP"];
 type TrackType = "interface" | "port";
 
-// ALL_PORT_SCENARIOS covers only the 5 regular exercises; the Final
-// Assignment (port-final-01) lives separately in finalAssignments.ts. Any
-// lookup by id (not just the "browse exercises" list) needs to search both,
-// or navigating straight to the Final renders a blank scenario.
-const ALL_PORT_SCENARIOS_AND_FINAL = [...ALL_PORT_SCENARIOS, portFinalScenario];
+// The port registry already contains its final; do not duplicate its ID.
+const ALL_PORT_SCENARIOS_AND_FINAL = ALL_PORT_SCENARIOS;
 // ALL_INTERFACE_SCENARIOS covers only the 3 regular exercises; the Final
 // Assignment (interface-full-01) is defined separately, same reasoning as
 // the port track above.
@@ -97,7 +95,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
     setIfaceAiRemark(null);
     setIfaceError(null);
     try {
-      const res = await fetch(`/api/interface-submissions/${activeIfaceScenarioId}/feedback`, {
+      const res = await apiFetch(`/api/interface-submissions/${activeIfaceScenarioId}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioId: activeIfaceScenarioId, interfaces }),
@@ -123,7 +121,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
     setPortAiRemark(null);
     setPortError(null);
     try {
-      const res = await fetch(`/api/port-submissions/${portScenario.id}/feedback`, {
+      const res = await apiFetch(`/api/port-submissions/${portScenario.id}/feedback`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ scenarioId: portScenario.id, assignments: portAssignments.map(({ portId, zone }) => ({ portId, zone })) }),

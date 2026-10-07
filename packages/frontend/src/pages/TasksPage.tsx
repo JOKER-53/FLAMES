@@ -50,7 +50,7 @@ export function TasksPage({ session }: TasksPageProps) {
   if (!policyScenarios) return <div className="text-gray-500 text-[12.5px]">Loading tasks…</div>;
 
   const ps = policyScenarios;
-  const regularTasks: TaskEntry[] = [
+  const regularTasks = ([
     { id: ALL_PORT_SCENARIOS[0].id, title: ALL_PORT_SCENARIOS[0].title, description: ALL_PORT_SCENARIOS[0].description, track: "port", difficulty: 1 },
     { id: ALL_INTERFACE_SCENARIOS[0].id, title: ALL_INTERFACE_SCENARIOS[0].title, description: ALL_INTERFACE_SCENARIOS[0].description, track: "interface", difficulty: 1 },
     { id: ALL_INTERFACE_SCENARIOS[1].id, title: ALL_INTERFACE_SCENARIOS[1].title, description: ALL_INTERFACE_SCENARIOS[1].description, track: "interface", difficulty: 2 },
@@ -69,13 +69,13 @@ export function TasksPage({ session }: TasksPageProps) {
     { id: ps[7]?.id, title: ps[7]?.title, description: ps[7]?.description, track: "policy", difficulty: 9 },
     { id: ps[8]?.id, title: ps[8]?.title, description: ps[8]?.description, track: "policy", difficulty: 9 },
     { id: ps[9]?.id, title: ps[9]?.title, description: ps[9]?.description, track: "policy", difficulty: 10 },
-  ].filter((t) => t.id);
+  ] satisfies TaskEntry[]).filter((t) => t.id);
 
-  const finalTasks: TaskEntry[] = [
+  const finalTasks = ([
     { id: "port-final-01", title: "🏆 Port Assignment Final", description: "The complete port challenge combining all concepts: redundant WAN, multi-server DMZ, large LAN, spare port, and a trick port.", track: "port", difficulty: 10, isFinal: true },
     { id: ALL_INTERFACE_SCENARIOS[2].id, title: "🏆 Interface Config Final", description: "Configure all interfaces from scratch: IPs, subnets, and administrative access — the complete setup a network admin performs before writing policies.", track: "interface", difficulty: 10, isFinal: true },
     { id: ps[10]?.id ?? "firewall-final-01", title: "🏆 Firewall Policy Final", description: "The ultimate challenge: multiple systems, DMZ servers, guest isolation, web filtering, and inter-zone security all in one.", track: "policy", difficulty: 10, isFinal: true },
-  ].filter((t) => t.id);
+  ] satisfies TaskEntry[]).filter((t) => t.id);
 
   const trackGroups: Record<string, { regular: TaskEntry[]; final: TaskEntry | null }> = {
     port: { regular: [], final: null },

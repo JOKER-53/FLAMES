@@ -61,7 +61,9 @@ export function PanTrackTasks({ session, track }: Props) {
           const completed = session.completedTaskIds.has(task.id);
           return (
             <div key={task.id}
-              onClick={() => navigate(TASK_ROUTE[track], { state: { taskId: task.id } })}
+              role="button" tabIndex={0}
+              onKeyDown={event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); navigate(`${TASK_ROUTE[track]}?task=${task.id}`); } }}
+              onClick={() => navigate(`${TASK_ROUTE[track]}?task=${task.id}`)}
               style={{ background:"#fff", border:`1px solid ${completed ? meta.color+"44" : "#e2e8f0"}`,
                 borderRadius:8, padding:14, cursor:"pointer", display:"flex", gap:12, alignItems:"flex-start",
                 transition:"all 0.15s" }}
@@ -82,7 +84,7 @@ export function PanTrackTasks({ session, track }: Props) {
                 <p style={{ fontSize:12, color:"#64748b", margin:"0 0 6px", lineHeight:1.5 }}>{task.description}</p>
                 <Stars level={task.difficulty}/>
               </div>
-              <div style={{ fontSize:12, color:meta.color, fontShrink:0, whiteSpace:"nowrap", marginTop:4 }}>
+              <div style={{ fontSize:12, color:meta.color, flexShrink:0, whiteSpace:"nowrap", marginTop:4 }}>
                 {completed ? "Review →" : "Start →"}
               </div>
             </div>
@@ -91,7 +93,9 @@ export function PanTrackTasks({ session, track }: Props) {
       </div>
 
       {/* Final assignment */}
-      <div onClick={() => allRegDone || finalDone ? navigate(TASK_ROUTE[track], { state: { taskId: final.id } }) : undefined}
+      <div role="button" tabIndex={allRegDone || finalDone ? 0 : -1} aria-disabled={!allRegDone && !finalDone}
+        onKeyDown={event => { if ((event.key === "Enter" || event.key === " ") && (allRegDone || finalDone)) { event.preventDefault(); navigate(`${TASK_ROUTE[track]}?task=${final.id}`); } }}
+        onClick={() => allRegDone || finalDone ? navigate(`${TASK_ROUTE[track]}?task=${final.id}`) : undefined}
         style={{ background: finalDone ? "#fff" : allRegDone ? "#fffbf5" : "#f8fafc",
           border: `1.5px solid ${finalDone ? meta.color : allRegDone ? "#fed7aa" : "#e2e8f0"}`,
           borderRadius:8, padding:14, cursor: allRegDone||finalDone ? "pointer" : "not-allowed",

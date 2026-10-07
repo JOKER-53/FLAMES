@@ -2,9 +2,27 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ScenarioSession } from "../hooks/useScenarioSession";
+import { PORTS, CABLE_TYPES, acceptsCable } from "../hardware/cables";
 
 interface DashboardProps { session: ScenarioSession; }
 interface PartInfo { title: string; body: string; }
+
+function disposeObject(object: THREE.Object3D) {
+  const geometries = new Set<THREE.BufferGeometry>();
+  const materials = new Set<THREE.Material>();
+  const textures = new Set<THREE.Texture>();
+  object.traverse(child => {
+    if (!(child instanceof THREE.Mesh)) return;
+    geometries.add(child.geometry);
+    for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
+      materials.add(material);
+      for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
+    }
+  });
+  textures.forEach(texture => texture.dispose());
+  materials.forEach(material => material.dispose());
+  geometries.forEach(geometry => geometry.dispose());
+}
 
 const PART_INFO: Record<string, PartInfo> = {
   chassis:  { title: "Chassis — Desktop Form Factor", body: "The FortiGate 60F sits flat on a desk or shelf. The cream/white polycarbonate enclosure houses the CPU, NP6Lite ASIC, RAM, and flash." },
@@ -21,15 +39,6 @@ const PART_INFO: Record<string, PartInfo> = {
   vents:    { title: "Side Ventilation", body: "Passive convection vents. The 60F is completely fanless — never block airflow." },
 };
 
-const CABLE_TYPES = [
-  { id: "dc-power", label: "12V DC Power", color: "#ef4444", accepts: ["power"],       desc: "12V DC power lead for the FortiGate power input." },
-  { id: "usb",      label: "USB Cable",    color: "#eab308", accepts: ["usb"],         desc: "USB cable for provisioning, recovery, or supported USB accessories." },
-  { id: "console",  label: "Console Cable",color: "#94a3b8", accepts: ["console"],     desc: "Serial rollover cable for out-of-band console management." },
-  { id: "rj45-wan", label: "RJ-45 WAN", color: "#f97316", accepts: ["wan1","wan2"], desc: "Ethernet uplink to ISP — connect to WAN1 or WAN2." },
-  { id: "rj45-lan", label: "RJ-45 LAN", color: "#2563eb", accepts: ["lan"],         desc: "Internal network patch cable — connect to LAN ports." },
-  { id: "rj45-dmz", label: "RJ-45 DMZ", color: "#0d9488", accepts: ["dmz"],         desc: "DMZ cable for public-facing servers." },
-  { id: "rj45-ha",  label: "HA Cable",  color: "#7c3aed", accepts: ["ha"],          desc: "High-availability heartbeat — direct crossover between HA peers." },
-];
 
 export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   const mountRef  = useRef<HTMLDivElement>(null);
@@ -52,23 +61,28 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   const [feedback, setFeedback] = useState<{msg:string;ok:boolean}|null>(null);
   const modeRef   = useRef("explore");
   const cableRef  = useRef<string|null>(null);
+  const pluggedRef = useRef(plugged);
+  const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => () => { if (feedbackTimer.current) clearTimeout(feedbackTimer.current); }, []);
 
   useEffect(() => { modeRef.current = mode; }, [mode]);
   useEffect(() => { cableRef.current = selCable; }, [selCable]);
+  useEffect(() => { pluggedRef.current = plugged; }, [plugged]);
 
   function showFeedback(msg: string, ok: boolean) {
     setFeedback({ msg, ok });
-    setTimeout(() => setFeedback(null), 2500);
+    if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
+    feedbackTimer.current = setTimeout(() => setFeedback(null), 3500);
   }
 
   function handlePortClick(portId: string) {
     const cable = CABLE_TYPES.find(c => c.id === cableRef.current);
     if (!cable) { showFeedback("Select a cable first.", false); return; }
-    const base = portId.replace(/-[ab\d]+$/, "");
-    if (!cable.accepts.includes(base)) {
+    if (!acceptsCable(cable.id, portId)) {
       showFeedback(`✗ ${cable.label} cannot plug into ${portId.toUpperCase()}.`, false); return;
     }
-    if (plugged[portId]) {
+    if (pluggedRef.current[portId]) {
       setPlugged(p => { const n={...p}; delete n[portId]; return n; });
       showFeedback(`Unplugged from ${portId.toUpperCase()}.`, true);
     } else {
@@ -83,7 +97,10 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const W = mount.clientWidth || 900;
     const H = mount.clientHeight || 460;
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    let disposed = false;
+    let renderer: THREE.WebGLRenderer;
+    try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
+    catch { setLoadErr("3D rendering is unavailable. Enable WebGL or try another browser."); setLoading(false); return; }
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding = THREE.sRGBEncoding;
@@ -95,6 +112,15 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     scene.background = new THREE.Color(0x0d1117);
     const camera = new THREE.PerspectiveCamera(45, W/H, 0.0001, 100000);
     camera.position.set(0, 0, 10);
+    const resizeObserver = new ResizeObserver(() => {
+      const width = mount.clientWidth;
+      const height = mount.clientHeight;
+      if (!width || !height) return;
+      renderer.setSize(width, height);
+      camera.aspect = width / height;
+      camera.updateProjectionMatrix();
+    });
+    resizeObserver.observe(mount);
 
     scene.add(new THREE.AmbientLight(0xffffff, 1.2));
     const d1 = new THREE.DirectionalLight(0xffffff, 1.0); d1.position.set(5,10,10);  scene.add(d1);
@@ -108,11 +134,12 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const cableMeshes:    Record<string, THREE.Object3D> = {};
 
     // Store in ref immediately — persists across renders
-    threeRef.current = { camera, group, portIndicators, cableMeshes, size: new THREE.Vector3(), rotX: 0.35, rotY: 0 };
+    threeRef.current = { camera, group, portIndicators, cableMeshes, size: new THREE.Vector3(), rotX: -0.22, rotY: 0 };
 
     const loader = new GLTFLoader();
     loader.load("/firewall.glb", (gltf) => {
       const model = gltf.scene;
+      if (disposed) { disposeObject(model); return; }
       const box0 = new THREE.Box3().setFromObject(model);
       const size0 = new THREE.Vector3(); box0.getSize(size0);
       const scale = 8 / Math.max(size0.x, size0.y, size0.z);
@@ -136,37 +163,21 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       camera.near = dist/1000; camera.far = dist*100;
       camera.updateProjectionMatrix();
 
-      console.log("GLB size:", sz.x.toFixed(3), sz.y.toFixed(3), sz.z.toFixed(3), "frontZ:", (sz.z/2).toFixed(3));
-
       if (threeRef.current) threeRef.current.size = sz;
 
       // Port indicator spheres. These positions are calibrated against the
       // actual socket centres in firewall.glb; the front-panel spacing is not
       // uniform, especially between CONSOLE/WAN and HA/LAN.
       const r = sz.y * 0.028; // smaller — sits in port hole
-      const portY = -0.164;
-      const portZ =  2.909;   // exact z from log (front face)
-      const exactDefs = [
-        { id:"power",   part:"power",   x:-3.349, color:"#ef4444" },
-        { id:"usb",     part:"usb",     x:-3.004, color:"#eab308" },
-        { id:"console", part:"console", x:-2.499, color:"#94a3b8" },
-        { id:"wan2",    part:"wan2",    x:-1.809, color:"#f97316" },
-        { id:"wan1",    part:"wan1",    x:-1.321, color:"#f97316" },
-        { id:"dmz",     part:"dmz",     x:-0.811, color:"#0d9488" },
-        { id:"ha-b",    part:"ha",      x:-0.290, color:"#7c3aed" },
-        { id:"ha-a",    part:"ha",      x: 0.237, color:"#7c3aed" },
-        { id:"lan-5",   part:"lan",     x: 1.007, color:"#2563eb" },
-        { id:"lan-4",   part:"lan",     x: 1.560, color:"#2563eb" },
-        { id:"lan-3",   part:"lan",     x: 2.150, color:"#2563eb" },
-        { id:"lan-2",   part:"lan",     x: 2.745, color:"#2563eb" },
-        { id:"lan-1",   part:"lan",     x: 3.356, color:"#2563eb" },
-      ];
-      exactDefs.forEach(({ id, part, x, color }) => {
+      const portY = sz.y * -0.164;
+      const portZ = box2.max.z; // derive from the actual front panel, not an outdated fixed depth
+      PORTS.forEach(({ id, part, x, color }) => {
         const sphere = new THREE.Mesh(
           new THREE.SphereGeometry(r, 12, 12),
           new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 1.8, roughness: 0.2, metalness: 0.1 })
         );
-        sphere.position.set(x, portY, portZ + r * 0.5);
+        sphere.position.set(x * sz.x, portY, portZ + r * 0.5);
+        sphere.visible = modeRef.current === "cable";
         sphere.userData.portId = id;
         sphere.userData.part   = part;
         group.add(sphere);
@@ -175,6 +186,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
 
       setLoading(false);
     }, undefined, (err) => {
+      if (disposed) return;
       setLoadErr("Could not load firewall.glb — " + ((err as any)?.message ?? String(err)));
       setLoading(false);
     });
@@ -182,6 +194,8 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     // Orbit
     let rotX = -0.22, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
     let autoRotate = true;
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    let downX = 0, downY = 0, dragged = false;
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
     group.rotation.set(rotX, rotY, 0);
 
@@ -192,6 +206,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const mouse = new THREE.Vector2();
 
     const onClick = (e: MouseEvent) => {
+      if (dragged) return;
       const r = mount.getBoundingClientRect();
       mouse.x = ((e.clientX-r.left)/r.width)*2-1;
       mouse.y = -((e.clientY-r.top)/r.height)*2+1;
@@ -220,20 +235,22 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
         && raycaster.intersectObjects(Object.values(portIndicators)).length > 0;
       mount.style.cursor = overPort
         ? "pointer"
-        : modeRef.current === "cable" ? "default" : (isDragging ? "grabbing" : "grab");
+        : (isDragging ? "grabbing" : "grab");
     };
 
     const onDown = (e: MouseEvent) => {
-      if (modeRef.current === "cable") return;
+      if (e.button !== 0) return;
+      downX = e.clientX; downY = e.clientY; dragged = false;
       isDragging=true; prevX=e.clientX; prevY=e.clientY;
       mount.style.cursor="grabbing"; resetIdleTimer();
     };
     const onUp   = () => {
       isDragging=false;
-      mount.style.cursor = modeRef.current === "cable" ? "default" : "grab";
+      mount.style.cursor = "grab";
     };
     const onMove = (e: MouseEvent) => {
       if (!isDragging) return;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 4) dragged = true;
       rotY += (e.clientX-prevX)*0.007; rotX += (e.clientY-prevY)*0.005;
       rotX = Math.max(-0.4, Math.min(1.1, rotX));
       prevX=e.clientX; prevY=e.clientY;
@@ -241,15 +258,16 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     };
     const onWheel = (e: WheelEvent) => {
       e.preventDefault(); resetIdleTimer();
-      camera.position.z = Math.max(0.5, camera.position.z*(1+e.deltaY*0.001));
+      camera.position.z = Math.min(50, Math.max(0.5, camera.position.z * Math.exp(Math.max(-200, Math.min(200, e.deltaY)) * 0.001)));
     };
     const onTS = (e: TouchEvent) => {
-      if (modeRef.current === "cable") return;
+      dragged = false; downX = e.touches[0].clientX; downY = e.touches[0].clientY;
       resetIdleTimer(); prevX=e.touches[0].clientX;
       prevY=e.touches[0].clientY; isDragging=true;
     };
     const onTM = (e: TouchEvent) => {
       e.preventDefault(); if(!isDragging)return;
+      if (Math.hypot(e.touches[0].clientX - downX, e.touches[0].clientY - downY) > 4) dragged = true;
       rotY+=(e.touches[0].clientX-prevX)*0.009; rotX+=(e.touches[0].clientY-prevY)*0.007;
       rotX=Math.max(-0.4,Math.min(1.1,rotX));
       prevX=e.touches[0].clientX; prevY=e.touches[0].clientY;
@@ -271,8 +289,8 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const animate = () => {
       animId = requestAnimationFrame(animate);
       // Check for reset signal from ref
-      if (threeRef.current && threeRef.current.rotX !== rotX) { rotX = threeRef.current.rotX; rotY = threeRef.current.rotY; group.rotation.set(rotX,rotY,0); }
-      if (autoRotate && !isDragging && modeRef.current === "explore") {
+      if (threeRef.current && (threeRef.current.rotX !== rotX || threeRef.current.rotY !== rotY)) { rotX = threeRef.current.rotX; rotY = threeRef.current.rotY; group.rotation.set(rotX,rotY,0); }
+      if (autoRotate && !isDragging && !reducedMotion.matches && modeRef.current === "explore") {
         rotY+=0.004; group.rotation.set(rotX,rotY,0); syncRotToRef();
       }
       renderer.render(scene,camera);
@@ -280,6 +298,8 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     animate();
 
     return () => {
+      disposed = true;
+      resizeObserver.disconnect();
       cancelAnimationFrame(animId);
       if (idleTimer) clearTimeout(idleTimer);
       mount.removeEventListener("click",      onClick);
@@ -291,6 +311,8 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       mount.removeEventListener("touchstart", onTS);
       mount.removeEventListener("touchmove",  onTM);
       mount.removeEventListener("touchend",   onTE);
+      disposeObject(group);
+      threeRef.current = null;
       renderer.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };
@@ -302,7 +324,14 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     if (!t || !t.size.x) return;
     const { group, portIndicators, cableMeshes, size } = t;
 
-    Object.values(cableMeshes).forEach((m: any) => group.remove(m));
+    Object.values(cableMeshes).forEach(m => {
+      group.remove(m);
+      if (m instanceof THREE.Mesh) {
+        m.geometry.dispose();
+        const materials = Array.isArray(m.material) ? m.material : [m.material];
+        materials.forEach(material => material.dispose());
+      }
+    });
     Object.keys(cableMeshes).forEach(k => delete cableMeshes[k]);
 
     if (mode !== "cable") {
@@ -324,15 +353,22 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       const cCol = new THREE.Color(cable.color);
       const cMat = new THREE.MeshStandardMaterial({ color: cCol, roughness: 0.45, metalness: 0.2 });
 
-      // RJ-45 plug body
-      const pw=size.y*0.075, ph=size.y*0.06, pd=size.y*0.075;
-      const plug = new THREE.Mesh(new THREE.BoxGeometry(pw,ph,pd), cMat);
+      const isPower = cable.id === "dc-power";
+      const isUsb = cable.id === "usb";
+      const pw = size.y * (isUsb ? 0.09 : isPower ? 0.12 : 0.22);
+      const ph = size.y * (isUsb ? 0.18 : isPower ? 0.12 : 0.18);
+      const pd = size.y * 0.27;
+      const plug = new THREE.Mesh(isPower
+        ? new THREE.CylinderGeometry(pw / 2, pw / 2, pd, 16)
+        : new THREE.BoxGeometry(pw, ph, pd), cMat);
+      if (isPower) plug.rotation.x = Math.PI / 2;
       // Sink the rear of the connector slightly into the socket so the
       // projected plug remains visually anchored while the chassis rotates.
       plug.position.set(sp.x, sp.y, sp.z+pd*0.35);
       group.add(plug); cableMeshes[portId+"_plug"]=plug;
 
-      // Latch tab
+      if (!isPower && !isUsb) {
+      // RJ-45 latch and eight contacts; USB and power use different connector geometry.
       const latch = new THREE.Mesh(new THREE.BoxGeometry(pw*0.4,ph*0.12,pd*0.5),
         new THREE.MeshStandardMaterial({color:cCol,roughness:0.2,metalness:0.6}));
       latch.position.set(sp.x, sp.y-ph*0.56, sp.z+pd*0.25);
@@ -340,14 +376,23 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
 
       // Gold pins
       const pinMat = new THREE.MeshStandardMaterial({color:0xd4a017,roughness:0.15,metalness:0.95});
-      for (let p=-3; p<=3; p++) {
+      for (let p=0; p<8; p++) {
         const pin = new THREE.Mesh(new THREE.BoxGeometry(pw*0.06,ph*0.35,pd*0.08),pinMat);
-        pin.position.set(sp.x+p*pw*0.13, sp.y+ph*0.1, sp.z+pd*0.96);
+        pin.position.set(sp.x+(p-3.5)*pw*0.11, sp.y+ph*0.1, sp.z+pd*0.45);
         group.add(pin); cableMeshes[portId+`_pin${p}`]=pin;
+      }
+      } else {
+        const metal = new THREE.MeshStandardMaterial({ color: 0xb7bdc5, roughness: 0.3, metalness: 0.8 });
+        const tip = new THREE.Mesh(isPower
+          ? new THREE.CylinderGeometry(pw * 0.28, pw * 0.28, pd * 0.45, 16)
+          : new THREE.BoxGeometry(pw * 0.8, ph * 0.8, pd * 0.45), metal);
+        if (isPower) tip.rotation.x = Math.PI / 2;
+        tip.position.set(sp.x, sp.y, sp.z - pd * 0.12);
+        group.add(tip); cableMeshes[portId + "_tip"] = tip;
       }
 
       // Boot (strain relief)
-      const boot = new THREE.Mesh(new THREE.CylinderGeometry(size.y*0.042,size.y*0.038,size.y*0.065,12),cMat);
+      const boot = new THREE.Mesh(new THREE.CylinderGeometry(size.y*0.048,size.y*0.038,size.y*0.10,12),cMat);
       boot.rotation.x=Math.PI/2;
       boot.position.set(sp.x, sp.y, sp.z+pd*0.8+size.y*0.03);
       group.add(boot); cableMeshes[portId+"_boot"]=boot;
@@ -378,7 +423,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); }
   function resetView() {
     if (!threeRef.current) return;
-    threeRef.current.rotX = -0.28;
+    threeRef.current.rotX = 0;
     threeRef.current.rotY = 0;
     threeRef.current.camera.position.z = 15.5;
   }
@@ -393,7 +438,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       </div>
 
       {/* 3D Viewport with overlay controls */}
-      <div style={{ flex:1, minHeight:0, position:"relative" }}>
+      <div style={{ flex:"1 0 320px", minHeight:320, position:"relative" }}>
         <div ref={mountRef} style={{ width:"100%", height:"100%", borderRadius:8, overflow:"hidden", border:"1px solid #1e2d45", background:"#0d1117", cursor:"grab" }}>
           {loading && !loadErr && (
             <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
@@ -412,7 +457,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
             { label:"−", title:"Zoom out", fn: zoomOut  },
             { label:"⟳", title:"Reset",    fn: resetView },
           ].map(({label,title,fn}) => (
-            <button key={label} onClick={fn} title={title}
+            <button key={label} onClick={fn} title={title} aria-label={title}
               style={{ width:32, height:32, borderRadius:6, border:"1px solid #2d3f5a", background:"rgba(13,17,23,0.88)", backdropFilter:"blur(8px)", color:"#cbd5e1", fontSize:label==="⟳"?13:18, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center" }}>
               {label}
             </button>
@@ -426,6 +471,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
             { m:"cable"   as const, label:"🔌 Cable Mode",  bg:"#2563eb" },
           ].map(({m,label,bg}) => (
             <button key={m}
+              aria-pressed={mode === m}
               onClick={() => {
                 setMode(m);
                 if (m === "explore") {
@@ -456,7 +502,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
 
       {/* Feedback toast */}
       {feedback && (
-        <div style={{ padding:"6px 14px", borderRadius:4, fontSize:12, fontWeight:500,
+        <div role="status" style={{ padding:"6px 14px", borderRadius:4, fontSize:12, fontWeight:500,
           background:feedback.ok?"#052e16":"#450a0a", color:feedback.ok?"#4ade80":"#f87171",
           border:`1px solid ${feedback.ok?"#166534":"#991b1b"}` }}>{feedback.msg}</div>
       )}
@@ -467,7 +513,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
           <div style={{ fontSize:11, color:"var(--text-muted)", marginBottom:7, textTransform:"uppercase", letterSpacing:"0.06em" }}>Select a cable — then click the matching glowing dot on the model</div>
           <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
             {CABLE_TYPES.map(c => (
-              <button key={c.id} onClick={() => setSelCable(selCable===c.id?null:c.id)}
+              <button key={c.id} aria-pressed={selCable === c.id} onClick={() => { const next = selCable === c.id ? null : c.id; cableRef.current = next; setSelCable(next); }}
                 style={{ padding:"4px 10px", fontSize:11, borderRadius:4, cursor:"pointer",
                   border:`1.5px solid ${selCable===c.id?c.color:"var(--border)"}`,
                   background:selCable===c.id?c.color+"22":"var(--surface-2)",
@@ -477,6 +523,19 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
                 {c.label}{Object.values(plugged).includes(c.id)?" ✓":""}
               </button>
             ))}
+          </div>
+          <p style={{ fontSize: 12, margin: "10px 0 6px", color: "var(--text-secondary)" }}>{Object.keys(plugged).length} / {PORTS.length} sockets connected. Select a cable, then use the model or a port button below. Connected ports can be unplugged.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }} aria-label="Cable practice ports">
+            {PORTS.map(port => <button key={port.id} aria-pressed={!!plugged[port.id]}
+              onClick={() => {
+                if (plugged[port.id]) {
+                  setPlugged(previous => { const next = { ...previous }; delete next[port.id]; return next; });
+                  showFeedback(`Unplugged ${port.id.toUpperCase()}.`, true);
+                } else handlePortClick(port.id);
+              }}
+              style={{ fontSize: 11, padding: "6px 9px", border: "1px solid var(--border)", borderRadius: 4, background: plugged[port.id] ? "#dcfce7" : "var(--surface-2)", color: "var(--text-primary)" }}>
+              {port.id.toUpperCase()} {plugged[port.id] ? "✓ Unplug" : "Connect"}
+            </button>)}
           </div>
           {selCable && <p style={{ fontSize:11, color:"var(--text-muted)", marginTop:7, marginBottom:0 }}>{CABLE_TYPES.find(c=>c.id===selCable)?.desc}</p>}
           {Object.keys(plugged).length>0 && (

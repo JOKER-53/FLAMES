@@ -96,8 +96,7 @@ export const getKnowledgeCheck = async (req: Request, res: Response) => {
     const question = await generateKnowledgeCheck(taskId, meta.title, meta.concept);
     res.json(hideAnswer(question));
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    res.status(500).json({ error: message });
+    res.status(503).json({ error: "Knowledge checks are unavailable. Your lab configuration is still usable." });
   }
 };
 

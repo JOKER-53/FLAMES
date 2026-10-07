@@ -1,17 +1,18 @@
 # Build context MUST be the repo root, same reasoning as backend/Dockerfile.
 
-FROM node:20-slim AS base
+FROM node:22-slim AS base
 WORKDIR /app
 
-COPY package.json ./
+COPY package.json package-lock.json* ./
 COPY packages/engine/package.json packages/engine/package.json
 COPY packages/backend/package.json packages/backend/package.json
 COPY packages/frontend/package.json packages/frontend/package.json
 
-RUN npm install --workspaces --include-workspace-root
+RUN npm ci
 
 COPY packages/engine packages/engine
 COPY packages/frontend packages/frontend
+RUN npm run build --workspace=@fortisim/engine
 
 WORKDIR /app/packages/frontend
 EXPOSE 5173
