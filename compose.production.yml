@@ -1,0 +1,47 @@
+name: fortisim-production
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: backend
+    environment:
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:?Set FRONTEND_ORIGIN to your HTTPS site origin}
+      AUTH_REQUIRED: "true"
+      TRUST_PROXY: "1"
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      INSTRUCTOR_EMAIL: ${INSTRUCTOR_EMAIL:-}
+      INSTRUCTOR_PASSWORD: ${INSTRUCTOR_PASSWORD:-}
+      NVIDIA_NIM_BASE_URL: ${NVIDIA_NIM_BASE_URL:-}
+      NVIDIA_NIM_API_KEY: ${NVIDIA_NIM_API_KEY:-}
+      NVIDIA_NIM_MODEL: ${NVIDIA_NIM_MODEL:-}
+    volumes:
+      - classroom-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.production
+      target: frontend
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+volumes:
+  classroom-data:

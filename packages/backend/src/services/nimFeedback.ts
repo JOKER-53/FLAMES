@@ -1,3 +1,5 @@
+import { nimRequest } from "./nimRequest";
+
 // ============================================================================
 // NVIDIA NIM feedback service. CRITICAL: must only ever receive a
 // GradingReport (facts about the student's own submission). Must NEVER
@@ -24,13 +26,7 @@ export async function getFeedbackForReport(
     ),
   ].join("\n");
 
-  const response = await fetch(`${process.env.NVIDIA_NIM_BASE_URL}/chat/completions`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NVIDIA_NIM_API_KEY}`,
-    },
-    body: JSON.stringify({
+  const response = await nimRequest({
       model: process.env.NVIDIA_NIM_MODEL,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
@@ -38,11 +34,10 @@ export async function getFeedbackForReport(
       ],
       max_tokens: 300,
       temperature: 0.4,
-    }),
   });
 
   if (!response.ok) {
-    throw new Error(`NIM API error: ${response.status} ${await response.text()}`);
+    throw new Error(`NIM API error: ${response.status}`);
   }
 
   const data = await response.json();

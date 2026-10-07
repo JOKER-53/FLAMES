@@ -19,3 +19,4 @@ export * from "./portScenarios";
 export * from "./hardQuestions";
 export * from "./evaluators/routingEvaluator";
 export * from "./scenarios/routingScenarios";
+export * from "./panExercises";

@@ -2,6 +2,18 @@ import { describe, it, expect } from 'vitest';
 import { ipToInt, parseCidr, parseIpRange, ipMatchesAddressValue, portMatchesServiceValue } from "../src/matching";
 
 describe('matching logic', () => {
+  it('rejects malformed numeric inputs instead of silently coercing them', () => {
+    for (const ip of ['10..0.1', '10.  .0.1', '0x10.0.0.1', '1e2.0.0.1']) {
+      expect(() => ipToInt(ip)).toThrow();
+    }
+    for (const cidr of ['10.0.0.1/', '10.0.0.1/24/8', '10.0.0.1/1e1']) {
+      expect(() => parseCidr(cidr)).toThrow();
+    }
+    for (const ports of ['', '-80', '80-', '0x50', '1e2']) {
+      expect(() => portMatchesServiceValue(80, ports)).toThrow();
+    }
+    expect(parseCidr('128.0.0.0/1')).toEqual({ start: 0x80000000, end: 0xffffffff });
+  });
   describe('ipToInt', () => {
     it('should correctly parse IP strings to integers', () => {
       expect(ipToInt("0.0.0.0")).toBe(0);

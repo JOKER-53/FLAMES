@@ -12,7 +12,7 @@ export function ipToInt(ip: string): number {
   let result = 0;
   for (const part of parts) {
     const n = Number(part);
-    if (!Number.isInteger(n) || n < 0 || n > 255) {
+    if (!/^\d{1,3}$/.test(part) || !Number.isInteger(n) || n < 0 || n > 255) {
       throw new Error(`Invalid IPv4 octet in "${ip}": "${part}"`);
     }
     result = result * 256 + n;
@@ -22,7 +22,7 @@ export function ipToInt(ip: string): number {
 
 export function parseCidr(cidr: string): { start: number; end: number } {
   const [ipPart, prefixPart] = cidr.split("/");
-  if (!ipPart || prefixPart === undefined) {
+  if (!ipPart || prefixPart === undefined || cidr.split("/").length !== 2 || !/^\d{1,2}$/.test(prefixPart)) {
     throw new Error(`Invalid CIDR notation: "${cidr}"`);
   }
   const prefix = Number(prefixPart);
@@ -31,7 +31,7 @@ export function parseCidr(cidr: string): { start: number; end: number } {
   }
   const base = ipToInt(ipPart);
   const hostBits = 32 - prefix;
-  const blockSize = hostBits === 32 ? 0x100000000 : 1 << hostBits;
+  const blockSize = 2 ** hostBits;
   const mask = hostBits === 32 ? 0 : (~0 << hostBits) >>> 0;
   const network = (base & mask) >>> 0;
   const end = hostBits === 32 ? 0xffffffff : (network + blockSize - 1) >>> 0;
@@ -74,13 +74,13 @@ export function portMatchesServiceValue(port: number, portSpec: string): boolean
     const [startStr, endStr] = parts;
     const start = Number(startStr);
     const end = Number(endStr);
-    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 65535 || start > end) {
+    if (!/^\d+$/.test(startStr) || !/^\d+$/.test(endStr) || !Number.isInteger(start) || !Number.isInteger(end) || start < 0 || end > 65535 || start > end) {
       throw new Error(`Invalid port range: "${portSpec}"`);
     }
     return port >= start && port <= end;
   }
   const single = Number(portSpec.trim());
-  if (!Number.isInteger(single) || single < 0 || single > 65535) {
+  if (!/^\d+$/.test(portSpec.trim()) || !Number.isInteger(single) || single < 0 || single > 65535) {
     throw new Error(`Invalid port value: "${portSpec}"`);
   }
   return port === single;

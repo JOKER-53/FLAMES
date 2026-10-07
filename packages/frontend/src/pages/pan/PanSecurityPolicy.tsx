@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { usePanGrading } from "../../hooks/usePanGrading";
+import { PAN_SECURITY_SCENARIOS as SCENARIOS } from "@fortisim/engine";
+import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 type Action = "allow" | "deny";
 type AppOption = { id: string; label: string; ports: string; risk: string };
@@ -26,70 +30,30 @@ interface Rule {
   action: Action;
 }
 
-const SCENARIOS = [
-  {
-    id: "pan-sec-01",
-    title: "Basic Outbound Access",
-    description: "Allow internal users (Trust zone) to browse the web and use DNS. Block everything else. Remember: PAN-OS uses App-ID — specify the application, not the port.",
-    hint: "You need two rules: one allowing web-browsing+ssl+dns from Trust→Untrust, and a deny-all at the bottom.",
-    checks: [
-      { desc:"Allow web-browsing from Trust → Untrust", fn: (r:Rule[]) => r.some(x=>x.action==="allow"&&x.srcZone==="Trust"&&x.dstZone==="Untrust"&&x.apps.includes("web-browsing")) },
-      { desc:"Allow ssl from Trust → Untrust",          fn: (r:Rule[]) => r.some(x=>x.action==="allow"&&x.srcZone==="Trust"&&x.dstZone==="Untrust"&&x.apps.includes("ssl")) },
-      { desc:"Allow dns from Trust → Untrust",          fn: (r:Rule[]) => r.some(x=>x.action==="allow"&&x.srcZone==="Trust"&&x.dstZone==="Untrust"&&x.apps.includes("dns")) },
-      { desc:"Deny-all rule exists at bottom",          fn: (r:Rule[]) => r.length>0&&r[r.length-1].action==="deny"&&r[r.length-1].srcZone==="any"&&r[r.length-1].dstZone==="any" },
-    ],
-  },
-  {
-    id: "pan-sec-02",
-    title: "DMZ Web Server Access",
-    description: "A web server in the DMZ must accept HTTPS (ssl) from Untrust (internet). Internal Trust users can also reach it via HTTP (web-browsing) and HTTPS. DMZ must NOT initiate connections to Trust.",
-    hint: "Three rules: Untrust→DMZ allow ssl; Trust→DMZ allow web-browsing+ssl; DMZ→Trust deny.",
-    checks: [
-      { desc:"Allow ssl from Untrust → DMZ",            fn:(r:Rule[])=>r.some(x=>x.action==="allow"&&x.srcZone==="Untrust"&&x.dstZone==="DMZ"&&x.apps.includes("ssl")) },
-      { desc:"Allow web-browsing from Trust → DMZ",     fn:(r:Rule[])=>r.some(x=>x.action==="allow"&&x.srcZone==="Trust"&&x.dstZone==="DMZ"&&x.apps.includes("web-browsing")) },
-      { desc:"Block DMZ → Trust traffic",               fn:(r:Rule[])=>r.some(x=>x.action==="deny"&&x.srcZone==="DMZ"&&(x.dstZone==="Trust"||x.dstZone==="any")&&x.apps.some(a=>a==="any"||a==="web-browsing")) },
-    ],
-  },
-  {
-    id: "pan-sec-03",
-    title: "App-ID Enforcement",
-    description: "Block high-risk applications (bittorrent, rdp) for all users while allowing general web access. Show why App-ID beats port-based rules: RDP on TCP/3389 could be renamed — App-ID catches it regardless.",
-    hint: "Block bittorrent and rdp explicitly (any→any deny), then allow web-browsing+ssl from Trust→Untrust.",
-    checks: [
-      { desc:"Block bittorrent (any zone)",             fn:(r:Rule[])=>r.some(x=>x.action==="deny"&&x.apps.includes("bittorrent")) },
-      { desc:"Block rdp (any zone)",                    fn:(r:Rule[])=>r.some(x=>x.action==="deny"&&x.apps.includes("rdp")) },
-      { desc:"Allow web-browsing Trust→Untrust",        fn:(r:Rule[])=>r.some(x=>x.action==="allow"&&x.srcZone==="Trust"&&x.dstZone==="Untrust"&&x.apps.includes("web-browsing")) },
-      { desc:"Block rules placed BEFORE allow rules",   fn:(r:Rule[])=>{
-        const blockIdx = Math.min(...r.filter(x=>x.apps.includes("bittorrent")||x.apps.includes("rdp")).map((_,i)=>i));
-        const allowIdx = r.findIndex(x=>x.action==="allow"&&x.apps.includes("web-browsing"));
-        return blockIdx < allowIdx;
-      }},
-    ],
-  },
-];
 
 const RISK_COLOR: Record<string,string> = { low:"#22c55e", medium:"#f97316", high:"#ef4444", "—":"#94a3b8" };
 
 import { PanSession } from "../../hooks/usePanSession";
 export function PanSecurityPolicy({ session }: { session: PanSession }) {
-  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const location = useLocation();
+  const [scenarioIdx, setScenarioIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenarioIdx];
   const [rules, setRules] = useState<Rule[]>([]);
   const [nextId, setNextId] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [newRule, setNewRule] = useState<Partial<Rule>>({ srcZone:"Trust", dstZone:"Untrust", apps:[], action:"allow", name:"" });
-  const [results, setResults] = useState<{desc:string;pass:boolean}[]|null>(null);
+  const { results, setResults, aiFeedback, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
   const [showHint, setShowHint] = useState(false);
-  const [aiFeedback, setAiFeedback] = useState<string|null>(null);
-  const [loadingFeedback, setLoadingFeedback] = useState(false);
   // Knowledge check state
-  const [kqLoading, setKqLoading] = useState(false);
-  const [kqError, setKqError] = useState<string|null>(null);
-  const [kqData, setKqData] = useState<{questionId:string;question:string;choices:string[]}|null>(null);
-  const [kqSelected, setKqSelected] = useState<number|null>(null);
-  const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
-  const [kqLocked, setKqLocked] = useState(false);
+  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", scenario.id, session.markTaskComplete);
 
+
+  useEffect(() => {
+    const id = location.state?.taskId ?? new URLSearchParams(location.search).get("task");
+    const index = SCENARIOS.findIndex(scenario => scenario.id === id);
+    if (index >= 0) setScenarioIdx(index);
+  }, [location.key]);
+  useEffect(() => { setRules([]); setResults(null); }, [scenario.id]);
 
   function addRule() {
     if (!newRule.name || !newRule.apps?.length) return;
@@ -104,37 +68,8 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
   function moveUp(idx:number) { if(idx===0)return; const r=[...rules]; [r[idx-1],r[idx]]=[r[idx],r[idx-1]]; setRules(r); setResults(null); }
   function moveDown(idx:number) { if(idx===rules.length-1)return; const r=[...rules]; [r[idx],r[idx+1]]=[r[idx+1],r[idx]]; setRules(r); setResults(null); }
 
-  function grade() {
-    const res = scenario.checks.map(c=>({ desc:c.desc, pass:c.fn(rules) }));
-    setResults(res);
-    if (res.every(r=>r.pass)) {
-      session.markTaskComplete(scenario.id);
-    } else {
-      const failing = res.filter(r=>!r.pass).map(r=>r.desc);
-      setLoadingFeedback(true); setAiFeedback(null);
-      fetch("/api/pan/feedback", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({ exerciseTitle: scenario.title, failingChecks: failing })
-      }).then(r=>r.json()).then(d=>setAiFeedback(d.feedback??null)).catch(()=>setAiFeedback(null)).finally(()=>setLoadingFeedback(false));
-    }
-  }
+  function grade() { void submitGrade(rules); }
 
-  function loadKQ() {
-    setKqLoading(true); setKqError(null); setKqData(null); setKqSelected(null); setKqResult(null); setKqLocked(false);
-    fetch(`/api/pan/knowledge-check/${scenario.id}`)
-      .then(r=>r.ok?r.json():Promise.reject(r.status))
-      .then(d=>setKqData(d))
-      .catch(e=>setKqError("Failed to load question: "+e))
-      .finally(()=>setKqLoading(false));
-  }
-
-  async function answerKQ() {
-    if (kqSelected===null||!kqData||kqLocked) return;
-    setKqLocked(true);
-    const r=await fetch("/api/pan/knowledge-check/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:kqData.questionId,selectedIndex:kqSelected})});
-    if(!r.ok){setKqError("Could not verify answer");return;} const d=await r.json();
-    if(d.correct){setKqResult("correct");session.markTaskComplete(scenario.id);} else setKqResult("incorrect");
-  }
 
   function toggleApp(app:string) {
     setNewRule(r=>({ ...r, apps: r.apps?.includes(app) ? r.apps.filter(a=>a!==app) : [...(r.apps??[]),app] }));
@@ -145,6 +80,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
 
   return (
     <div style={{ maxWidth:1100 }}>
+      {gradeError && <p className="platform-error" role="alert">{gradeError}</p>}
       {/* Header */}
       <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
         <div>
@@ -286,7 +222,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
           <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
             <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: results?12:0 }}>
               <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button onClick={grade}
+              <button disabled={grading} onClick={grade}
                 style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>
                 Submit
               </button>
@@ -337,7 +273,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
                 <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
                   {kqData.choices.map((c,i)=>(
                     <label key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"7px 10px", borderRadius:6, border:`1px solid ${kqSelected===i?"#fa4616":"#e2e8f0"}`, background:kqSelected===i?"#fff7f0":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12, lineHeight:1.4 }}>
-                      <input type="radio" name={`kq-${scenario.id}`} checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);setKqResult(null);}}} style={{ marginTop:2, flexShrink:0 }}/>
+                      <input type="radio" name={`kq-${scenario.id}`} checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);}}} style={{ marginTop:2, flexShrink:0 }}/>
                       {c}
                     </label>
                   ))}

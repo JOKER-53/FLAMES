@@ -29,7 +29,7 @@ export const SECURITY_TASKS: PanTask[] = [
   },
   {
     id: "pan-sec-04",
-    title: "Split Tunneling Prevention",
+    title: "Approved Application Whitelist",
     description: "Users must ONLY use approved apps (web-browsing, ssl, dns, smtp). All other applications including ssh and ftp must be denied. Use App-ID, not ports.",
     difficulty: 6,
   },
@@ -102,7 +102,7 @@ export const NAT_TASKS: PanTask[] = [
 export const NAT_FINAL: PanTask = {
   id: "pan-nat-final",
   title: "NAT Policy Final",
-  description: "Configure complete NAT: outbound SNAT for all Trust hosts, DNAT for web and mail servers in DMZ, and a static NAT for a dedicated management server.",
+  description: "Combine outbound SNAT to the interface IP, DNAT for the DMZ web server, and static NAT for the dedicated mail-server address.",
   difficulty: 9,
   isFinal: true,
 };

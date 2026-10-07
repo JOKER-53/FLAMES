@@ -2,7 +2,7 @@
 # folder -- npm workspaces needs the root package.json and sibling
 # packages/engine present to resolve @fortisim/engine.
 
-FROM node:20-slim AS base
+FROM node:22-slim AS base
 WORKDIR /app
 
 # Copy root + all package manifests first (better layer caching: this layer
@@ -12,11 +12,12 @@ COPY packages/engine/package.json packages/engine/package.json
 COPY packages/backend/package.json packages/backend/package.json
 COPY packages/frontend/package.json packages/frontend/package.json
 
-RUN npm install --workspaces --include-workspace-root
+RUN npm ci
 
 # Now copy actual source for the packages this service needs.
 COPY packages/engine packages/engine
 COPY packages/backend packages/backend
+RUN npm run build --workspace=@fortisim/engine
 
 WORKDIR /app/packages/backend
 EXPOSE 4000

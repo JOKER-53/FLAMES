@@ -1,0 +1,21 @@
+name: Verify training platform
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run verify
+      - name: Validate deployment configuration
+        run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml config --quiet
+      - name: Build deployment images
+        run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml build

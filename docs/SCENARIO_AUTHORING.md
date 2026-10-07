@@ -58,9 +58,21 @@ See `packages/engine/src/portScenarios.ts`.
   anywhere in evaluator/grader code or route handlers. If a scenario
   needs special-case logic, the data model is missing something general.
 - **Don't** put a model/correct answer inside any field that could
-  accidentally be sent to the frontend. The only answer key is the
-  behavioral `expectedOutcomes` / `checks` list, and it must never leave
-  the backend.
+   accidentally be sent to the frontend. The API strips expected outcomes,
+   but browser-side exercises currently import scenario definitions. Do not
+   treat the application as a secret-answer-key examination system.
 - **Don't** write scenarios with only a "happy path" check. Always
   include packets/fields that should fail if the student is too
   permissive or careless.
+
+## Palo Alto exercises
+
+Add security, zone, or NAT exercises in `packages/engine/src/panExercises.ts`,
+metadata in `packages/frontend/src/pages/pan/panTasks.ts`, and a concept mapping
+for optional knowledge checks. Exercise selectors and server grading share
+these definitions. Prove every listed exercise and final with positive and
+negative fixtures in `packages/engine/test/panExercises.test.ts`.
+
+Security tests must evaluate effective traffic in rule order, not the mere
+existence of an allow/deny rule. Zone checks must reject shared interface
+ownership. NAT mappings must match exactly within one coherent rule.

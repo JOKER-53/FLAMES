@@ -1,90 +1,37 @@
-# Architecture: how a grading request flows end to end
-Good catch — that's a real gap. We designed ARCHITECTURE.md, SCENARIO_AUTHORING.md, and ROADMAP.md content together earlier in this conversation (back when we built the engine), but those were only ever created in my sandbox, never delivered to your actual machine through a terminal command — same root cause as the index.ts and docker-compose.yml gaps we hit before. The README is referencing files that don't exist in your repo.
+# Architecture
 
-Let's fix this properly. Run from ~/fortisim:
-bash
+FortiSim is an npm workspace with three packages.
 
-mkdir -p docs
+| Package | Responsibility |
+| --- | --- |
+| engine | Pure traffic matching, graders, scenario definitions, PAN practice models |
+| backend | Express API, input validation, SQLite accounts/sessions/progress, tutoring proxy |
+| frontend | React routes, vendor consoles, hardware interaction, guest/account completion cache |
 
-docs/ARCHITECTURE.md:
-bash
+## Runtime
 
-cat > docs/ARCHITECTURE.md << 'EOF'
-# Architecture: how a grading request flows end to end
+The frontend sends same-origin /api requests. Vite forwards them to the API during development; Nginx does so in production. The API loads compiled CommonJS engine output. Vite consumes the engine's TypeScript browser entry. Rebuild the engine after source changes when running the backend independently.
 
-Browser (React frontend)
-|
-| Student edits configuration (policy/interface/port)
-|
-| [Test Connectivity] --------> calls @fortisim/engine's evaluatePacket()
-| directly in-browser. No network call.
-| Instant local feedback before submitting.
-|
-| [Submit for Grading] --------> POST /api/submissions/:id/feedback
-v (or /api/interface-submissions/...,
-/api/port-submissions/...)
-Express backend
-|
-| 1. getScenarioById(id) -> includes the answer key
-| (expectedOutcomes / checks) -- NEVER sent to the frontend
-|
-| 2. gradeSubmission(scenario, submission)
-| -> calls @fortisim/engine's evaluator/grader functions
-| -> produces a GradingReport: facts only, no answer key
-|
-| 3. if report.overallPassed:
-| return { report }
-| else:
-| getFeedbackForReport(title, report)
-| -> calls NVIDIA NIM with ONLY the GradingReport diagnostics
-| + a system prompt forbidding answer disclosure
-| return { report, aiRemark }
-## Why the answer key never reaches the AI or the browser
+AccountProvider resolves session state before hosted training access. Local guest practice remains available unless AUTH_REQUIRED=true. Passwords use salted scrypt, session tokens are random and stored as SHA-256 digests, and sessions expire after seven days. Cookie flags are HTTP-only, SameSite=Lax, and Secure in production. Mutating requests with an unapproved Origin are rejected. Registration never accepts a caller-selected instructor role.
 
-Two independent layers enforce "the AI must not give the answer directly":
+SQLite tables hold users, sessions, and completion markers. WAL and a busy timeout support a small single-instance classroom. Completion writes are transactional, monotonic merges keyed by user + platform + task. Device caches use account-specific keys, so guest history is not silently assigned to an account. Roster access is instructor-only. This is one shared classroom, not a multi-tenant institution system.
 
-1. **Structural (the real guarantee).** `getStudentFacingScenario()` strips
-   the answer key (`expectedOutcomes` for policy scenarios, `checks` for
-   interface/port scenarios) before any scenario data is sent to the
-   frontend. The AI feedback functions (`getFeedbackForReport`,
-   `getFeedbackForInterfaceReport`) only ever receive a grading report —
-   which by construction contains only facts about the *student's own*
-   submission, never the scenario's correct values. The AI model is never
-   in possession of "the answer" at all, so it cannot leak what it
-   doesn't have, regardless of how it's prompted.
+## Grading and tutoring
 
-2. **Prompt-level (defense in depth, not the primary guarantee).** The
-   system prompts in `nimFeedback.ts` / `nimInterfaceFeedback.ts`
-   explicitly instruct the model to redirect rather than answer if a
-   student asks directly. This matters for tone, but it is NOT what's
-   relied on to prevent leakage -- that's layer 1's job.
+FortiGate policy/interface/port submissions are graded by API endpoints. Palo Alto security/zone/NAT submissions use /api/pan/grade/:taskId and the shared PAN exercise definitions. Security checks evaluate effective first-match traffic behavior; zone checks enforce exclusive interface ownership; NAT checks require coherent exact mappings instead of unrelated partial rules or substring matches.
 
-## Why one evaluator, not two
+The AI tutor is optional. Requests use a 15-second timeout, and grading reports remain usable on provider failure. Generated questions are validated, kept in a capped 15-minute store, and consumed once. Restarting the API invalidates pending questions. The question store is in-memory and unsuitable for an uncoordinated multi-replica deployment.
 
-`evaluatePacket()` / `evaluateAll()` in `@fortisim/engine` are imported
-unchanged by both frontend (instant local "Test Connectivity") and
-backend (authoritative grading). If these ever diverged, a student could
-see their test connectivity tool say "ACCEPT" and then get graded as
-"DENY" for the same input -- confusing and untrustworthy. Any change to
-matching semantics happens in `@fortisim/engine` only.
+Knowledge checks and ordinary submissions both contribute student-reported completion. Instructor counts are not tamper-proof grades. Configuration drafts are ephemeral. Some tools still evaluate locally. Browser bundles include exercise definitions; API answer stripping is not a claim of browser answer-key secrecy.
 
-The same principle applies to interface and port grading
-(`gradeInterfaceSubmission`, `gradePortSubmission`): the grading logic
-lives in the engine package, not duplicated in route handlers.
+## UI and hardware
 
-## Three parallel grading tracks
+Routes are lazy-loaded. The initial bundle does not include Three.js; hardware pages load it on demand. The hardware renderer derives front-panel depth from model bounds and keeps socket indicators/connectors in the same rotating group. Explore hides dots and cables. Cable mode starts empty, allows manual rotation, provides keyboard port controls, and clears connections with Reset. WebGL errors are surfaced; geometry, materials, textures, observers, timers, and handlers are cleaned up.
 
-The project has three independent scenario/grading tracks, each with its
-own types, grader, and scenario list, but following the same shape:
+The model's socket X/Y anchors remain calibrated to the supplied asset. Automated checks establish unique ordered anchors and cable compatibility, not pixel-perfect socket fit. Visual acceptance must use current screenshots or manual interaction.
 
-| Track | Scenario type | Grader | Answer key field |
-|---|---|---|---|
-| Firewall Policy | `Scenario` | `gradeSubmission` | `expectedOutcomes` |
-| Interface Config | `InterfaceScenario` | `gradeInterfaceSubmission` | `checks` |
-| Port Assignment | `PortScenario` | `gradePortSubmission` | `checks` |
+## Deployment boundary
 
-Firewall Policy grading is *behavioral* (run test packets, compare
-resulting ACCEPT/DENY outcomes). Interface and Port grading is *exact
-value* (compare submitted field values against expected values) -- a
-simpler model appropriate for configuration values that don't have
-"equally valid alternatives" the way firewall policies do.
+The production build has a non-root Node API and an unprivileged Nginx SPA target. Only the frontend port is exposed on loopback; an external HTTPS reverse proxy must terminate TLS. The API trusts one internal Nginx hop only when TRUST_PROXY=1. Do not expose that API directly or broaden proxy trust without reassessing the network boundary. SQLite lives in a persistent volume; backup it with the API stopped or use a consistent SQLite backup tool.
+
+Production and dev containers are deliberately separate. See [deployment](DEPLOYMENT.md) and [release checklist](RELEASE_CHECKLIST.md).

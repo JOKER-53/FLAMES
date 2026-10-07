@@ -4,8 +4,8 @@ import { generatePanKnowledgeCheck } from "../services/nimPanKnowledgeCheck";
 import { checkAnswer, hideAnswer } from "../services/questionStore";
 
 export const panFeedback = async (req: Request, res: Response) => {
-  const { exerciseTitle, failingChecks } = req.body;
-  if (!exerciseTitle || !Array.isArray(failingChecks)) {
+  const { exerciseTitle, failingChecks } = req.body ?? {};
+  if (typeof exerciseTitle !== "string" || !exerciseTitle.trim() || exerciseTitle.length > 200 || !Array.isArray(failingChecks) || failingChecks.length > 100 || failingChecks.some(check => typeof check !== "string" || check.length > 1000)) {
     res.status(400).json({ error: "exerciseTitle and failingChecks[] required" });
     return;
   }
@@ -13,7 +13,7 @@ export const panFeedback = async (req: Request, res: Response) => {
     const feedback = await getPanFeedback(exerciseTitle, failingChecks);
     res.json({ feedback });
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(503).json({ error: "AI tutor is unavailable. Review the grading checks and try again later." });
   }
 };
 
@@ -22,7 +22,7 @@ export const panKnowledgeCheck = async (req: Request, res: Response) => {
     const question = await generatePanKnowledgeCheck(req.params.taskId);
     res.json(hideAnswer(question));
   } catch (err: unknown) {
-    res.status(500).json({ error: (err as Error).message });
+    res.status(503).json({ error: "Knowledge check is unavailable. Try again later." });
   }
 };
 

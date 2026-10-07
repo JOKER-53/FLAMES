@@ -3,8 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "description": "Tool-agnostic first-match-wins policy evaluation and behavioral grading engine for FortiSim.",
-  "main": "src/index.ts",
+  "main": "dist/index.js",
+  "browser": "src/index.ts",
+  "types": "dist/index.d.ts",
   "scripts": {
+    "build": "tsc",
     "test": "vitest run",
     "test:watch": "vitest",
     "demo": "ts-node src/demo.ts"

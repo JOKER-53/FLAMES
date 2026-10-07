@@ -3,71 +3,26 @@
 // every mount. One attempt only: wrong answer locks the card permanently.
 // ============================================================================
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { ScenarioSession } from "../hooks/useScenarioSession";
+import { useKnowledgeCheck } from "../hooks/useKnowledgeCheck";
 
 interface HardQuestionCardProps {
   taskId: string | undefined;
   session: ScenarioSession;
 }
 
-interface Question {
-  questionId: string;
-  question: string;
-  choices: string[];
-}
-
 export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
-  const [question, setQuestion] = useState<Question | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [result, setResult] = useState<"correct" | "incorrect" | null>(null);
-  const [locked, setLocked] = useState(false);
+  const { kqData: question, kqLoading: loading, kqError: fetchError, kqSelected: selected, setKqSelected: setSelected, kqResult: result, kqLocked: locked, loadKQ, answerKQ: handleAnswer } = useKnowledgeCheck("fortigate", taskId, session.markTaskComplete);
 
   useEffect(() => {
-    if (!taskId) return;
-    setQuestion(null);
-    setSelected(null);
-    setResult(null);
-    setLocked(false);
-    setFetchError(null);
-    setLoading(true);
-
-    fetch(`/api/knowledge-check/${taskId}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`Server error ${r.status}`);
-        return r.json();
-      })
-      .then((data) => setQuestion(data))
-      .catch((err) => setFetchError(err.message ?? "Failed to load question"))
-      .finally(() => setLoading(false));
-  }, [taskId]);
+    void loadKQ();
+  }, [loadKQ]);
 
   if (!taskId) return null;
 
   const id: string = taskId;
   const completed = session.completedTaskIds.has(id);
-
-  async function handleAnswer() {
-    if (selected === null || locked || !question) return;
-    setLocked(true);
-    const response = await fetch("/api/knowledge-check/answer", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ questionId: question.questionId, selectedIndex: selected }),
-    });
-    if (!response.ok) {
-      setFetchError("Could not verify answer");
-      return;
-    }
-    const { correct } = await response.json();
-    if (correct) {
-      setResult("correct");
-      session.markTaskComplete(id);
-    } else {
-      setResult("incorrect");
-    }
-  }
 
   return (
     <div className="bg-white border border-gray-200 rounded-md p-4">
@@ -90,7 +45,7 @@ export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
       )}
 
       {fetchError && (
-        <div className="text-[12.5px] text-red-500">Failed to load question: {fetchError}</div>
+        <div className="text-[12.5px] text-red-500" role="alert">{fetchError}<button className="ml-2 underline" onClick={() => void loadKQ()}>Load a new question</button></div>
       )}
 
       {question && (
@@ -122,7 +77,6 @@ export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
                   onChange={() => {
                     if (!locked && !completed) {
                       setSelected(idx);
-                      setResult(null);
                     }
                   }}
                 />

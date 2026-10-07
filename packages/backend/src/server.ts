@@ -1,26 +1,29 @@
-import express from "express";
-import cors from "cors";
 import dotenv from "dotenv";
 dotenv.config();
-import { scenariosRouter } from "./routes/scenarios";
-import { submissionsRouter } from "./routes/submissions";
-import { interfaceSubmissionsRouter } from "./routes/interfaceSubmissions";
-import { portSubmissionsRouter } from "./routes/portSubmissions";
-import { knowledgeCheckRouter } from "./routes/knowledgeCheck";
-import { panRouter } from "./routes/panRoutes";
+import { resolve } from "node:path";
+import { createApp } from "./app";
+import { PlatformStore } from "./platform/store";
+import { hashPassword } from "./platform/auth";
 
-const app = express();
-const PORT = process.env.PORT || 4000;
-
-app.use(cors({ origin: process.env.FRONTEND_ORIGIN || "http://localhost:5173" }));
-app.use(express.json());
-
-app.use("/api/scenarios", scenariosRouter);
-app.use("/api/submissions", submissionsRouter);
-app.use("/api/interface-submissions", interfaceSubmissionsRouter);
-app.use("/api/port-submissions", portSubmissionsRouter);
-app.use("/api/knowledge-check", knowledgeCheckRouter);
-app.use("/api/pan", panRouter);
-
-app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
-app.listen(PORT, () => console.log(`FortiSim backend listening on port ${PORT}`));
+async function main() {
+  const store = new PlatformStore(process.env.DATABASE_PATH || resolve("data/fortisim.sqlite"));
+  const email = process.env.INSTRUCTOR_EMAIL?.trim().toLowerCase();
+  const password = process.env.INSTRUCTOR_PASSWORD;
+  if (email && password) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("INSTRUCTOR_EMAIL must be a valid email address.");
+    if (password.length < 12 || password.length > 128) throw new Error("INSTRUCTOR_PASSWORD must contain 12–128 characters.");
+    const existing = store.findEmail(email);
+    if (existing && existing.user.role !== "instructor") throw new Error("The bootstrap instructor email belongs to a student. Use a different email.");
+    if (!existing) store.createUser(email, "Instructor", await hashPassword(password), "instructor");
+  } else if (email || password) {
+    throw new Error("Set both INSTRUCTOR_EMAIL and INSTRUCTOR_PASSWORD, or neither.");
+  }
+  const server = createApp(store).listen(Number(process.env.PORT) || 4000, () => console.log("FortiSim API ready"));
+  const shutdown = () => {
+    server.close(() => { store.close(); process.exit(0); });
+    setTimeout(() => process.exit(1), 10_000).unref();
+  };
+  process.once("SIGTERM", shutdown);
+  process.once("SIGINT", shutdown);
+}
+main().catch(error => { console.error(error.message); process.exit(1); });

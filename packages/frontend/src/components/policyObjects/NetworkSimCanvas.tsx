@@ -323,6 +323,7 @@ export function NetworkSimCanvas({ addresses, traces, onClose }: NetworkSimCanva
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
     function resize() {
+      if (!canvas || !canvas.parentElement) return;
       const rect = canvas.parentElement!.getBoundingClientRect();
       const W = rect.width;
       const H = Math.max(340, W * 0.5);
@@ -337,10 +338,14 @@ export function NetworkSimCanvas({ addresses, traces, onClose }: NetworkSimCanva
   }, [addresses, draw]);
 
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (traces.length > 0) {
-      setTimeout(() => runSimulation(), 300);
+      timer = setTimeout(() => runSimulation(), 300);
     }
-    return () => cancelAnimationFrame(animRef.current);
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(animRef.current);
+    };
   }, [traces]);
 
   return (

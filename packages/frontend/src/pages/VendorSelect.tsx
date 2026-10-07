@@ -4,9 +4,13 @@
 // Palo Alto  → /paloalto  (new PAN-OS sim)
 // ============================================================================
 import { useNavigate } from "react-router-dom";
+import { AccountLink } from "../components/AccountLink";
+import { Link } from "react-router-dom";
+import { useAccount } from "../hooks/useAccount";
 
 export function VendorSelect() {
   const navigate = useNavigate();
+  const { user } = useAccount();
 
   return (
     <div style={{
@@ -16,14 +20,15 @@ export function VendorSelect() {
       fontFamily: "system-ui, sans-serif",
     }}>
       {/* Header */}
+      <div className="platform-actions" style={{ marginBottom: 24 }}><AccountLink />{user?.role === "instructor" && <Link to="/classroom" style={{ color: "#cbd5e1" }}>Classroom progress</Link>}</div>
       <div style={{ textAlign: "center", marginBottom: 48 }}>
-        <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#4b6080", textTransform: "uppercase", marginBottom: 12 }}>
+        <div style={{ fontSize: 11, letterSpacing: "0.2em", color: "#8b9db5", textTransform: "uppercase", marginBottom: 12 }}>
           Firewall Simulation Lab
         </div>
         <h1 style={{ fontSize: 32, fontWeight: 700, color: "#e2e8f0", margin: 0, letterSpacing: "-0.5px" }}>
           Choose Your Platform
         </h1>
-        <p style={{ color: "#4b6080", fontSize: 14, marginTop: 10 }}>
+        <p style={{ color: "#8b9db5", fontSize: 14, marginTop: 10 }}>
           Select a firewall vendor to begin your training session
         </p>
       </div>
@@ -35,7 +40,7 @@ export function VendorSelect() {
         <button
           onClick={() => navigate("/fortigate")}
           style={{
-            width: 300, background: "#0d1117", border: "1px solid #1e2d45",
+            width: 300, maxWidth: "calc(100vw - 48px)", background: "#0d1117", border: "1px solid #1e2d45",
             borderRadius: 12, padding: "32px 28px", cursor: "pointer",
             textAlign: "left", transition: "all 0.2s",
             position: "relative", overflow: "hidden",
@@ -64,7 +69,7 @@ export function VendorSelect() {
             </div>
             <div>
               <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 18 }}>FortiGate</div>
-              <div style={{ color: "#4b6080", fontSize: 12 }}>by Fortinet</div>
+              <div style={{ color: "#8b9db5", fontSize: 12 }}>by Fortinet</div>
             </div>
           </div>
 
@@ -84,7 +89,7 @@ export function VendorSelect() {
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ color: "#ee1111", fontSize: 13, fontWeight: 600 }}>Start Training →</span>
-            <span style={{ fontSize: 11, color: "#2d4060", background: "#0f1923", padding: "3px 8px", borderRadius: 4, border: "1px solid #1e2d45" }}>
+            <span style={{ fontSize: 11, color: "#8b9db5", background: "#0f1923", padding: "3px 8px", borderRadius: 4, border: "1px solid #1e2d45" }}>
               Available
             </span>
           </div>
@@ -94,7 +99,7 @@ export function VendorSelect() {
         <button
           onClick={() => navigate("/paloalto")}
           style={{
-            width: 300, background: "#0d1117", border: "1px solid #1e2d45",
+            width: 300, maxWidth: "calc(100vw - 48px)", background: "#0d1117", border: "1px solid #1e2d45",
             borderRadius: 12, padding: "32px 28px", cursor: "pointer",
             textAlign: "left", transition: "all 0.2s",
             position: "relative", overflow: "hidden",
@@ -128,12 +133,12 @@ export function VendorSelect() {
             </div>
             <div>
               <div style={{ color: "#e2e8f0", fontWeight: 700, fontSize: 18 }}>PA-Series</div>
-              <div style={{ color: "#4b6080", fontSize: 12 }}>by Palo Alto Networks</div>
+              <div style={{ color: "#8b9db5", fontSize: 12 }}>by Palo Alto Networks</div>
             </div>
           </div>
 
           <div style={{ color: "#94a3b8", fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-            Train on PAN-OS — configure security policies, App-ID rules, zone-based protection, and Panorama-style management on a simulated PA-220.
+            Train on PAN-OS — configure security policies, App-ID rules, NAT, zones, interfaces, and port assignments on a simulated PA-220.
           </div>
 
           {/* Feature pills */}
@@ -148,7 +153,7 @@ export function VendorSelect() {
 
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ color: "#fa4616", fontSize: 13, fontWeight: 600 }}>Start Training →</span>
-            <span style={{ fontSize: 11, color: "#2d4060", background: "#0f1923", padding: "3px 8px", borderRadius: 4, border: "1px solid #1e2d45" }}>
+            <span style={{ fontSize: 11, color: "#8b9db5", background: "#0f1923", padding: "3px 8px", borderRadius: 4, border: "1px solid #1e2d45" }}>
               Available
             </span>
           </div>
@@ -156,7 +161,7 @@ export function VendorSelect() {
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop: 48, color: "#2d4060", fontSize: 12, textAlign: "center" }}>
+      <div style={{ marginTop: 48, color: "#8b9db5", fontSize: 12, textAlign: "center" }}>
         FortiSim — Firewall Training Platform &nbsp;·&nbsp; FortiOS v7.6 &nbsp;·&nbsp; PAN-OS 11
       </div>
     </div>

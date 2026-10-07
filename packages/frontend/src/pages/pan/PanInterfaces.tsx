@@ -1,3 +1,5 @@
+import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { apiFetch } from "../../api/http";
 import { useState } from "react";
 import { PanSession } from "../../hooks/usePanSession";
 
@@ -41,12 +43,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
   const [aiFeedback, setAiFeedback] = useState<string|null>(null);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   
-  const [kqLoading, setKqLoading] = useState(false);
-  const [kqError, setKqError] = useState<string|null>(null);
-  const [kqData, setKqData] = useState<{questionId:string;question:string;choices:string[]}|null>(null);
-  const [kqSelected, setKqSelected] = useState<number|null>(null);
-  const [kqResult, setKqResult] = useState<"correct"|"incorrect"|null>(null);
-  const [kqLocked, setKqLocked] = useState(false);
+  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", "pan-iface-01", session.markTaskComplete);
 
   const scenarioId = "pan-iface-01";
 
@@ -72,27 +69,13 @@ export function PanInterfaces({ session }: { session: PanSession }) {
     } else {
       const failing = checks.filter(c => !c.pass).map(c => c.desc);
       setLoadingFeedback(true); setAiFeedback(null);
-      fetch("/api/pan/feedback", {
+      apiFetch("/api/pan/feedback", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ exerciseTitle: "Interface Configuration", failingChecks: failing })
       }).then(r=>r.json()).then(d=>setAiFeedback(d.feedback??null)).catch(()=>setAiFeedback(null)).finally(()=>setLoadingFeedback(false));
     }
   }
 
-  function loadKQ() {
-    setKqLoading(true); setKqError(null); setKqData(null); setKqSelected(null); setKqResult(null); setKqLocked(false);
-    fetch(`/api/pan/knowledge-check/${scenarioId}`)
-      .then(r=>r.ok?r.json():Promise.reject(r.status))
-      .then(d=>setKqData(d)).catch(e=>setKqError("Failed: "+e)).finally(()=>setKqLoading(false));
-  }
-
-  async function answerKQ() {
-    if (kqSelected===null||!kqData||kqLocked) return;
-    setKqLocked(true);
-    const r=await fetch("/api/pan/knowledge-check/answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({questionId:kqData.questionId,selectedIndex:kqSelected})});
-    if(!r.ok){setKqError("Could not verify answer");return;} const d=await r.json();
-    if(d.correct){setKqResult("correct");session.markTaskComplete(scenarioId);} else setKqResult("incorrect");
-  }
 
   const passed = results?.filter(r=>r.pass).length??0;
 
@@ -253,7 +236,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
                 <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
                   {kqData.choices.map((c,i)=>(
                     <label key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"7px 10px", borderRadius:6, border:`1px solid ${kqSelected===i?"#fa4616":"#e2e8f0"}`, background:kqSelected===i?"#fff7f0":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenarioId)?"not-allowed":"pointer", fontSize:12, lineHeight:1.4 }}>
-                      <input type="radio" name={`kq-${scenarioId}`} checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenarioId)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenarioId)){setKqSelected(i);setKqResult(null);}}} style={{ marginTop:2, flexShrink:0 }}/>
+                      <input type="radio" name={`kq-${scenarioId}`} checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenarioId)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenarioId)){setKqSelected(i);}}} style={{ marginTop:2, flexShrink:0 }}/>
                       {c}
                     </label>
                   ))}
