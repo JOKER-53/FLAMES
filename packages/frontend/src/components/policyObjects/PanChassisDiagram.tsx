@@ -98,46 +98,6 @@ function disposeMesh(obj: THREE.Object3D) {
   }
 }
 
-/** Realistic rectangular contact shadow matching PA-220 footprint */
-function createContactShadowTexture(): THREE.CanvasTexture {
-  const canvas = document.createElement("canvas");
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return new THREE.CanvasTexture(canvas);
-
-  ctx.clearRect(0, 0, 512, 512);
-
-  function drawRoundedRect(x: number, y: number, w: number, h: number, r: number) {
-    ctx!.beginPath();
-    ctx!.moveTo(x + r, y);
-    ctx!.arcTo(x + w, y, x + w, y + h, r);
-    ctx!.arcTo(x + w, y + h, x, y + h, r);
-    ctx!.arcTo(x, y + h, x, y, r);
-    ctx!.arcTo(x, y, x + w, y, r);
-    ctx!.closePath();
-  }
-
-  const layers = [
-    { insetX: 45, insetY: 65, r: 18, alpha: 0.60, blur: 12 },
-    { insetX: 35, insetY: 50, r: 26, alpha: 0.38, blur: 24 },
-    { insetX: 22, insetY: 34, r: 34, alpha: 0.20, blur: 44 },
-    { insetX: 10, insetY: 18, r: 42, alpha: 0.08, blur: 68 },
-  ];
-
-  layers.forEach(l => {
-    ctx.save();
-    ctx.shadowColor = `rgba(12, 18, 28, ${l.alpha})`;
-    ctx.shadowBlur = l.blur;
-    ctx.fillStyle = `rgba(12, 18, 28, ${l.alpha * 0.9})`;
-    drawRoundedRect(l.insetX, l.insetY, 512 - l.insetX * 2, 512 - l.insetY * 2, l.r);
-    ctx.fill();
-    ctx.restore();
-  });
-
-  return new THREE.CanvasTexture(canvas);
-}
-
 export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode = false }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -147,6 +107,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
     indicators: Record<string, THREE.Mesh>;
     hitTargets: Record<string, THREE.Mesh>;
     cables: Record<string, THREE.Object3D>;
+    floorItems: THREE.Object3D[];
     sz: THREE.Vector3;
     frontZ: number;
   } | null>(null);
@@ -181,7 +142,11 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
     renderer.setSize(w, h);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 0.94;
+    renderer.toneMappingExposure = 0.96;
+
+    // Enable soft dynamic directional shadow maps
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     mount.appendChild(renderer.domElement);
 
     // Realistic IBL Studio Environment from RoomEnvironment (Google model-viewer environment)
@@ -203,13 +168,47 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
       controls.autoRotate = false;
     }, { once: true });
 
-    /* Gentle Key Light for natural 3D shading contrast (NO flat ambient wash) */
-    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
-    keyLight.position.set(5, 10, 8);
+    /* 1. Main Studio Key Light — casts soft natural drop shadow matching model-viewer */
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.75);
+    keyLight.position.set(1.5, 13.0, 2.8);
+    keyLight.target.position.set(0, 0, 0);
+    scene.add(keyLight.target);
+    keyLight.castShadow = true;
+    keyLight.shadow.mapSize.width = 2048;
+    keyLight.shadow.mapSize.height = 2048;
+    keyLight.shadow.camera.near = 1.0;
+    keyLight.shadow.camera.far = 25.0;
+    keyLight.shadow.camera.left = -5.8;
+    keyLight.shadow.camera.right = 5.8;
+    keyLight.shadow.camera.top = 4.8;
+    keyLight.shadow.camera.bottom = -4.8;
+    keyLight.shadow.bias = -0.0003;
+    keyLight.shadow.normalBias = 0.02;
+    keyLight.shadow.radius = 3.5;
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffffff, 0.25);
-    rimLight.position.set(-5, 4, -6);
+    /* 2. Overhead Contact Light — tight contact grounding directly under chassis */
+    const contactLight = new THREE.DirectionalLight(0xffffff, 0.30);
+    contactLight.position.set(0, 14.0, 0);
+    contactLight.target.position.set(0, 0, 0);
+    scene.add(contactLight.target);
+    contactLight.castShadow = true;
+    contactLight.shadow.mapSize.width = 1024;
+    contactLight.shadow.mapSize.height = 1024;
+    contactLight.shadow.camera.near = 1.0;
+    contactLight.shadow.camera.far = 25.0;
+    contactLight.shadow.camera.left = -5.0;
+    contactLight.shadow.camera.right = 5.0;
+    contactLight.shadow.camera.top = 4.0;
+    contactLight.shadow.camera.bottom = -4.0;
+    contactLight.shadow.bias = -0.0003;
+    contactLight.shadow.normalBias = 0.02;
+    contactLight.shadow.radius = 1.8;
+    scene.add(contactLight);
+
+    /* 3. Subtle Rim Light for crisp chassis silhouette definition */
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.22);
+    rimLight.position.set(-5, 6, -5);
     scene.add(rimLight);
 
     const group = new THREE.Group();
@@ -218,6 +217,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
     const indicators: Record<string, THREE.Mesh> = {};
     const hitTargets: Record<string, THREE.Mesh> = {};
     const cables: Record<string, THREE.Object3D> = {};
+    const floorItems: THREE.Object3D[] = [];
 
     sceneRef.current = {
       camera,
@@ -225,6 +225,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
       indicators,
       hitTargets,
       cables,
+      floorItems,
       sz: new THREE.Vector3(8, 1.5, 6),
       frontZ: 3
     };
@@ -252,6 +253,8 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
 
         model.traverse((child: any) => {
           if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
             const mats = Array.isArray(child.material) ? child.material : [child.material];
             mats.forEach((m: any) => {
               if (m) {
@@ -268,24 +271,22 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
         const sz = new THREE.Vector3();
         b2.getSize(sz);
         const frontZ = b2.max.z;
+        const floorY = -sz.y * 0.5;
 
         if (sceneRef.current) {
           sceneRef.current.sz = sz;
           sceneRef.current.frontZ = frontZ;
         }
 
-        // Grounded Rectangular Contact Shadow underneath chassis
-        const shadowGeo = new THREE.PlaneGeometry(sz.x * 1.25, sz.z * 1.35);
-        const shadowMat = new THREE.MeshBasicMaterial({
-          map: createContactShadowTexture(),
-          transparent: true,
-          opacity: 0.95,
-          depthWrite: false,
-        });
-        const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
-        shadowMesh.rotation.x = -Math.PI / 2;
-        shadowMesh.position.set(0, -sz.y * 0.5 - 0.005, 0);
-        group.add(shadowMesh);
+        /* Dynamic shadow-receiving floor plane — pure white studio with soft physical shadows */
+        const floorGeo = new THREE.PlaneGeometry(60, 60);
+        const floorMat = new THREE.ShadowMaterial({ opacity: 0.32 });
+        const floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.position.set(0, floorY - 0.002, 0);
+        floorMesh.receiveShadow = true;
+        scene.add(floorMesh);
+        floorItems.push(floorMesh);
 
         // Camera fit — 3/4 Elevated Product Showcase (matching model-viewer)
         const fov = (camera.fov * Math.PI) / 180;
@@ -444,6 +445,10 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
       controls.dispose();
       renderer.dispose();
       if (envTexture) envTexture.dispose();
+      floorItems.forEach(item => {
+        scene.remove(item);
+        disposeMesh(item);
+      });
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
       }
