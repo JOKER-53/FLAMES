@@ -35,11 +35,13 @@ export async function sendLLMRequest(options: LLMRequestOptions): Promise<string
     process.env.OPENAI_MODEL ||
     process.env.LLM_MODEL ||
     process.env.NVIDIA_NIM_MODEL ||
-    "gpt-4o-mini";
+    // The OpenAI default only makes sense against OpenAI itself.
+    (baseUrl === "https://api.openai.com/v1" ? "gpt-4o-mini" : "");
 
   if (!apiKey || !baseUrl) {
     throw new Error("No LLM API key or Base URL configured.");
   }
+  if (!model) throw new Error("No LLM model configured. Set LLM_MODEL (or NVIDIA_NIM_MODEL).");
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -62,7 +64,8 @@ export async function sendLLMRequest(options: LLMRequestOptions): Promise<string
   }
 
   const data = (await response.json()) as { choices?: Array<{ message?: { content?: string } }> };
-  return data.choices?.[0]?.message?.content ?? "";
+  // Reasoning models prefix their chain of thought; callers only want the answer.
+  return (data.choices?.[0]?.message?.content ?? "").replace(/<think>[\s\S]*?(<\/think>|$)/gi, "").trim();
 }
 
 /**

@@ -1,11 +1,16 @@
-import { useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import type { FirewallPolicy, TestPacket, PolicyTraceEntry, InterfaceZone, WebFilterProfile } from "@fortisim/engine";
 import { evaluatePacket } from "@fortisim/engine";
 import { PacketFlowPanel } from "../components/policyObjects/PacketFlowPanel";
 import { NetworkSimCanvas } from "../components/policyObjects/NetworkSimCanvas";
 import { NetworkTopology } from "../components/policyObjects/NetworkTopology";
 import { HardQuestionCard } from "../components/HardQuestionCard";
+import { type TutorSource } from "../components/TutorSourceTag";
+import { LessonFrame } from "../components/shell/LessonFrame";
+import { CheckYourWork, ConsoleFrame } from "../components/lesson/LessonParts";
+import { Callout, Section } from "../components/ui/primitives";
+import { Icon } from "../components/ui/Icon";
 import { getSubmissionFeedback } from "../api/client";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 
@@ -44,6 +49,11 @@ function emptyPolicyDraft(): Omit<FirewallPolicy, "id"> {
 
 export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
   const { scenarioId, scenario, loadError, addresses, services, policies, setPolicies, webFilterProfiles, setWebFilterProfiles } = session;
+  // Lessons link here with ?scenario=…, so the URL decides which scenario is loaded.
+  const requestedScenario = useSearchParams()[0].get("scenario");
+  useEffect(() => {
+    if (requestedScenario && requestedScenario !== scenarioId) session.selectScenario(requestedScenario);
+  }, [requestedScenario, scenarioId, session]);
 
   const [draft, setDraft] = useState<Omit<FirewallPolicy, "id">>(emptyPolicyDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -55,6 +65,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
   const [grading, setGrading] = useState(false);
   const [gradeReport, setGradeReport] = useState<any>(null);
   const [aiRemark, setAiRemark] = useState<string | null>(null);
+  const [aiRemarkSource, setAiRemarkSource] = useState<TutorSource | null>(null);
   const [gradeError, setGradeError] = useState<string | null>(null);
 
   function resetDraft() { setDraft(emptyPolicyDraft()); setEditingId(null); }
@@ -127,8 +138,8 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
   async function submitForGrading() {
     setGrading(true); setGradeError(null); setGradeReport(null); setAiRemark(null);
     try {
-      const { report, aiRemark } = await getSubmissionFeedback(scenarioId, { scenarioId, addresses, services, webFilterProfiles, policies });
-      setGradeReport(report); setAiRemark(aiRemark);
+      const { report, aiRemark, remarkSource } = await getSubmissionFeedback(scenarioId, { scenarioId, addresses, services, webFilterProfiles, policies });
+      setGradeReport(report); setAiRemark(aiRemark); setAiRemarkSource(remarkSource ?? null);
       if (report?.overallPassed) session.markTaskComplete(scenarioId);
     } catch (err: any) {
       setGradeError(err.message ?? "Grading request failed");
@@ -142,26 +153,14 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
     return ids.map((id) => list.find((x) => x.id === id)?.name ?? id).join(", ");
   }
 
-  if (loadError) return <div className="text-red-600">Failed to load scenario: {loadError}</div>;
-  if (!scenario) return <div className="text-gray-500">Loading scenario…</div>;
+  if (loadError) return <Callout tone="danger" title="This lesson could not be loaded">{loadError}</Callout>;
+  if (!scenario || scenario.id !== scenarioId) return <p className="text-muted" role="status">Loading lesson…</p>;
 
   return (
-    <div className="grid grid-cols-[1fr_300px] gap-5 max-w-[1400px]">
-      <div>
-        <div className="mb-4">
-          <Link to="/fortigate/tasks/policy" className="inline-flex items-center gap-1 text-[11.5px] text-forti-red hover:underline mb-2">← Back to Tasks</Link>
-          <h1 className="text-lg font-bold text-forti-dark">Firewall Policy</h1>
-        </div>
-
-        <div className="bg-amber-50 border-l-4 border-amber-400 rounded-r-md p-4 mb-5">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[10px] font-bold px-2 py-0.5 bg-amber-400 text-white rounded uppercase tracking-wide">Mission</span>
-            <span className="text-[13px] font-bold text-amber-900">{scenario.title}</span>
-          </div>
-          <p className="text-[12.5px] text-amber-800 leading-relaxed">{scenario.description}</p>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-md overflow-hidden mb-5">
+    <LessonFrame title={scenario.title.replace(/^\W+\s*/, "")} brief={scenario.description}>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="min-w-0 space-y-6">
+        <ConsoleFrame path={["Policy & Objects", "Firewall Policy"]}>
           <div className="flex items-center gap-2 px-2 py-1.5 border-b border-gray-200 bg-gray-50">
             <button onClick={resetDraft} className="text-[12px] px-2.5 py-1 bg-forti-red text-white rounded-sm hover:bg-forti-red/90 flex items-center gap-1"><span className="text-[13px] leading-none">+</span> Create New</button>
             <button onClick={() => { const p = policies.find((p) => p.id === selectedRow); if (p) startEdit(p); else alert("Select a policy row first."); }} className="text-[12px] px-2.5 py-1 border border-gray-300 rounded-sm text-gray-600 hover:bg-gray-100">Edit</button>
@@ -202,9 +201,8 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             </tbody>
           </table>
           <div className="px-3 py-2 text-[11.5px] text-gray-400 border-t border-gray-100 bg-gray-50">Implicit rule: any traffic not matched above is denied (default-deny).</div>
-        </div>
 
-        <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
+        <div className="p-4 border-t border-gray-200">
           <div className="text-[13px] font-medium text-gray-700 mb-3">{editingId ? "Edit Policy" : "New Policy"}</div>
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
@@ -283,7 +281,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
         </div>
 
         {scenario.starterWebFilterProfiles !== undefined && (
-          <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
+          <div className="p-4 border-t border-gray-200">
             <div className="text-[13px] font-medium text-gray-700 mb-1">Web Filter Profiles</div>
             <p className="text-[11.5px] text-gray-400 mb-3">Create a profile with blocked domains, then attach it to a policy using the Web Filter dropdown above.</p>
             <div className="space-y-2 mb-3">
@@ -302,66 +300,45 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
           </div>
         )}
 
-        <div className="bg-white border border-gray-200 rounded-md p-4 mb-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-[13px] font-medium text-gray-700">Test Connectivity</div>
-            <div className="flex gap-2">
-              <button onClick={runTestConnectivity} className="px-3 py-1.5 border border-gray-300 rounded-sm text-[12.5px] text-gray-700 hover:bg-gray-50">Run Test Packets</button>
-              <button onClick={runVisualPacketTest} className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90">Run Packet Test (Visual)</button>
-              <button onClick={() => { runVisualPacketTest(); setShowSim(true); }} className="px-3 py-1.5 bg-gray-800 text-white rounded-sm text-[12.5px] hover:bg-gray-700">🌐 Network Sim</button>
-            </div>
-          </div>
-          <p className="text-[11.5px] text-gray-400 mb-2">Runs instantly in your browser. Does not submit or grade your work.</p>
-          {testResults.length > 0 && (
-            <div className="space-y-1.5">
-              {testResults.map((r) => (
-                <div key={r.packet.id} className="flex items-center justify-between text-[12.5px] border-b border-gray-100 pb-1.5">
-                  <span className="text-gray-700">{r.packet.description}</span>
-                  <span className="flex items-center gap-2">
-                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${r.action === "ACCEPT" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{r.action}</span>
-                    <span className="text-gray-400">{r.matchedPolicyName ? `via "${r.matchedPolicyName}"` : "default-deny"}</span>
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        </ConsoleFrame>
 
-        <div className="bg-white border border-gray-200 rounded-md p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-[13px] font-medium text-gray-700">Submit for Grading</div>
-            <button onClick={submitForGrading} disabled={grading} className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90 disabled:opacity-50">{grading ? "Grading…" : "Submit"}</button>
-          </div>
-          {gradeError && <div className="text-red-600 text-[12.5px]">{gradeError}</div>}
-          {gradeReport && (
-            <div>
-              <div className={`text-[13px] font-medium mb-2 ${gradeReport.overallPassed ? "text-emerald-600" : "text-red-600"}`}>
-                {gradeReport.overallPassed ? "✓ Passed" : "✕ Not yet correct"} — {gradeReport.passedChecks}/{gradeReport.totalChecks} checks
-              </div>
-              <div className="space-y-1.5 mb-3">
-                {gradeReport.diagnostics.map((d: any) => (
-                  <div key={d.testPacketId} className="flex items-center justify-between text-[12.5px] border-b border-gray-100 pb-1.5">
-                    <span className="text-gray-700">{d.description}</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[11px] font-medium ${d.passed ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{d.passed ? "PASS" : "FAIL"}</span>
-                  </div>
-                ))}
-              </div>
-              {aiRemark && (
-                <div className="bg-amber-50 border border-amber-200 rounded p-3 text-[12.5px] text-amber-900">
-                  <div className="font-medium mb-1">Tutor feedback</div>
-                  {aiRemark}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        <Section
+          title="Test your policy"
+          description="Send the scenario's test packets through your rules. This runs in your browser and is not graded."
+          actions={<>
+            <button onClick={runTestConnectivity} className="btn-secondary btn-sm">Run test packets</button>
+            <button onClick={runVisualPacketTest} className="btn-secondary btn-sm">Trace packet flow</button>
+            <button onClick={() => { runVisualPacketTest(); setShowSim(true); }} className="btn-secondary btn-sm"><Icon name="network" size={14} />Network view</button>
+          </>}
+          bodyClassName={testResults.length ? "" : "hidden"}
+        >
+          <ul className="divide-y divide-line">
+            {testResults.map((r) => (
+              <li key={r.packet.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 text-sm">
+                <span className="text-body">{r.packet.description}</span>
+                <span className="flex items-center gap-2">
+                  <span className={`badge ${r.action === "ACCEPT" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>{r.action}</span>
+                  <span className="text-xs text-muted">{r.matchedPolicyName ? `matched "${r.matchedPolicyName}"` : "implicit deny"}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Section>
+
+        <CheckYourWork
+          onSubmit={submitForGrading}
+          grading={grading}
+          error={gradeError}
+          result={gradeReport && { passed: gradeReport.overallPassed, checks: gradeReport.diagnostics.map((d: { description: string; passed: boolean }) => ({ label: d.description, passed: d.passed })) }}
+          tutor={{ text: aiRemark, source: aiRemarkSource }}
+        />
       </div>
 
-      <div className="space-y-4">
+      <aside className="space-y-4 min-w-0">
         <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} />
         <HardQuestionCard taskId={scenarioId} session={session} />
-      </div>
+      </aside>
 
       {showSim && (
         <NetworkSimCanvas
@@ -371,5 +348,6 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
         />
       )}
     </div>
+    </LessonFrame>
   );
 }

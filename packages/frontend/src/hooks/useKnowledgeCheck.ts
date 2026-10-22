@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { apiJson } from "../api/http";
 
-interface Question { questionId: string; question: string; choices: string[]; }
+import type { TutorSource } from "../components/TutorSourceTag";
+
+interface Question { questionId: string; question: string; choices: string[]; source?: TutorSource; }
 export function useKnowledgeCheck(platform: "fortigate" | "paloalto", taskId: string | undefined, complete: (id: string) => void) {
   const prefix = platform === "paloalto" ? "/api/pan/knowledge-check" : "/api/knowledge-check";
   const generation = useRef(0);

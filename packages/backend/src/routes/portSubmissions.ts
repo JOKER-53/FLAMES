@@ -1,55 +1,22 @@
 import { Router } from "express";
-import { gradePortSubmission, ALL_PORT_SCENARIOS, portFinalScenario } from "@fortisim/engine";
+import { gradePortSubmission, ALL_PORT_SCENARIOS, portFinalScenario, type PortGradingReport } from "@fortisim/engine";
+import { tutorHint, TUTOR_RULES, type TutorHint } from "../services/tutor";
 import { ensureScenarioMatches, parsePortSubmission } from "../validation";
 
 export const portSubmissionsRouter = Router();
 
 const ALL_PORT_SCENARIOS_AND_FINAL = [...ALL_PORT_SCENARIOS, portFinalScenario];
 
-async function getAiFeedback(scenarioTitle: string, report: any): Promise<string | null> {
-  try {
-    const failing = report.results.filter((r: any) => !r.passed);
-    const userContent = [
-      `Scenario: ${scenarioTitle}`,
-      `Failing checks (${failing.length}/${report.totalChecks}):`,
-      ...failing.map((r: any) =>
-        `- "${r.description}": student assigned "${r.studentZone}" but this is incorrect`
-      ),
-    ].join("\n");
+const SYSTEM_PROMPT = `You are a network configuration tutor helping a student learn FortiGate port zone assignment. WAN is internet-facing, DMZ holds semi-trusted public servers, LAN is the trusted internal network, and unused ports stay unassigned. Point the student to which ports to re-examine and why, based on what each port connects to. ${TUTOR_RULES}`;
 
-    const response = await fetch(`${process.env.NVIDIA_NIM_BASE_URL}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.NVIDIA_NIM_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: process.env.NVIDIA_NIM_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: `You are a network configuration tutor helping a student learn FortiGate port zone assignment.
-You will be given a list of ports the student assigned incorrectly.
-
-Your rules:
-1. NEVER state the correct zone for any port.
-2. DO explain WHY zone assignment matters (WAN = internet-facing, DMZ = semi-trusted servers, LAN = internal trusted).
-3. DO point the student toward WHICH ports to re-examine and WHY (e.g. a port connected to internet-facing equipment should be WAN).
-4. Keep it brief (2-4 sentences), encouraging, and conceptual.`,
-          },
-          { role: "user", content: userContent },
-        ],
-        max_tokens: 300,
-        temperature: 0.4,
-      }),
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content ?? null;
-  } catch {
-    return null;
-  }
+function getAiFeedback(scenarioTitle: string, report: PortGradingReport): Promise<TutorHint> {
+  const failing = report.results.filter((r) => !r.passed);
+  const userContent = [
+    `Scenario: ${scenarioTitle}`,
+    `Failing checks (${failing.length}/${report.totalChecks}):`,
+    ...failing.map((r) => `- "${r.description}": student assigned "${r.studentZone}", which is incorrect`),
+  ].join("\n");
+  return tutorHint("fortigate-port", SYSTEM_PROMPT, userContent, failing.map((r) => r.description));
 }
 
 function getScenario(id: string) {
@@ -79,6 +46,6 @@ portSubmissionsRouter.post("/:scenarioId/feedback", async (req, res) => {
     return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
   }
   if (report.overallPassed) return res.json({ report });
-  const aiRemark = await getAiFeedback(scenario.title, report);
-  res.json({ report, aiRemark });
+  const hint = await getAiFeedback(scenario.title, report);
+  res.json({ report, aiRemark: hint.text, remarkSource: hint.source });
 });

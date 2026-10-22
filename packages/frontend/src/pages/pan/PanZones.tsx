@@ -1,4 +1,8 @@
-import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { LessonFrame } from "../../components/shell/LessonFrame";
+import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
+import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
+import { Callout, Section } from "../../components/ui/primitives";
+import { Icon } from "../../components/ui/Icon";
 import { usePanGrading } from "../../hooks/usePanGrading";
 import { PAN_ZONE_SCENARIOS as SCENARIOS } from "@fortisim/engine";
 import { useLocation } from "react-router-dom";
@@ -22,8 +26,7 @@ export function PanZones({ session }: { session: PanSession }) {
   const [nextId, setNextId] = useState(1);
   const [adding, setAdding] = useState(false);
   const [nz, setNz] = useState<Partial<Zone>>({ name:"", type:"layer3", profile:"none", interfaces:[], logForwarding:false });
-  const { results, setResults, aiFeedback, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
-  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", scenario.id, session.markTaskComplete);
+  const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
 
   const [selected, setSelected] = useState<Zone|null>(null);
 
@@ -48,209 +51,122 @@ export function PanZones({ session }: { session: PanSession }) {
 
   const passed = results?.filter(r=>r.pass).length??0;
 
+  const ZONE_TYPES: [ZoneType, string][] = [["layer3", "Routed interfaces — the most common"], ["layer2", "Switched interfaces"], ["tap", "Mirrored traffic, monitoring only"], ["ha", "HA heartbeat and sync links"], ["management", "Out-of-band management"]];
+
   return (
-    <div style={{ maxWidth:900 }}>
-      {gradeError && <p className="platform-error" role="alert">{gradeError}</p>}
-      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
-        <div>
-          <h1 style={{ fontSize:18, fontWeight:700, color:"#1e293b", margin:0 }}>Security Zones</h1>
-          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>HA and Management are synthetic practice buckets here, not native PAN-OS security-zone types.</p>
-        </div>
-        <div style={{ display:"flex", gap:6 }}>
-          {SCENARIOS.map((s,i)=>(
-            <button key={s.id} onClick={()=>{ setSceIdx(i); setZones([]); setResults(null); }}
-              style={{ padding:"4px 10px", fontSize:11, borderRadius:4, cursor:"pointer",
-                background:scenIdx===i?"#3b82f6":"transparent", color:scenIdx===i?"#fff":"#64748b",
-                border:`1px solid ${scenIdx===i?"#3b82f6":"#e2e8f0"}` }}>
-              {i+1}. {s.title.split(" ").slice(0,2).join(" ")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ background:"#eff6ff", border:"1px solid #bfdbfe", borderRadius:8, padding:14, marginBottom:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, color:"#1e40af", marginBottom:4 }}>{scenario.title}</div>
-        <p style={{ fontSize:12, color:"#1e3a8a", margin:0 }}>{scenario.desc}</p>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 260px", gap:16 }}>
-        <div>
-          {/* Topology */}
-          {zones.length>0 && (
-            <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
-              <div style={{ fontSize:11, color:"#64748b", marginBottom:10, textTransform:"uppercase", letterSpacing:"0.05em" }}>Zone Topology</div>
-              <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
-                {zones.map((z,i)=>(
-                  <div key={z.id} style={{ display:"flex", alignItems:"center" }}>
-                    <div onClick={()=>setSelected(selected?.id===z.id?null:z)}
-                      style={{ padding:"10px 16px", borderRadius:6, border:`2px solid ${getColor(z.name)}`,
-                        background:`${getColor(z.name)}11`, cursor:"pointer", textAlign:"center",
-                        boxShadow:selected?.id===z.id?`0 0 10px ${getColor(z.name)}44`:"none" }}>
-                      <div style={{ fontSize:12, fontWeight:700, color:getColor(z.name) }}>{z.name}</div>
-                      <div style={{ fontSize:10, color:"#94a3b8" }}>{z.type}</div>
-                    </div>
-                    {i<zones.length-1 && <div style={{ width:30, height:1, background:"#e2e8f0", margin:"0 4px" }}/>}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Zone table */}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden", marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderBottom:"1px solid #f1f5f9" }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Zones ({zones.length})</span>
-              <button onClick={()=>setAdding(!adding)}
-                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer" }}>+ Add Zone</button>
-            </div>
-            {zones.length===0 && <div style={{ padding:20, textAlign:"center", color:"#94a3b8", fontSize:12 }}>No zones yet — click Add Zone</div>}
-            {zones.map(z=>(
-              <div key={z.id} style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 14px", borderBottom:"1px solid #f8fafc", fontSize:12 }}>
-                <div style={{ width:8, height:8, borderRadius:"50%", background:getColor(z.name), flexShrink:0 }}/>
-                <span style={{ fontWeight:600, color:"#374151", minWidth:90 }}>{z.name}</span>
-                <span style={{ color:"#64748b", minWidth:80 }}>{z.type}</span>
-                <span style={{ padding:"1px 6px", borderRadius:3, fontSize:10,
-                  background:z.profile==="strict"?"#fee2e2":z.profile==="default"?"#dbeafe":"#f1f5f9",
-                  color:z.profile==="strict"?"#991b1b":z.profile==="default"?"#1d4ed8":"#64748b" }}>{z.profile}</span>
-                <span style={{ color:"#94a3b8", flex:1, fontSize:11 }}>{z.interfaces.join(", ")||"—"}</span>
-                <span style={{ color:z.logForwarding?"#166534":"#94a3b8", fontSize:11 }}>{z.logForwarding?"Log ✓":""}</span>
-                <button onClick={()=>delZone(z.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:12 }}>✕</button>
-              </div>
-            ))}
-          </div>
-
-          {/* Add zone form */}
-          {adding && (
-            <div style={{ background:"#fff", border:"1px solid #3b82f644", borderRadius:8, padding:14, marginBottom:12 }}>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
-                {[["Zone Name","text","name"],["Type","sel","type"],["Protection Profile","sel","profile"]].map(([label,type,key])=>(
-                  <div key={key}>
-                    <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>{label}</label>
-                    {type==="text"
-                      ? <input value={(nz as any)[key]??""} onChange={e=>setNz(z=>({...z,[key]:e.target.value}))}
-                          style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" as any }}/>
-                      : key==="type"
-                        ? <select value={nz.type} onChange={e=>setNz(z=>({...z,type:e.target.value as ZoneType}))}
-                            style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                            {["layer3","layer2","tap","ha","management"].map(o=><option key={o}>{o}</option>)}
-                          </select>
-                        : <select value={nz.profile} onChange={e=>setNz(z=>({...z,profile:e.target.value as ZoneProfile}))}
-                            style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                            {["none","default","strict"].map(o=><option key={o}>{o}</option>)}
-                          </select>
-                    }
-                  </div>
-                ))}
-              </div>
-              <div style={{ marginBottom:10 }}>
-                <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:6 }}>Assign Interfaces</label>
-                <div style={{ display:"flex", gap:5, flexWrap:"wrap" }}>
-                  {INTERFACES.map(i=>(
-                    <button key={i} onClick={()=>toggleIface(i)}
-                      style={{ padding:"3px 9px", fontSize:11, borderRadius:4, cursor:"pointer",
-                        border:`1.5px solid ${nz.interfaces?.includes(i)?"#3b82f6":"#e2e8f0"}`,
-                        background:nz.interfaces?.includes(i)?"#dbeafe":"#f8fafc",
-                        color:nz.interfaces?.includes(i)?"#1d4ed8":"#64748b" }}>{i}</button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <label style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, cursor:"pointer" }}>
-                  <input type="checkbox" checked={nz.logForwarding} onChange={e=>setNz(z=>({...z,logForwarding:e.target.checked}))}/>
-                  Log Forwarding
-                </label>
-                <div style={{ marginLeft:"auto", display:"flex", gap:6 }}>
-                  <button onClick={()=>setAdding(false)} style={{ padding:"5px 12px", fontSize:11, borderRadius:4, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", color:"#64748b" }}>Cancel</button>
-                  <button onClick={addZone} disabled={!nz.name} style={{ padding:"5px 12px", fontSize:11, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer", opacity:!nz.name?0.4:1 }}>Add Zone</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
-              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button disabled={grading} onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
-            </div>
-            {results && (
-              <div>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===scenario.checks.length?"#166534":"#dc2626" }}>
-                  {passed===scenario.checks.length?"✓ All checks passed!":"Not yet correct"} — {passed}/{scenario.checks.length}
-                </div>
-                {results.map((r,i)=>(
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
-                    <span style={{ color:"#374151" }}>{r.desc}</span>
-                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600,
-                      background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>
-                      {r.pass?"PASS":"FAIL"}
-                    </span>
-                  </div>
+    <LessonFrame title={scenario.title} brief={scenario.desc} hint={scenario.hint}>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          <ConsoleFrame
+            path={["Network", "Zones"]}
+            actions={<button onClick={() => setAdding(!adding)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add zone</button>}
+          >
+            {zones.length > 0 && (
+              <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-line bg-[#f8fafc]" aria-label="Zone map">
+                {zones.map(z => (
+                  <button key={z.id} onClick={() => setSelected(selected?.id === z.id ? null : z)} aria-pressed={selected?.id === z.id}
+                    className={`rounded-md border-2 px-3 py-1.5 text-left ${selected?.id === z.id ? "shadow-raised" : ""}`}
+                    style={{ borderColor: getColor(z.name), background: `${getColor(z.name)}12` }}>
+                    <div className="text-xs font-semibold" style={{ color: getColor(z.name) }}>{z.name}</div>
+                    <div className="text-2xs text-muted">{z.type} · {z.interfaces.length} interface{z.interfaces.length === 1 ? "" : "s"}</div>
+                  </button>
                 ))}
               </div>
             )}
-          </div>
-
-          {/* AI Feedback */}
-          {(aiFeedback||loadingFeedback) && (
-            <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:14, marginBottom:12 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#9a3412", marginBottom:4 }}>Tutor Feedback</div>
-              {loadingFeedback?<div style={{ fontSize:12, color:"#c2410c", fontStyle:"italic" }}>Analysing…</div>:<p style={{ fontSize:12, color:"#7c2d12", margin:0, lineHeight:1.6 }}>{aiFeedback}</p>}
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12.5px]">
+                <thead>
+                  <tr className="bg-[#eef1f5] text-[#3c4a5c] text-left border-b border-line-strong">
+                    {["Name", "Type", "Zone Protection", "Interfaces", "Log Forwarding", ""].map((h, i) => <th key={i} className="px-3 py-2 font-semibold">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {zones.length === 0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-muted">No zones yet. Use “Add zone” to create one.</td></tr>}
+                  {zones.map(z => (
+                    <tr key={z.id} className="border-b border-line hover:bg-sunken/60">
+                      <td className="px-3 py-2"><span className="flex items-center gap-2 font-medium text-ink"><span className="w-2 h-2 rounded-full" style={{ background: getColor(z.name) }} />{z.name}</span></td>
+                      <td className="px-3 py-2 font-mono text-xs">{z.type}</td>
+                      <td className="px-3 py-2"><span className={`badge ${z.profile === "strict" ? "bg-danger-soft text-danger" : z.profile === "default" ? "bg-info-soft text-info" : "bg-sunken text-muted"}`}>{z.profile}</span></td>
+                      <td className="px-3 py-2 font-mono text-xs text-body">{z.interfaces.join(", ") || "—"}</td>
+                      <td className="px-3 py-2">{z.logForwarding ? <Icon name="check" size={15} strokeWidth={2.25} className="text-success" title="Enabled" /> : <span className="text-faint">—</span>}</td>
+                      <td className="pr-3 py-2 text-right"><button aria-label={`Delete ${z.name}`} onClick={() => delZone(z.id)} className="text-faint hover:text-danger"><Icon name="trash" size={15} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-          )}
 
-          {/* Knowledge Check */}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Knowledge Check</span>
-              {session.completedTaskIds.has(scenario.id) && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:"#dcfce7", color:"#166534", fontWeight:600 }}>Complete</span>}
-            </div>
-            <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>Answer correctly to complete without hands-on. <span style={{ color:"#ef4444", fontWeight:500 }}>One attempt only.</span></p>
-            {!kqData&&!kqLoading&&!kqError&&<button onClick={loadKQ} style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer" }}>Load Question</button>}
-            {kqLoading&&<div style={{ fontSize:12, color:"#94a3b8", fontStyle:"italic" }}>Generating…</div>}
-            {kqError&&<div style={{ fontSize:12, color:"#ef4444" }}>{kqError}</div>}
-            {kqData&&(<>
-              <p style={{ fontSize:12, color:"#374151", fontWeight:500, margin:"0 0 8px", lineHeight:1.5 }}>{kqData.question}</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
-                {kqData.choices.map((c,i)=>(
-                  <label key={i} style={{ display:"flex", gap:8, padding:"6px 10px", borderRadius:5, border:`1px solid ${kqSelected===i?"#3b82f6":"#e2e8f0"}`, background:kqSelected===i?"#eff6ff":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12 }}>
-                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);}}}/>
-                    {c}
+            {adding && (
+              <div className="p-4 border-t border-line-strong bg-[#f8fafc]">
+                <div className="text-sm font-semibold text-ink mb-3">New zone</div>
+                <div className="grid gap-3 sm:grid-cols-3 mb-4">
+                  <label><span className="field-label">Zone name</span>
+                    <input className="input" value={nz.name ?? ""} onChange={e => setNz(z => ({ ...z, name: e.target.value }))} placeholder="e.g. Trust" />
                   </label>
-                ))}
+                  <label><span className="field-label">Type</span>
+                    <select className="input" value={nz.type} onChange={e => setNz(z => ({ ...z, type: e.target.value as ZoneType }))}>{ZONE_TYPES.map(([t]) => <option key={t}>{t}</option>)}</select>
+                  </label>
+                  <label><span className="field-label">Zone protection profile</span>
+                    <select className="input" value={nz.profile} onChange={e => setNz(z => ({ ...z, profile: e.target.value as ZoneProfile }))}>{["none", "default", "strict"].map(o => <option key={o}>{o}</option>)}</select>
+                  </label>
+                </div>
+                <fieldset className="mb-4">
+                  <legend className="field-label">Interfaces</legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {INTERFACES.map(i => {
+                      const on = !!nz.interfaces?.includes(i);
+                      return (
+                        <button key={i} aria-pressed={on} onClick={() => toggleIface(i)}
+                          className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded border text-xs font-mono ${on ? "border-accent bg-accent-soft text-ink" : "border-line-strong bg-surface text-body hover:border-faint"}`}>
+                          {on && <Icon name="check" size={12} strokeWidth={2.5} className="text-accent" />}{i}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+                <div className="flex flex-wrap items-center gap-4">
+                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                    <input type="checkbox" checked={nz.logForwarding} onChange={e => setNz(z => ({ ...z, logForwarding: e.target.checked }))} />Log forwarding
+                  </label>
+                  <div className="ml-auto flex gap-2">
+                    <button onClick={() => setAdding(false)} className="btn-secondary btn-sm">Cancel</button>
+                    <button onClick={addZone} disabled={!nz.name} className="btn-primary btn-sm">Add zone</button>
+                  </div>
+                </div>
               </div>
-              <button onClick={answerKQ} disabled={kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id)}
-                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#3b82f6", color:"#fff", border:"none", cursor:"pointer", opacity:(kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id))?0.4:1 }}>
-                Answer
-              </button>
-              {kqResult==="correct"&&<div style={{ marginTop:6, fontSize:12, color:"#166534", fontWeight:500 }}>✓ Correct — task complete.</div>}
-              {kqResult==="incorrect"&&<div style={{ marginTop:6, fontSize:12, color:"#ef4444", fontWeight:500 }}>✗ Incorrect — locked. Complete the hands-on exercise.</div>}
-            </>)}
-          </div>
+            )}
+          </ConsoleFrame>
 
+          <CheckYourWork
+            onSubmit={grade}
+            grading={grading}
+            error={gradeError}
+            result={results && { passed: passed === scenario.checks.length, checks: results.map(r => ({ label: r.desc, passed: r.pass })) }}
+            tutor={{ text: aiFeedback, source: aiSource, loading: loadingFeedback }}
+          />
 
-
-          {/* Grading */}
+          <KnowledgeCheckCard platform="paloalto" taskId={scenario.id} completed={session.completedTaskIds.has(scenario.id)} onComplete={session.markTaskComplete} />
         </div>
 
-        {/* Right: concept */}
-        <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
-          <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:10 }}>Zone Types</div>
-          {[["layer3","Routed interfaces — most common","#22c55e"],["layer2","Switched interfaces","#3b82f6"],["tap","Mirror/monitoring only","#94a3b8"],["ha","HA heartbeat links","#7c3aed"],["management","OOB management","#f97316"]].map(([t,d,c])=>(
-            <div key={t} style={{ marginBottom:8, paddingBottom:8, borderBottom:"1px solid #f8fafc" }}>
-              <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:2 }}>
-                <span style={{ background:c+"22", color:c, padding:"1px 6px", borderRadius:3, fontSize:10, fontWeight:600 }}>{t}</span>
-              </div>
-              <div style={{ fontSize:11, color:"#64748b" }}>{d}</div>
-            </div>
-          ))}
-          <div style={{ background:"#f0f9ff", borderRadius:6, padding:10, marginTop:10 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:"#0369a1", marginBottom:4 }}>Key Rule</div>
-            <p style={{ fontSize:11, color:"#0c4a6e", margin:0, lineHeight:1.5 }}>
-              Interfaces in the SAME zone talk freely. All inter-zone traffic needs an explicit security policy rule.
-            </p>
-          </div>
-        </div>
+        <aside className="min-w-0 space-y-4">
+          <Section title="Zone types" bodyClassName="px-5 py-2">
+            <dl className="divide-y divide-line">
+              {ZONE_TYPES.map(([type, description]) => (
+                <div key={type} className="py-2.5">
+                  <dt className="font-mono text-xs font-semibold text-ink">{type}</dt>
+                  <dd className="text-xs text-muted mt-0.5">{description}</dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+          <Callout tone="info" title="Key rule">
+            Interfaces in the same zone can talk freely. Traffic between zones always needs an explicit security rule.
+          </Callout>
+          <Callout tone="tip" title="Simplified for practice">
+            In real PAN-OS, HA links are configured as HA interfaces and management uses the dedicated MGT port. Here they appear as zone types so you can practise keeping them apart from data zones.
+          </Callout>
+        </aside>
       </div>
-    </div>
+    </LessonFrame>
   );
 }

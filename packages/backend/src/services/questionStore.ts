@@ -1,12 +1,23 @@
-import { randomUUID } from "crypto";
+import { randomInt, randomUUID } from "crypto";
 
 const TTL_MS = 15 * 60 * 1000;
 const questions = new Map<string, { correctIndex: number; expiresAt: number; used: boolean }>();
+
+/**
+ * Returns a copy with the choices in random order. LLMs (and hand-written banks)
+ * favour the first or second slot for the right answer, which students learn to game.
+ */
+export function shuffleChoices<T extends { choices: string[]; correctIndex: number }>(question: T): T {
+  const order = question.choices.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) { const j = randomInt(i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+  return { ...question, choices: order.map(i => question.choices[i]), correctIndex: order.indexOf(question.correctIndex) };
+}
 
 export function hideAnswer<T extends { question: string; choices: string[]; correctIndex: number }>(generated: T) {
   if (typeof generated.question !== "string" || !generated.question.trim() || generated.question.length > 2000 ||
       !Array.isArray(generated.choices) || generated.choices.length !== 4 ||
       generated.choices.some(choice => typeof choice !== "string" || !choice.trim() || choice.length > 1000) ||
+      new Set(generated.choices.map(choice => choice.trim().toLowerCase())).size !== 4 ||
       !Number.isInteger(generated.correctIndex) || generated.correctIndex < 0 || generated.correctIndex > 3) {
     throw new Error("The question generator returned an invalid question.");
   }

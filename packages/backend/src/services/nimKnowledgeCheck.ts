@@ -12,6 +12,8 @@ export interface GeneratedQuestion {
   question: string;
   choices: string[];
   correctIndex: number;
+  /** "ai" when generated for this request, "bank" when taken from the curated fallback set. */
+  source?: "ai" | "bank";
 }
 
 export async function generateKnowledgeCheck(
@@ -50,12 +52,12 @@ the underlying networking/security principle should answer correctly.
     ) {
       throw new Error("Invalid shape from LLM");
     }
-    return parsed as GeneratedQuestion;
+    return { question: parsed.question, choices: parsed.choices, correctIndex: parsed.correctIndex, source: "ai" };
   } catch (err) {
     console.warn(`[KnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);
     const fallback = getStaticFallbackQuestion(taskId);
     if (fallback) {
-      return fallback;
+      return { ...fallback, source: "bank" };
     }
     throw new Error("Knowledge check generation is temporarily unavailable.");
   }

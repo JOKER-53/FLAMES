@@ -1,110 +1,74 @@
 // ============================================================================
-// Knowledge Check — fetches a fresh AI-generated MCQ from the backend on
-// every mount. One attempt only: wrong answer locks the card permanently.
+// Knowledge check: one multiple-choice question per lesson, AI-generated when
+// the tutor is configured, otherwise from the curated bank. Answering correctly
+// is an alternative way to complete the lesson. One attempt per question.
 // ============================================================================
 
 import { useEffect } from "react";
 import { ScenarioSession } from "../hooks/useScenarioSession";
 import { useKnowledgeCheck } from "../hooks/useKnowledgeCheck";
+import { TutorSourceTag } from "./TutorSourceTag";
+import { Icon } from "./ui/Icon";
 
-interface HardQuestionCardProps {
+interface KnowledgeCheckCardProps {
+  platform: "fortigate" | "paloalto";
   taskId: string | undefined;
-  session: ScenarioSession;
+  completed: boolean;
+  onComplete: (taskId: string) => void;
+  /** Load a question as soon as the card mounts (otherwise on request). */
+  autoLoad?: boolean;
 }
 
-export function HardQuestionCard({ taskId, session }: HardQuestionCardProps) {
-  const { kqData: question, kqLoading: loading, kqError: fetchError, kqSelected: selected, setKqSelected: setSelected, kqResult: result, kqLocked: locked, loadKQ, answerKQ: handleAnswer } = useKnowledgeCheck("fortigate", taskId, session.markTaskComplete);
-
-  useEffect(() => {
-    void loadKQ();
-  }, [loadKQ]);
-
+export function KnowledgeCheckCard({ platform, taskId, completed, onComplete, autoLoad = false }: KnowledgeCheckCardProps) {
+  const { kqData: question, kqLoading: loading, kqError: error, kqSelected: selected, setKqSelected: setSelected, kqResult: result, kqLocked: locked, loadKQ, answerKQ } = useKnowledgeCheck(platform, taskId, onComplete);
+  useEffect(() => { if (autoLoad) void loadKQ(); }, [autoLoad, loadKQ]);
   if (!taskId) return null;
-
-  const id: string = taskId;
-  const completed = session.completedTaskIds.has(id);
+  const disabled = locked || completed;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-4">
-      <div className="flex items-center justify-between mb-2">
-        <div className="text-[13px] font-medium text-gray-700">Knowledge Check</div>
-        {completed && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 font-medium border border-emerald-200">
-            Task Complete
-          </span>
-        )}
+    <section className="card">
+      <div className="px-5 py-4 border-b border-line">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold">Knowledge check</h2>
+          <TutorSourceTag source={question?.source} />
+        </div>
+        <p className="text-sm text-muted mt-0.5">Answer correctly to complete the lesson without the hands-on exercise. One attempt per question.</p>
       </div>
-
-      <p className="text-[12.5px] text-gray-500 mb-3">
-        Answer this correctly to complete the task — no hands-on config needed.{" "}
-        <span className="text-red-500 font-medium">One attempt only. Questions are AI-generated and unique each time.</span>
-      </p>
-
-      {loading && (
-        <div className="text-[12.5px] text-gray-400 animate-pulse">Generating question…</div>
-      )}
-
-      {fetchError && (
-        <div className="text-[12.5px] text-red-500" role="alert">{fetchError}<button className="ml-2 underline" onClick={() => void loadKQ()}>Load a new question</button></div>
-      )}
-
-      {question && (
-        <>
-          <p className="text-[12.5px] text-gray-800 font-medium mb-3 leading-relaxed">
-            {question.question}
-          </p>
-
-          <div className="space-y-1.5 mb-3">
-            {question.choices.map((choice, idx) => (
-              <label
-                key={idx}
-                className={`flex items-start gap-2 p-2 rounded border text-[12.5px] leading-snug transition-colors ${
-                  locked || completed
-                    ? "cursor-not-allowed opacity-60"
-                    : "cursor-pointer"
-                } ${
-                  selected === idx
-                    ? "border-forti-red bg-red-50"
-                    : "border-gray-200 hover:bg-gray-50"
-                }`}
-              >
-                <input
-                  type="radio"
-                  name={`knowledge-check-${taskId}`}
-                  className="mt-0.5 shrink-0"
-                  checked={selected === idx}
-                  disabled={locked || completed}
-                  onChange={() => {
-                    if (!locked && !completed) {
-                      setSelected(idx);
-                    }
-                  }}
-                />
-                <span>{choice}</span>
-              </label>
-            ))}
+      <div className="px-5 py-4">
+        {!question && !loading && !error && (
+          <button className="btn-secondary" onClick={() => void loadKQ()}>Show a question</button>
+        )}
+        {loading && <p className="text-sm text-muted" role="status">Loading question…</p>}
+        {error && (
+          <div className="text-sm text-danger" role="alert">
+            {error} <button className="link ml-1" onClick={() => void loadKQ()}>Try another question</button>
           </div>
-
-          <button
-            onClick={handleAnswer}
-            disabled={selected === null || locked || completed}
-            className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            Answer
-          </button>
-
-          {result === "correct" && (
-            <div className="mt-2 text-[12.5px] text-emerald-600 font-medium">
-              ✓ Correct — task marked complete.
+        )}
+        {question && (
+          <fieldset disabled={disabled}>
+            <legend className="text-sm font-medium text-ink leading-relaxed mb-3">{question.question}</legend>
+            <div className="space-y-2 mb-4">
+              {question.choices.map((choice, idx) => (
+                <label key={idx} className={`flex items-start gap-3 rounded-md border px-3.5 py-2.5 text-sm leading-snug transition-colors ${disabled ? "cursor-not-allowed" : "cursor-pointer hover:border-line-strong"} ${selected === idx ? "border-accent bg-accent-soft" : "border-line"}`}>
+                  <input type="radio" name={`knowledge-check-${taskId}`} className="mt-0.5 accent-[rgb(var(--accent))]" checked={selected === idx} onChange={() => setSelected(idx)} />
+                  <span className="text-body">{choice}</span>
+                </label>
+              ))}
             </div>
-          )}
-          {result === "incorrect" && (
-            <div className="mt-2 text-[12.5px] text-red-600 font-medium">
-              ✗ Incorrect — this question is now locked. Complete the hands-on exercise instead.
-            </div>
-          )}
-        </>
-      )}
-    </div>
+            <button onClick={answerKQ} disabled={selected === null || disabled} className="btn-primary">Submit answer</button>
+          </fieldset>
+        )}
+        {result === "correct" && <p className="mt-3 flex items-center gap-2 text-sm font-medium text-success"><Icon name="checkCircle" size={16} />Correct — lesson marked complete.</p>}
+        {result === "incorrect" && (
+          <p className="mt-3 text-sm text-danger">Not correct, and this question is now locked. Complete the hands-on exercise to finish the lesson.</p>
+        )}
+        {completed && !result && question && <p className="mt-3 text-sm text-muted">You have already completed this lesson.</p>}
+      </div>
+    </section>
   );
+}
+
+/** FortiGate lessons load their question automatically. */
+export function HardQuestionCard({ taskId, session }: { taskId: string | undefined; session: ScenarioSession }) {
+  return <KnowledgeCheckCard platform="fortigate" taskId={taskId} completed={!!taskId && session.completedTaskIds.has(taskId)} onComplete={session.markTaskComplete} autoLoad />;
 }

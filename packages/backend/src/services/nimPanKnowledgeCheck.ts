@@ -21,9 +21,11 @@ interface GeneratedQuestion {
   question: string;
   choices: string[];
   correctIndex: number;
+  /** "ai" when generated for this request, "bank" when taken from the curated fallback set. */
+  source?: "ai" | "bank";
 }
 
-const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
+export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
   // Security Policy
   "pan-sec-01": { title:"Basic Outbound Access", concept:"Why App-ID is more precise than port-based service matching, and why a deny-all rule must sit at the bottom of a PAN-OS policy." },
   "pan-sec-02": { title:"DMZ Web Server",        concept:"Zone directionality in PAN-OS security policy — why a rule allowing Untrust→DMZ does NOT automatically allow DMZ→Trust, and the semi-trusted zone model." },
@@ -68,14 +70,14 @@ const PAN_STATIC_FALLBACKS: Record<string, GeneratedQuestion> = {
     correctIndex: 1,
   },
   "pan-nat-01": {
-    question: "How does PAN-OS evaluate Security Policies versus NAT Policies for inbound traffic?",
+    question: "Many internal users share the firewall's single public IP address with outbound Source NAT. Which translation type makes this possible?",
     choices: [
-      "NAT policy matches pre-NAT IP, Security policy matches pre-NAT zone and post-NAT IP",
-      "Security policy is evaluated before NAT and ignores zones",
-      "Only NAT policy is evaluated; security rules are not needed",
-      "NAT and Security rules are merged into a single table",
+      "Static IP, because it maps each user to the public address 1:1",
+      "Dynamic IP and Port (DIPP), because it translates both the source address and the source port so many sessions can share one address",
+      "Destination NAT, because it rewrites the public address on the way out",
+      "No NAT is needed; the security rule translates the address",
     ],
-    correctIndex: 0,
+    correctIndex: 1,
   },
   "pan-zone-01": {
     question: "Why must every physical interface in PAN-OS be bound to a Security Zone before passing routed traffic?",
@@ -86,6 +88,116 @@ const PAN_STATIC_FALLBACKS: Record<string, GeneratedQuestion> = {
       "Interfaces only support DHCP when assigned to a zone",
     ],
     correctIndex: 0,
+  },
+  "pan-sec-03": {
+    question: "A rule above your general allow rule blocks the application 'bittorrent' by App-ID. A user runs BitTorrent over TCP 443. What happens?",
+    choices: [
+      "It is allowed, because port 443 matches the HTTPS allow rule first",
+      "It is blocked, because App-ID identifies the application from its traffic signature regardless of the port it uses",
+      "It is blocked only if SSL decryption is disabled",
+      "It is allowed, because App-ID only inspects well-known application ports",
+    ],
+    correctIndex: 1,
+  },
+  "pan-sec-04": {
+    question: "To stop users tunnelling unapproved traffic, you allow only a list of approved applications. Why should you also deny 'unknown-tcp' and 'unknown-udp'?",
+    choices: [
+      "They are only used by PAN-OS management traffic",
+      "Tunnels and custom protocols that App-ID cannot classify appear as unknown applications, so allowing them reopens the gap",
+      "PAN-OS requires an explicit deny for every application that is not allowed",
+      "Unknown applications always use ports below 1024",
+    ],
+    correctIndex: 1,
+  },
+  "pan-sec-05": {
+    question: "You allow Management→Trust but want to stop Trust→Management. Without an explicit rule, how does PAN-OS treat Trust→Management traffic?",
+    choices: [
+      "It is allowed, because a session allowed in one direction is allowed in both",
+      "It is denied by the default interzone rule, so no rule is needed — though an explicit logged deny makes the intent visible",
+      "It is allowed by the default intrazone rule",
+      "It is dropped only if both zones are Layer 3 zones",
+    ],
+    correctIndex: 1,
+  },
+  "pan-sec-final": {
+    question: "In a complete PAN-OS rulebase, what is the effect of placing an 'any-any allow' rule above specific App-ID rules?",
+    choices: [
+      "None — PAN-OS picks the most specific matching rule",
+      "Everything matches the broad rule first, so the specific rules below it never apply (they are shadowed)",
+      "The broad rule only applies to traffic App-ID cannot identify",
+      "PAN-OS rejects the commit because of the conflict",
+    ],
+    correctIndex: 1,
+  },
+  "pan-zone-02": {
+    question: "Why should the interfaces used for HA links never be placed in a data-plane zone such as Trust?",
+    choices: [
+      "HA interfaces are faster when they have no zone",
+      "HA links carry control and session synchronisation between peers; mixing them with production traffic exposes that channel and can disrupt failover",
+      "Trust zones cannot contain more than four interfaces",
+      "PAN-OS automatically encrypts HA traffic only in data-plane zones",
+    ],
+    correctIndex: 1,
+  },
+  "pan-zone-03": {
+    question: "An administrator puts the management network in the same zone as user workstations to simplify rules. What is the main risk?",
+    choices: [
+      "Management traffic gets lower QoS priority",
+      "Any compromised workstation can reach the firewall's administrative interfaces directly, with no zone boundary or policy in between",
+      "The firewall cannot log management sessions",
+      "Workstations lose access to the internet",
+    ],
+    correctIndex: 1,
+  },
+  "pan-zone-final": {
+    question: "When designing zones for a branch firewall, what should decide how interfaces are grouped into zones?",
+    choices: [
+      "Physical port numbers, keeping consecutive ports in the same zone",
+      "Trust level and function, so each zone holds networks that need the same security treatment",
+      "Link speed, so all 1 Gbps ports share a zone",
+      "Alphabetical order of the connected device names",
+    ],
+    correctIndex: 1,
+  },
+  "pan-nat-02": {
+    question: "You publish an internal web server with Destination NAT from Untrust. Traffic is translated but still blocked. What is missing?",
+    choices: [
+      "A second NAT rule for the return traffic",
+      "A security rule allowing the traffic: NAT only translates addresses and never permits a session by itself",
+      "An App-ID override on the NAT rule",
+      "Nothing — Destination NAT does not work for HTTP",
+    ],
+    correctIndex: 1,
+  },
+  "pan-nat-03": {
+    question: "How does a bidirectional static NAT rule differ from a one-way Destination NAT rule?",
+    choices: [
+      "Static NAT translates ports while Destination NAT does not",
+      "Bidirectional static NAT maps one address to another 1:1 for both inbound and outbound sessions, so one rule covers both directions",
+      "Static NAT bypasses security policy",
+      "Destination NAT can only be used with IPv6",
+    ],
+    correctIndex: 1,
+  },
+  "pan-nat-final": {
+    question: "For inbound Destination NAT traffic, which addresses and zone does the PAN-OS security rule match?",
+    choices: [
+      "The post-NAT (translated) destination address and the pre-NAT zone",
+      "The original (pre-NAT) destination address and the post-NAT destination zone",
+      "Only the translated address; zones are ignored after NAT",
+      "Security rules are evaluated after NAT, so they match the translated address and zone",
+    ],
+    correctIndex: 1,
+  },
+  "pan-iface-01": {
+    question: "Which PAN-OS interface type lets the firewall inspect and enforce policy on traffic passing between two segments without routing or IP addresses on its interfaces?",
+    choices: [
+      "Layer 3",
+      "Virtual Wire",
+      "Tap",
+      "Loopback",
+    ],
+    correctIndex: 1,
   },
 };
 
@@ -110,11 +222,11 @@ export async function generatePanKnowledgeCheck(taskId: string): Promise<Generat
     const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.question || !Array.isArray(parsed.choices) || parsed.choices.length !== 4 || typeof parsed.correctIndex !== "number")
       throw new Error("Invalid shape");
-    return parsed;
+    return { question: parsed.question, choices: parsed.choices, correctIndex: parsed.correctIndex, source: "ai" };
   } catch (err) {
     console.warn(`[PanKnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);
     const fallback = PAN_STATIC_FALLBACKS[taskId] || getStaticFallbackQuestion(taskId);
-    if (fallback) return fallback;
+    if (fallback) return { ...fallback, source: "bank" };
     throw new Error("Knowledge check question is temporarily unavailable.");
   }
 }

@@ -29,7 +29,7 @@ export async function gradeSubmission(
 export async function getSubmissionFeedback(
   scenarioId: string,
   submission: StudentSubmission
-): Promise<{ report: GradingReport; aiRemark: string | null }> {
+): Promise<{ report: GradingReport; aiRemark: string | null; remarkSource?: "ai" | "guide" }> {
   const res = await apiFetch(`/api/submissions/${scenarioId}/feedback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

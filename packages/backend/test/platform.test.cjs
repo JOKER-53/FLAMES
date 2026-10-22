@@ -24,7 +24,7 @@ before(async () => {
   process.env.AUTH_REQUIRED = "false";
   process.env.ALLOW_REGISTRATION = "true";
   process.env.FRONTEND_ORIGIN = "http://localhost:5173";
-  delete process.env.NVIDIA_NIM_API_KEY;
+  for (const key of ["NVIDIA_NIM_API_KEY", "OPENAI_API_KEY", "LLM_API_KEY"]) delete process.env[key];
   store = new PlatformStore(":memory:");
   const instructor = store.createUser("teacher@example.org", "Instructor", await hashPassword(password), "instructor");
   store.createSession(instructor.id, "instructor-test", Date.now() + 60_000);
@@ -126,9 +126,14 @@ test("production sessions use Secure cookies", async () => {
   } finally { process.env.NODE_ENV = "test"; }
 });
 test("AI outage is graceful and invalid feedback is rejected", async () => {
-  assert.equal((await request("/api/pan/feedback", { exerciseTitle: "Test", failingChecks: ["Zone mismatch"] })).status, 503);
+  // Without an AI provider, tutoring falls back to rule-based hints and curated questions.
+  const feedback = await request("/api/pan/feedback", { exerciseTitle: "Test", failingChecks: ["Zone mismatch"] });
+  assert.equal(feedback.status, 200);
+  assert.match(feedback.body.feedback, /Zone mismatch/);
   assert.equal((await request("/api/pan/feedback", {})).status, 400);
-  assert.equal((await request("/api/knowledge-check/web-server-access-01")).status, 503);
+  const question = await request("/api/knowledge-check/web-server-access-01");
+  assert.equal(question.status, 200);
+  assert.equal("correctIndex" in question.body, false);
 });
 test("knowledge checks hide answers, validate shape, and allow only one answer", () => {
   const hidden = hideAnswer({ question: "Question?", choices: ["A", "B", "C", "D"], correctIndex: 2 });
