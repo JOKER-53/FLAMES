@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
 import { PanSession } from "../../hooks/usePanSession";
 import { PAN_PORTS, PAN_CABLE_TYPES, acceptsPanCable } from "../../hardware/panCables";
 
@@ -29,7 +30,23 @@ function disposeMesh(obj: THREE.Object3D) {
   }
 }
 
-// Calibrated PA-220 3D hardware reference and interactive cabling (v3)
+function createContactShadowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+  const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 235);
+  grad.addColorStop(0, "rgba(20, 30, 45, 0.45)");
+  grad.addColorStop(0.3, "rgba(20, 30, 45, 0.22)");
+  grad.addColorStop(0.65, "rgba(20, 30, 45, 0.06)");
+  grad.addColorStop(1, "rgba(20, 30, 45, 0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(canvas);
+}
+
+// Studio White PA-220 3D hardware reference and interactive cabling
 export function PanDashboard({ session: _session }: { session: PanSession }) {
   const mountRef    = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -60,33 +77,43 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
   function showFb(msg: string, ok: boolean) {
     setFeedback({ msg, ok });
     if (fbTimer.current) clearTimeout(fbTimer.current);
-    fbTimer.current = setTimeout(() => setFeedback(null), 3200);
+    fbTimer.current = setTimeout(() => setFeedback(null), 3800);
   }
 
-  /* ── port-click logic (called from both 3-D click and button) ──────────── */
+  /* ── Port connection handler ─────────────────────────────────────────────── */
   function handlePortClick(portId: string) {
     const port = PAN_PORTS.find(p => p.id === portId);
     if (!port) return;
 
+    if (modeRef.current === "explore") {
+      setInfo({ title: port.name, desc: port.desc });
+      return;
+    }
+
+    // Unplug if already plugged
     if (pluggedRef.current[portId]) {
+      const oldCable = PAN_CABLE_TYPES.find(c => c.id === pluggedRef.current[portId]);
       setPlugged(prev => { const n = { ...prev }; delete n[portId]; return n; });
-      showFb(`🔌 Unplugged from ${port.name}.`, true);
+      showFb(`Unplugged ${oldCable?.label ?? "cable"} from ${port.name}.`, true);
+      setInfo({ title: port.name, desc: `${port.desc}\n\nStatus: Empty (Ready for cable)` });
       return;
     }
 
     const cableId = selCableRef.current;
     if (!cableId) {
-      showFb(`⚠ Select a cable type first, then click a port.`, false);
-      setInfo({ title: port.name, desc: port.desc });
+      showFb(`ℹ Select a cable type from the panel below first, then click ${port.name}.`, false);
+      setInfo({ title: port.name, desc: `${port.desc}\n\nStatus: Empty. Pick a cable below to connect.` });
       return;
     }
+
     const cable = PAN_CABLE_TYPES.find(c => c.id === cableId);
     if (!cable) return;
 
     if (!acceptsPanCable(cableId, portId)) {
-      showFb(`✗ ${cable.label} cannot connect to ${port.name}.\n${cable.desc}`, false);
+      showFb(`✗ ${cable.label} cannot plug into ${port.name}.\n${cable.desc}`, false);
       return;
     }
+
     setPlugged(prev => ({ ...prev, [portId]: cableId }));
     showFb(`✓ ${cable.label} → ${port.name} connected.`, true);
     setInfo({ title: port.name, desc: `${port.desc}\n\nConnected: ${cable.label}` });
@@ -101,18 +128,25 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
     const H = mount.clientHeight || 460;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0d1117);
+    scene.background = new THREE.Color(0xffffff);
 
     const camera = new THREE.PerspectiveCamera(45, W / H, 0.001, 100_000);
     camera.position.set(0, 1.5, 14);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding  = THREE.sRGBEncoding;
     renderer.toneMapping     = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.05;
     mount.appendChild(renderer.domElement);
+
+    // Realistic IBL Studio Environment from RoomEnvironment (same as model-viewer)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const envTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envTexture;
+    pmremGenerator.dispose();
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controlsRef.current = controls;
@@ -124,13 +158,23 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
     renderer.domElement.addEventListener("pointerdown",
       () => { controls.autoRotate = false; }, { once: true });
 
-    /* Lights */
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    [[ 5,10,10,1.2],[-5,5,10,0.9],[0,-5,10,0.6],[0,5,-10,0.5]].forEach(([x,y,z,i]) => {
-      const l = new THREE.DirectionalLight(0xffffff, i);
-      l.position.set(x, y, z);
-      scene.add(l);
-    });
+    /* Studio Lights */
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const mainLight = new THREE.DirectionalLight(0xffffff, 1.25);
+    mainLight.position.set(6, 12, 10);
+    scene.add(mainLight);
+
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
+    fillLight.position.set(-6, 6, 8);
+    scene.add(fillLight);
+
+    const bottomLight = new THREE.DirectionalLight(0xffffff, 0.35);
+    bottomLight.position.set(0, -5, 5);
+    scene.add(bottomLight);
+
+    const rearLight = new THREE.DirectionalLight(0xffffff, 0.55);
+    rearLight.position.set(0, 6, -10);
+    scene.add(rearLight);
 
     const group = new THREE.Group();
     scene.add(group);
@@ -168,7 +212,10 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
           if (c.isMesh) {
             const mats = Array.isArray(c.material) ? c.material : [c.material];
             mats.forEach((m: any) => {
-              if (m) { m.side = THREE.DoubleSide; if (m.emissiveIntensity) m.emissiveIntensity = 0.3; m.needsUpdate = true; }
+              if (m) {
+                m.side = THREE.DoubleSide;
+                m.needsUpdate = true;
+              }
             });
           }
         });
@@ -185,6 +232,19 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
           sceneRef.current.frontZ = frontZ;
           sceneRef.current.backZ = backZ;
         }
+
+        /* Soft Contact Shadow underneath chassis */
+        const shadowGeo = new THREE.PlaneGeometry(sz.x * 1.35, sz.z * 1.35);
+        const shadowMat = new THREE.MeshBasicMaterial({
+          map: createContactShadowTexture(),
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false,
+        });
+        const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+        shadowMesh.rotation.x = -Math.PI / 2;
+        shadowMesh.position.set(0, -sz.y * 0.5 - 0.005, 0);
+        group.add(shadowMesh);
 
         /* Camera fit ─────────────────────────────────────────────── */
         const fov  = camera.fov * Math.PI / 180;
@@ -239,34 +299,34 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
     const mouse     = new THREE.Vector2();
 
     const onClick = (e: MouseEvent) => {
-      if (modeRef.current !== "cable") return;
       const sr = sceneRef.current; if (!sr) return;
-
-      const rect = mount.getBoundingClientRect();
-      mouse.x = ((e.clientX - rect.left) / rect.width)  * 2 - 1;
+      const rect = renderer.domElement.getBoundingClientRect();
+      mouse.x =  ((e.clientX - rect.left) / rect.width)  * 2 - 1;
       mouse.y = -((e.clientY - rect.top)  / rect.height) * 2 + 1;
-      raycaster.setFromCamera(mouse, sr.camera);
+      raycaster.setFromCamera(mouse, camera);
 
-      /* 1. Try exact hit on indicator or hit-target spheres */
-      const sphereTargets = [
-        ...Object.values(sr.indicators).filter(m => m.visible),
-        ...Object.values(sr.hitTargets).filter(m => m.visible),
-      ];
-      const sphereHits = raycaster.intersectObjects(sphereTargets);
-      if (sphereHits.length > 0) {
-        handlePortClick(sphereHits[0].object.userData.portId as string);
-        return;
+      // Hit-test larger invisible targets first
+      const targets = Object.values(sr.hitTargets).filter(m => m.visible);
+      const hits    = raycaster.intersectObjects(targets, false);
+      if (hits.length > 0) {
+        const pid = hits[0].object.userData.portId as string;
+        if (pid) { handlePortClick(pid); return; }
       }
 
-      /* 2. Hit anywhere on model → snap to nearest visible indicator */
-      const modelMeshes: THREE.Object3D[] = [];
-      sr.group.traverse(c => {
-        if ((c as THREE.Mesh).isMesh && !c.userData.portId) modelMeshes.push(c);
-      });
-      const modelHits = raycaster.intersectObjects(modelMeshes, true);
-      if (modelHits.length > 0) {
-        const hp = modelHits[0].point;
-        let nearest = ""; let nearestD = Infinity;
+      // Hit-test visible indicators
+      const visList = Object.values(sr.indicators).filter(m => m.visible);
+      const visHits = raycaster.intersectObjects(visList, false);
+      if (visHits.length > 0) {
+        const pid = visHits[0].object.userData.portId as string;
+        if (pid) { handlePortClick(pid); return; }
+      }
+
+      // Snap-to-nearest on chassis mesh click
+      const allHits = raycaster.intersectObjects(sr.group.children, true);
+      if (allHits.length > 0) {
+        const hp = allHits[0].point;
+        let nearest: string | null = null;
+        let nearestD = Infinity;
         Object.entries(sr.indicators).forEach(([pid, mesh]) => {
           if (!mesh.visible) return;
           const d = Math.hypot(hp.x - mesh.position.x, hp.y - mesh.position.y);
@@ -305,6 +365,7 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
       mount.removeEventListener("click", onClick);
       controls.dispose();
       renderer.dispose();
+      if (envTexture) envTexture.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };
   }, []);
@@ -456,18 +517,20 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
       </div>
 
       {/* 3-D viewport */}
-      <div style={{ position:"relative", flex:1, minHeight:300, borderRadius:8, overflow:"hidden", border:"1px solid #1e2d45", background:"#0d1117" }}>
+      <div style={{ position:"relative", flex:1, minHeight:300, borderRadius:8, overflow:"hidden", border:"1px solid #e2e8f0", background:"#ffffff", boxShadow:"0 1px 3px rgba(0,0,0,0.06)" }}>
         <div ref={mountRef} style={{ width:"100%", height:"100%", cursor: mode==="cable" ? "crosshair" : "grab" }} />
 
         {loading && (
           <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-            background:"#0d1117ee", color:"#94a3b8", fontSize:13, gap:10, textAlign:"center" }}>
-            <span style={{ fontSize:24 }}>⚙</span><span>{debugMsg}</span>
+            background:"#ffffffee", color:"#475569", fontSize:13, gap:10, textAlign:"center" }}>
+            <div style={{ width:32, height:32, border:"3px solid #cbd5e1", borderTopColor:"#fa4616", borderRadius:"50%", animation:"spin 0.8s linear infinite" }} />
+            <span>{debugMsg}</span>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
         {/* Top-left hint */}
-        <div style={{ position:"absolute", top:10, left:12, color:"#3d5270", fontSize:11, pointerEvents:"none" }}>
+        <div style={{ position:"absolute", top:10, left:12, color:"#64748b", fontSize:11, pointerEvents:"none", fontWeight:500 }}>
           {mode === "explore"
             ? "🖱 Drag · Scroll to zoom"
             : "🔌 Pick cable below → click a glowing dot on the model"}
@@ -486,16 +549,18 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
                 if (m === "explore") { setSelCable(null); setFeedback(null); }
               }}
               style={{ padding:"5px 13px", fontSize:11, fontWeight:600, borderRadius:20, cursor:"pointer",
-                border:`1.5px solid ${mode===m ? bg : "#2d3f5a"}`,
-                background:mode===m ? bg : "rgba(13,17,23,0.85)", backdropFilter:"blur(8px)",
-                color:mode===m ? "#fff" : "#94a3b8" }}>
+                border:`1.5px solid ${mode===m ? bg : "#cbd5e1"}`,
+                background:mode===m ? bg : "rgba(255,255,255,0.92)", backdropFilter:"blur(8px)",
+                color:mode===m ? "#fff" : "#475569",
+                boxShadow:"0 1px 2px rgba(0,0,0,0.08)" }}>
               {label}
             </button>
           ))}
           {mode === "cable" && connectedCount > 0 && (
             <button onClick={() => { setPlugged({}); showFb("All cables removed.", true); }}
               style={{ padding:"5px 13px", fontSize:11, borderRadius:20, cursor:"pointer",
-                border:"1.5px solid #2d3f5a", background:"rgba(13,17,23,0.85)", backdropFilter:"blur(8px)", color:"#94a3b8" }}>
+                border:"1.5px solid #cbd5e1", background:"rgba(255,255,255,0.92)", backdropFilter:"blur(8px)", color:"#475569",
+                boxShadow:"0 1px 2px rgba(0,0,0,0.08)" }}>
               ↺ Reset
             </button>
           )}
@@ -505,7 +570,7 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
         <div style={{ position:"absolute", right:10, bottom:10, display:"flex", flexDirection:"column", gap:4 }}>
           {[{l:"+",f:()=>zoom(0.82),t:"Zoom in"},{l:"−",f:()=>zoom(1.22),t:"Zoom out"},{l:"⟳",f:resetView,t:"Reset"}].map(b=>(
             <button key={b.l} onClick={b.f} title={b.t}
-              style={{ width:30, height:30, borderRadius:6, border:"1px solid #334155", background:"#0b111bcc", color:"#cbd5e1", cursor:"pointer", fontSize:b.l==="⟳"?13:17 }}>
+              style={{ width:30, height:30, borderRadius:6, border:"1px solid #cbd5e1", background:"#ffffffee", color:"#334155", cursor:"pointer", fontSize:b.l==="⟳"?13:17, boxShadow:"0 1px 2px rgba(0,0,0,0.08)" }}>
               {b.l}
             </button>
           ))}
@@ -516,9 +581,9 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
       {feedback && (
         <div role="status"
           style={{ padding:"7px 14px", borderRadius:5, fontSize:12, fontWeight:600, whiteSpace:"pre-line",
-            background:feedback.ok ? "#052e16" : "#450a0a",
-            color:feedback.ok ? "#4ade80" : "#f87171",
-            border:`1px solid ${feedback.ok ? "#166534" : "#991b1b"}` }}>
+            background:feedback.ok ? "#dcfce7" : "#fee2e2",
+            color:feedback.ok ? "#15803d" : "#b91c1c",
+            border:`1px solid ${feedback.ok ? "#86efac" : "#fca5a5"}` }}>
           {feedback.msg}
         </div>
       )}
@@ -558,7 +623,7 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
           {/* Port buttons (fallback for non-3D interaction) */}
           <div>
             <div style={{ fontSize:10, fontWeight:700, color:"#94a3b8", textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:5 }}>
-              Step 2 — Click port on model  <span style={{ color:"#cbd5e1", fontWeight:400, textTransform:"none" }}>or use buttons below as backup</span>
+              Step 2 — Click port on model  <span style={{ color:"#94a3b8", fontWeight:400, textTransform:"none" }}>or use buttons below as backup</span>
             </div>
             <div style={{ display:"flex", flexWrap:"wrap", gap:5 }}>
               {PAN_PORTS.map(p => {

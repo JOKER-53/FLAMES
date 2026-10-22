@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment";
 
 export type PanPortZone = "Trust" | "Untrust" | "DMZ" | "HA" | "Management" | "unassigned";
 
@@ -97,6 +98,22 @@ function disposeMesh(obj: THREE.Object3D) {
   }
 }
 
+function createContactShadowTexture(): THREE.CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return new THREE.CanvasTexture(canvas);
+  const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 235);
+  grad.addColorStop(0, "rgba(20, 30, 45, 0.45)");
+  grad.addColorStop(0.3, "rgba(20, 30, 45, 0.22)");
+  grad.addColorStop(0.65, "rgba(20, 30, 45, 0.06)");
+  grad.addColorStop(1, "rgba(20, 30, 45, 0)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 512, 512);
+  return new THREE.CanvasTexture(canvas);
+}
+
 export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode = false }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -130,7 +147,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
     const h = mount.clientHeight || (fullHeight ? 560 : 440);
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color("#0d1117");
+    scene.background = new THREE.Color(0xffffff);
 
     const camera = new THREE.PerspectiveCamera(42, w / h, 0.01, 10000);
     camera.position.set(0, 1.2, 12);
@@ -140,8 +157,15 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
     renderer.setSize(w, h);
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 1.05;
     mount.appendChild(renderer.domElement);
+
+    // Realistic IBL Studio Environment from RoomEnvironment (same as model-viewer)
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    pmremGenerator.compileEquirectangularShader();
+    const envTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envTexture;
+    pmremGenerator.dispose();
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controlsRef.current = controls;
@@ -155,13 +179,23 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
       controls.autoRotate = false;
     }, { once: true });
 
-    // Multi-angle realistic lighting
-    scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-    [[5, 10, 10, 1.2], [-5, 5, 10, 0.9], [0, -5, 10, 0.6], [0, 5, -10, 0.5]].forEach(([x, y, z, i]) => {
-      const l = new THREE.DirectionalLight(0xffffff, i);
-      l.position.set(x, y, z);
-      scene.add(l);
-    });
+    // Multi-angle realistic studio lighting
+    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
+    const dl1 = new THREE.DirectionalLight(0xffffff, 1.25);
+    dl1.position.set(6, 12, 10);
+    scene.add(dl1);
+
+    const dl2 = new THREE.DirectionalLight(0xffffff, 0.7);
+    dl2.position.set(-6, 6, 8);
+    scene.add(dl2);
+
+    const dl3 = new THREE.DirectionalLight(0xffffff, 0.35);
+    dl3.position.set(0, -5, 5);
+    scene.add(dl3);
+
+    const dl4 = new THREE.DirectionalLight(0xffffff, 0.55);
+    dl4.position.set(0, 6, -10);
+    scene.add(dl4);
 
     const group = new THREE.Group();
     scene.add(group);
@@ -207,7 +241,6 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
             mats.forEach((m: any) => {
               if (m) {
                 m.side = THREE.DoubleSide;
-                if (m.emissiveIntensity) m.emissiveIntensity = 0.3;
                 m.needsUpdate = true;
               }
             });
@@ -225,6 +258,19 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
           sceneRef.current.sz = sz;
           sceneRef.current.frontZ = frontZ;
         }
+
+        // Soft Contact Shadow underneath chassis
+        const shadowGeo = new THREE.PlaneGeometry(sz.x * 1.35, sz.z * 1.35);
+        const shadowMat = new THREE.MeshBasicMaterial({
+          map: createContactShadowTexture(),
+          transparent: true,
+          opacity: 0.9,
+          depthWrite: false,
+        });
+        const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
+        shadowMesh.rotation.x = -Math.PI / 2;
+        shadowMesh.position.set(0, -sz.y * 0.5 - 0.005, 0);
+        group.add(shadowMesh);
 
         // Camera fitting
         const fov = (camera.fov * Math.PI) / 180;
@@ -245,7 +291,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
 
           // Subtle glowing socket indicator ring/dot
           const visMat = new THREE.MeshStandardMaterial({
-            color: new THREE.Color("#38bdf8"),
+            color: new THREE.Color("#0284c7"),
             emissive: new THREE.Color("#0284c7"),
             emissiveIntensity: 1.8,
             roughness: 0.2,
@@ -380,6 +426,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
       renderer.domElement.removeEventListener("mousemove", onHover);
       controls.dispose();
       renderer.dispose();
+      if (envTexture) envTexture.dispose();
       if (mount.contains(renderer.domElement)) {
         mount.removeChild(renderer.domElement);
       }
@@ -412,9 +459,9 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
 
       if (isUnassigned) {
         const mat = ind.material as THREE.MeshStandardMaterial;
-        mat.color.set("#475569");
-        mat.emissive.set("#334155");
-        mat.emissiveIntensity = 1.0;
+        mat.color.set("#0284c7");
+        mat.emissive.set("#0284c7");
+        mat.emissiveIntensity = 1.2;
         return;
       }
 
@@ -512,22 +559,22 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: fullHeight ? "100%" : 540, minHeight: 440, gap: 8 }}>
-      <div style={{ position: "relative", flex: 1, minHeight: 340, borderRadius: 8, overflow: "hidden", border: "1px solid #1e2d45", background: "#0d1117" }}>
+      <div style={{ position: "relative", flex: 1, minHeight: 340, borderRadius: 8, overflow: "hidden", border: "1px solid #e2e8f0", background: "#ffffff", boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
         <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
 
         {/* Loading Overlay */}
         {loading && (
           <div style={{
-            position: "absolute", inset: 0, background: "#0d1117cc", backdropFilter: "blur(4px)",
-            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#cbd5e1"
+            position: "absolute", inset: 0, background: "#ffffffee", backdropFilter: "blur(4px)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#475569"
           }}>
-            <div style={{ width: 32, height: 32, border: "3px solid #334155", borderTopColor: "#fa4616", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-            <div style={{ fontSize: 13, fontWeight: 500, color: "#94a3b8" }}>{loadMsg}</div>
+            <div style={{ width: 32, height: 32, border: "3px solid #cbd5e1", borderTopColor: "#fa4616", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            <div style={{ fontSize: 13, fontWeight: 500, color: "#475569" }}>{loadMsg}</div>
             <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
           </div>
         )}
 
-        <div style={{ position: "absolute", top: 10, left: 12, color: "#64748b", fontSize: 11, pointerEvents: "none" }}>
+        <div style={{ position: "absolute", top: 10, left: 12, color: "#64748b", fontSize: 11, pointerEvents: "none", fontWeight: 500 }}>
           🖱 Drag to rotate · Scroll to zoom · Click socket to plug cable
         </div>
 
@@ -541,7 +588,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
               key={x.l}
               onClick={x.f}
               title={x.t}
-              style={{ width: 32, height: 32, borderRadius: 6, border: "1px solid #334155", background: "#0b111bdd", color: "#cbd5e1", cursor: "pointer", fontSize: 16 }}
+              style={{ width: 30, height: 30, borderRadius: 6, border: "1px solid #cbd5e1", background: "#ffffffee", color: "#334155", cursor: "pointer", fontSize: 16, boxShadow: "0 1px 2px rgba(0,0,0,0.08)" }}
             >
               {x.l}
             </button>
@@ -566,7 +613,8 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
                 fontWeight: zone === z ? 600 : 500,
                 border: `1.5px solid ${zone === z ? ZONE_COLORS[z] : "#cbd5e1"}`,
                 background: zone === z ? `${ZONE_COLORS[z]}22` : "#ffffff",
-                color: zone === z ? ZONE_COLORS[z] : "#64748b"
+                color: zone === z ? ZONE_COLORS[z] : "#64748b",
+                boxShadow: "0 1px 2px rgba(0,0,0,0.04)"
               }}
             >
               {z === "unassigned" ? "Unplug (Empty)" : `${z} Cable`}
@@ -575,7 +623,7 @@ export function PanChassisDiagram({ ports, onChange, fullHeight, referenceMode =
         </div>
       )}
 
-      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 14px", minHeight: 60 }}>
+      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 7, padding: "10px 14px", minHeight: 60, boxShadow: "0 1px 2px rgba(0,0,0,0.04)" }}>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", marginBottom: 3 }}>
           {selected.title}
         </div>
