@@ -17,6 +17,7 @@ interface SceneRefs {
   cables:     Record<string, THREE.Object3D>;
   sz:         THREE.Vector3;   // scaled model size
   frontZ:     number;          // world-Z of front face
+  backZ:      number;          // world-Z of rear face
 }
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
@@ -28,6 +29,7 @@ function disposeMesh(obj: THREE.Object3D) {
   }
 }
 
+// Calibrated PA-220 3D hardware reference and interactive cabling
 export function PanDashboard({ session: _session }: { session: PanSession }) {
   const mountRef    = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
@@ -139,7 +141,7 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
 
     sceneRef.current = {
       camera, group, indicators, hitTargets, cables,
-      sz: new THREE.Vector3(8, 1.5, 6), frontZ: 3,
+      sz: new THREE.Vector3(8, 1.5, 6), frontZ: 3, backZ: -3,
     };
 
     let disposed = false;
@@ -176,8 +178,13 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
         const b2  = new THREE.Box3().setFromObject(group);
         const sz  = new THREE.Vector3(); b2.getSize(sz);
         const frontZ = b2.max.z;
+        const backZ  = b2.min.z;
 
-        if (sceneRef.current) { sceneRef.current.sz = sz; sceneRef.current.frontZ = frontZ; }
+        if (sceneRef.current) {
+          sceneRef.current.sz = sz;
+          sceneRef.current.frontZ = frontZ;
+          sceneRef.current.backZ = backZ;
+        }
 
         /* Camera fit ─────────────────────────────────────────────── */
         const fov  = camera.fov * Math.PI / 180;
@@ -187,13 +194,13 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
         camera.updateProjectionMatrix();
 
         /* Port spheres ───────────────────────────────────────────── */
-        const visR = Math.max(sz.y * 0.038, 0.07);   // visible glow dot
-        const hitR = visR * 2.8;                      // invisible click target
+        const visR = Math.max(sz.y * 0.024, 0.052);  // visible glow dot sized for socket cavity
+        const hitR = visR * 2.8;                     // invisible click target
 
         PAN_PORTS.forEach((p) => {
           const wx = p.x * sz.x;
           const wy = p.y * sz.y;
-          const wz = frontZ + visR * 0.5;            // sit just in front of panel
+          const wz = p.isRear ? (backZ - visR * 0.6) : (frontZ + visR * 0.6);
 
           /* Glowing indicator */
           const visMat = new THREE.MeshStandardMaterial({
@@ -329,9 +336,10 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
       const sp   = ind.position.clone();
       const cCol = new THREE.Color(cbl.color);
 
-      const isPow = cableId === "dc-12v";
+      const isPow = !!port.isRear || cableId === "dc-12v";
       const isUsb = cableId === "micro-usb" || cableId === "usb-drive";
-      const pw = sz.y * (isUsb ? 0.07 : isPow ? 0.10 : 0.17);
+      const zDir  = port.isRear ? -1 : 1;
+      const pw = sz.y * (isUsb ? 0.07 : isPow ? 0.10 : 0.16);
       const ph = sz.y * (isUsb ? 0.10 : isPow ? 0.10 : 0.14);
       const pd = sz.y * 0.22;
 
@@ -344,7 +352,7 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
         cMat,
       );
       if (isPow) plug.rotation.x = Math.PI / 2;
-      plug.position.set(sp.x, sp.y, sp.z + pd * 0.4);
+      plug.position.set(sp.x, sp.y, sp.z + zDir * pd * 0.4);
       group.add(plug); cables[portId + "_plug"] = plug;
 
       /* RJ-45 latch tab */
@@ -353,14 +361,14 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
           new THREE.BoxGeometry(pw * 0.4, ph * 0.10, pd * 0.45),
           new THREE.MeshStandardMaterial({ color: cCol, roughness: 0.2, metalness: 0.5 }),
         );
-        latch.position.set(sp.x, sp.y - ph * 0.55, sp.z + pd * 0.28);
+        latch.position.set(sp.x, sp.y - ph * 0.55, sp.z + zDir * pd * 0.28);
         group.add(latch); cables[portId + "_latch"] = latch;
 
         /* Gold contact pins (8) */
         const pinMat = new THREE.MeshStandardMaterial({ color: 0xd4a017, roughness: 0.15, metalness: 0.95 });
         for (let i = 0; i < 8; i++) {
           const pin = new THREE.Mesh(new THREE.BoxGeometry(pw * 0.055, ph * 0.32, pd * 0.07), pinMat);
-          pin.position.set(sp.x + (i - 3.5) * pw * 0.10, sp.y + ph * 0.09, sp.z + pd * 0.44);
+          pin.position.set(sp.x + (i - 3.5) * pw * 0.10, sp.y + ph * 0.09, sp.z + zDir * pd * 0.44);
           group.add(pin); cables[`${portId}_pin${i}`] = pin;
         }
       }
@@ -371,21 +379,21 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
         cMat,
       );
       boot.rotation.x = Math.PI / 2;
-      boot.position.set(sp.x, sp.y, sp.z + pd * 0.78);
+      boot.position.set(sp.x, sp.y, sp.z + zDir * pd * 0.78);
       group.add(boot); cables[portId + "_boot"] = boot;
 
       /* Curved cable tail */
       const cr   = sz.y * 0.015;
-      const tailZ = sp.z + pd * 0.9;
+      const tailZ = sp.z + zDir * pd * 0.9;
       const seed  = [...portId].reduce((s, c) => s + c.charCodeAt(0), 0);
       const bend  = ((seed % 7) - 3) * sz.y * 0.010;
 
       const pts = [
         new THREE.Vector3(sp.x,             sp.y,             tailZ),
-        new THREE.Vector3(sp.x + bend * 0.3, sp.y - sz.y * 0.12, tailZ + sz.z * 0.03),
-        new THREE.Vector3(sp.x + bend * 0.7, sp.y - sz.y * 0.32, tailZ + sz.z * 0.07),
-        new THREE.Vector3(sp.x + bend,       sp.y - sz.y * 0.55, tailZ + sz.z * 0.10),
-        new THREE.Vector3(sp.x + bend * 0.8, sp.y - sz.y * 0.80, tailZ + sz.z * 0.11),
+        new THREE.Vector3(sp.x + bend * 0.3, sp.y - sz.y * 0.12, tailZ + zDir * sz.z * 0.03),
+        new THREE.Vector3(sp.x + bend * 0.7, sp.y - sz.y * 0.32, tailZ + zDir * sz.z * 0.07),
+        new THREE.Vector3(sp.x + bend,       sp.y - sz.y * 0.55, tailZ + zDir * sz.z * 0.10),
+        new THREE.Vector3(sp.x + bend * 0.8, sp.y - sz.y * 0.80, tailZ + zDir * sz.z * 0.11),
       ];
       const tube = new THREE.Mesh(
         new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, false, "catmullrom", 0.5), 28, cr, 10, false),
