@@ -30,19 +30,43 @@ function disposeMesh(obj: THREE.Object3D) {
   }
 }
 
+/** Realistic rectangular contact shadow matching PA-220 footprint */
 function createContactShadowTexture(): THREE.CanvasTexture {
   const canvas = document.createElement("canvas");
   canvas.width = 512;
   canvas.height = 512;
   const ctx = canvas.getContext("2d");
   if (!ctx) return new THREE.CanvasTexture(canvas);
-  const grad = ctx.createRadialGradient(256, 256, 40, 256, 256, 235);
-  grad.addColorStop(0, "rgba(20, 30, 45, 0.45)");
-  grad.addColorStop(0.3, "rgba(20, 30, 45, 0.22)");
-  grad.addColorStop(0.65, "rgba(20, 30, 45, 0.06)");
-  grad.addColorStop(1, "rgba(20, 30, 45, 0)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, 0, 512, 512);
+
+  ctx.clearRect(0, 0, 512, 512);
+
+  function drawRoundedRect(x: number, y: number, w: number, h: number, r: number) {
+    ctx!.beginPath();
+    ctx!.moveTo(x + r, y);
+    ctx!.arcTo(x + w, y, x + w, y + h, r);
+    ctx!.arcTo(x + w, y + h, x, y + h, r);
+    ctx!.arcTo(x, y + h, x, y, r);
+    ctx!.arcTo(x, y, x + w, y, r);
+    ctx!.closePath();
+  }
+
+  const layers = [
+    { insetX: 45, insetY: 65, r: 18, alpha: 0.60, blur: 12 },
+    { insetX: 35, insetY: 50, r: 26, alpha: 0.38, blur: 24 },
+    { insetX: 22, insetY: 34, r: 34, alpha: 0.20, blur: 44 },
+    { insetX: 10, insetY: 18, r: 42, alpha: 0.08, blur: 68 },
+  ];
+
+  layers.forEach(l => {
+    ctx.save();
+    ctx.shadowColor = `rgba(12, 18, 28, ${l.alpha})`;
+    ctx.shadowBlur = l.blur;
+    ctx.fillStyle = `rgba(12, 18, 28, ${l.alpha * 0.9})`;
+    drawRoundedRect(l.insetX, l.insetY, 512 - l.insetX * 2, 512 - l.insetY * 2, l.r);
+    ctx.fill();
+    ctx.restore();
+  });
+
   return new THREE.CanvasTexture(canvas);
 }
 
@@ -130,18 +154,18 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0xffffff);
 
-    const camera = new THREE.PerspectiveCamera(45, W / H, 0.001, 100_000);
-    camera.position.set(0, 1.5, 14);
+    const camera = new THREE.PerspectiveCamera(42, W / H, 0.001, 100_000);
+    camera.position.set(4, 5, 11);
 
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputEncoding  = THREE.sRGBEncoding;
     renderer.toneMapping     = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.05;
+    renderer.toneMappingExposure = 0.94;
     mount.appendChild(renderer.domElement);
 
-    // Realistic IBL Studio Environment from RoomEnvironment (same as model-viewer)
+    // Realistic IBL Studio Environment from RoomEnvironment (Google model-viewer environment)
     const pmremGenerator = new THREE.PMREMGenerator(renderer);
     pmremGenerator.compileEquirectangularShader();
     const envTexture = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -151,30 +175,21 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
     const controls = new OrbitControls(camera, renderer.domElement);
     controlsRef.current = controls;
     controls.enableDamping  = true;
-    controls.dampingFactor  = 0.05;
+    controls.dampingFactor  = 0.06;
     controls.autoRotate     = true;
-    controls.autoRotateSpeed = 0.5;
+    controls.autoRotateSpeed = 0.45;
     controls.enablePan      = false;
     renderer.domElement.addEventListener("pointerdown",
       () => { controls.autoRotate = false; }, { once: true });
 
-    /* Studio Lights */
-    scene.add(new THREE.AmbientLight(0xffffff, 0.75));
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1.25);
-    mainLight.position.set(6, 12, 10);
-    scene.add(mainLight);
+    /* Gentle Key Light for natural 3D shading contrast (NO ambient light wash) */
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.65);
+    keyLight.position.set(5, 10, 8);
+    scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xffffff, 0.7);
-    fillLight.position.set(-6, 6, 8);
-    scene.add(fillLight);
-
-    const bottomLight = new THREE.DirectionalLight(0xffffff, 0.35);
-    bottomLight.position.set(0, -5, 5);
-    scene.add(bottomLight);
-
-    const rearLight = new THREE.DirectionalLight(0xffffff, 0.55);
-    rearLight.position.set(0, 6, -10);
-    scene.add(rearLight);
+    const rimLight = new THREE.DirectionalLight(0xffffff, 0.25);
+    rimLight.position.set(-5, 4, -6);
+    scene.add(rimLight);
 
     const group = new THREE.Group();
     scene.add(group);
@@ -233,12 +248,12 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
           sceneRef.current.backZ = backZ;
         }
 
-        /* Soft Contact Shadow underneath chassis */
-        const shadowGeo = new THREE.PlaneGeometry(sz.x * 1.35, sz.z * 1.35);
+        /* Grounded Rectangular Contact Shadow underneath chassis */
+        const shadowGeo = new THREE.PlaneGeometry(sz.x * 1.25, sz.z * 1.35);
         const shadowMat = new THREE.MeshBasicMaterial({
           map: createContactShadowTexture(),
           transparent: true,
-          opacity: 0.9,
+          opacity: 0.95,
           depthWrite: false,
         });
         const shadowMesh = new THREE.Mesh(shadowGeo, shadowMat);
@@ -246,12 +261,15 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
         shadowMesh.position.set(0, -sz.y * 0.5 - 0.005, 0);
         group.add(shadowMesh);
 
-        /* Camera fit ─────────────────────────────────────────────── */
+        /* Camera fit — 3/4 Elevated Product Showcase (matching model-viewer) */
         const fov  = camera.fov * Math.PI / 180;
-        const dist = (Math.max(sz.x, sz.y, sz.z) / 2 / Math.tan(fov / 2)) * 1.6;
-        camera.position.set(0, -sz.y * 0.05, dist * 0.82);
-        camera.near = dist / 1000; camera.far = dist * 100;
+        const dist = (Math.max(sz.x, sz.y, sz.z) / 2 / Math.tan(fov / 2)) * 1.55;
+        camera.position.set(dist * 0.32, dist * 0.40, dist * 0.85);
+        controls.target.set(0, -sz.y * 0.08, 0);
+        camera.near = dist / 1000;
+        camera.far = dist * 100;
         camera.updateProjectionMatrix();
+        controls.update();
 
         /* Port spheres ───────────────────────────────────────────── */
         const visR = Math.max(sz.y * 0.024, 0.052);  // visible glow dot sized for socket cavity
@@ -468,8 +486,11 @@ export function PanDashboard({ session: _session }: { session: PanSession }) {
   const zoom = (f: number) => sceneRef.current?.camera.position.multiplyScalar(f);
   const resetView = () => {
     const s = sceneRef.current; if (!s) return;
-    s.camera.position.set(0, 1.5, 14);
-    controlsRef.current!.target.set(0, 0, 0);
+    const { sz, camera } = s;
+    const fov  = camera.fov * Math.PI / 180;
+    const dist = (Math.max(sz.x, sz.y, sz.z) / 2 / Math.tan(fov / 2)) * 1.55;
+    camera.position.set(dist * 0.32, dist * 0.40, dist * 0.85);
+    controlsRef.current!.target.set(0, -sz.y * 0.08, 0);
     controlsRef.current!.autoRotate = mode === "explore";
     controlsRef.current!.update();
   };
