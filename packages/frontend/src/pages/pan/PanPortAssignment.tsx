@@ -1,42 +1,59 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PanSession } from "../../hooks/usePanSession";
-import { PanChassisDiagram, PanPortZone, PanPortAssignment as PPA } from "../../components/policyObjects/PanChassisDiagram";
+import { LessonFrame } from "../../components/shell/LessonFrame";
+import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
+import { Section } from "../../components/ui/primitives";
+import { Icon } from "../../components/ui/Icon";
+import { PanChassisDiagram, PanPortZone, PanPortAssignment as PPA, PAN_ZONE_COLORS } from "../../components/policyObjects/PanChassisDiagram";
 
-const SCENARIOS = [
+type Check = { desc: string; fn: (p: PPA[]) => boolean };
+const zoneOf = (p: PPA[], id: string) => p.find(x => x.id === id)?.zone;
+const inZone = (id: string, zone: PanPortZone): Check => ({ desc: `${id} in ${zone}`, fn: p => zoneOf(p, id) === zone });
+const othersUnassigned = (used: string[]): Check => ({
+  desc: "All other data ports left unassigned",
+  fn: p => p.filter(x => x.id.startsWith("ethernet") && !used.includes(x.id)).every(x => x.zone === "unassigned"),
+});
+
+const SCENARIOS: { id: string; title: string; description: string; checks: Check[] }[] = [
   {
     id: "pan-port-01",
     title: "Basic Port Assignment",
     description: "Assign ethernet1/1 to Untrust (WAN) and ethernet1/2 to Trust (LAN). Leave others unassigned.",
     checks: [
-      { desc: "ethernet1/1 in Untrust", fn: (p: PPA[]) => p.find(x => x.id === "ethernet1/1")?.zone === "Untrust" },
-      { desc: "ethernet1/2 in Trust",   fn: (p: PPA[]) => p.find(x => x.id === "ethernet1/2")?.zone === "Trust" },
-    ]
+      inZone("ethernet1/1", "Untrust"),
+      inZone("ethernet1/2", "Trust"),
+      othersUnassigned(["ethernet1/1", "ethernet1/2"]),
+    ],
   },
   {
     id: "pan-port-02",
     title: "DMZ & HA Assignment",
-    description: "Keep eth1/1 Untrust, eth1/2 Trust. Add eth1/3 as DMZ, and eth1/6 as HA.",
+    description: "Keep eth1/1 Untrust and eth1/2 Trust. Add eth1/3 as DMZ and eth1/6 as HA. Leave the remaining data ports unassigned.",
     checks: [
-      { desc: "ethernet1/3 in DMZ", fn: (p: PPA[]) => p.find(x => x.id === "ethernet1/3")?.zone === "DMZ" },
-      { desc: "ethernet1/6 in HA",  fn: (p: PPA[]) => p.find(x => x.id === "ethernet1/6")?.zone === "HA" },
-    ]
-  }
+      inZone("ethernet1/1", "Untrust"),
+      inZone("ethernet1/2", "Trust"),
+      inZone("ethernet1/3", "DMZ"),
+      inZone("ethernet1/6", "HA"),
+      othersUnassigned(["ethernet1/1", "ethernet1/2", "ethernet1/3", "ethernet1/6"]),
+    ],
+  },
 ];
 
 const INIT_PORTS: PPA[] = [
-  { id: "ethernet1/1", zone: "unassigned", label: "eth1/1" },
-  { id: "ethernet1/2", zone: "unassigned", label: "eth1/2" },
-  { id: "ethernet1/3", zone: "unassigned", label: "eth1/3" },
-  { id: "ethernet1/4", zone: "unassigned", label: "eth1/4" },
-  { id: "ethernet1/5", zone: "unassigned", label: "eth1/5" },
-  { id: "ethernet1/6", zone: "unassigned", label: "eth1/6" },
-  { id: "ethernet1/7", zone: "unassigned", label: "eth1/7" },
-  { id: "ethernet1/8", zone: "unassigned", label: "eth1/8" },
-  { id: "management",  zone: "Management", label: "MGT" }
+  ...Array.from({ length: 8 }, (_, i): PPA => ({ id: `ethernet1/${i + 1}`, zone: "unassigned", label: `eth1/${i + 1}` })),
+  // MGT is a dedicated out-of-band interface; it never joins a data-plane zone.
+  { id: "management", zone: "Management", label: "MGT", locked: true },
 ];
+const DATA_ZONES: PanPortZone[] = ["unassigned", "Trust", "Untrust", "DMZ", "HA"];
 
 export function PanPortAssignment({ session }: { session: PanSession }) {
-  const [scenarioIdx, setScenarioIdx] = useState(0);
+  const requested = useSearchParams()[0].get("task");
+  const [scenarioIdx, setScenarioIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(s => s.id === requested)));
+  useEffect(() => {
+    const index = SCENARIOS.findIndex(s => s.id === requested);
+    if (index >= 0) { setScenarioIdx(index); setResults(null); }
+  }, [requested]);
   const scenario = SCENARIOS[scenarioIdx];
   const [ports, setPorts] = useState<PPA[]>(INIT_PORTS);
   const [results, setResults] = useState<{desc:string; pass:boolean}[]|null>(null);
@@ -45,7 +62,8 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
   const total = scenario.checks.length;
 
   function onChangeZone(id: string, newZone: PanPortZone) {
-    setPorts(prev => prev.map(p => p.id === id ? { ...p, zone: newZone } : p));
+    setPorts(prev => prev.map(p => p.id === id && !p.locked ? { ...p, zone: newZone } : p));
+    setResults(null);
   }
 
   function grade() {
@@ -57,72 +75,44 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
   }
 
   return (
-    <div style={{ maxWidth: 1000 }}>
-      <div style={{ marginBottom: 16 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, color: "#1e293b", margin: 0 }}>Port Assignment</h1>
-        <p style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>Assign physical chassis ports to logical zones.</p>
-      </div>
+    <LessonFrame title={scenario.title} brief={scenario.description}>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          <ConsoleFrame path={["Device", "Physical ports"]}>
+            <div className="p-4">
+              <PanChassisDiagram ports={ports} onChange={onChangeZone} />
+            </div>
+          </ConsoleFrame>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        {SCENARIOS.map((s, i) => (
-          <button key={s.id} onClick={() => { setScenarioIdx(i); setResults(null); }}
-            style={{ padding: "6px 14px", fontSize: 11, borderRadius: 20, border: "none", cursor: "pointer",
-              background: scenarioIdx === i ? "#fa4616" : "#e2e8f0", color: scenarioIdx === i ? "#fff" : "#475569", fontWeight: 600 }}>
-            {i + 1}. {s.title}
-          </button>
-        ))}
-      </div>
-
-      <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
-        <p style={{ fontSize: 12, color: "#374151", margin: 0, lineHeight: 1.5 }}>{scenario.description}</p>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
-        <div>
-          <PanChassisDiagram ports={ports} onChange={onChangeZone} />
+          <CheckYourWork
+            onSubmit={grade}
+            result={results && { passed: passed === total, checks: results.map(r => ({ label: r.desc, passed: r.pass })) }}
+          />
         </div>
-        <div>
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
-            <h3 style={{ fontSize: 13, margin: "0 0 10px 0" }}>Zone Assignments</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+
+        <aside className="min-w-0">
+          <Section
+            title="Zone assignments"
+            actions={<button onClick={() => { setPorts(INIT_PORTS); setResults(null); }} className="btn-ghost btn-sm"><Icon name="refresh" size={14} />Reset</button>}
+            bodyClassName="px-5 py-2"
+          >
+            <ul className="divide-y divide-line">
               {ports.map(p => (
-                <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-                  <span style={{ fontFamily: "monospace", color: "#374151" }}>{p.id}</span>
-                  <select value={p.zone} onChange={(e) => onChangeZone(p.id, e.target.value as PanPortZone)}
-                    style={{ padding: "4px", borderRadius: 4, border: "1px solid #cbd5e1" }}>
-                    <option value="unassigned">Unassigned</option>
-                    <option value="Trust">Trust</option>
-                    <option value="Untrust">Untrust</option>
-                    <option value="DMZ">DMZ</option>
-                    <option value="HA">HA</option>
-                    <option value="Management">Management</option>
-                  </select>
-                </div>
+                <li key={p.id} className="flex items-center justify-between gap-2 py-2">
+                  <span className="flex items-center gap-2 font-mono text-xs text-ink">
+                    <span className="w-2.5 h-2.5 rounded-sm" style={{ background: PAN_ZONE_COLORS[p.zone] }} />{p.id}
+                  </span>
+                  {p.locked
+                    ? <span className="text-xs text-muted">{p.zone} (dedicated)</span>
+                    : <select aria-label={`Zone for ${p.id}`} value={p.zone} onChange={e => onChangeZone(p.id, e.target.value as PanPortZone)} className="input h-8 w-32 text-xs">
+                        {DATA_ZONES.map(z => <option key={z} value={z}>{z === "unassigned" ? "Unassigned" : z}</option>)}
+                      </select>}
+                </li>
               ))}
-            </div>
-          </div>
-          
-          <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: results ? 12 : 0 }}>
-              <span style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Submit for Grading</span>
-              <button onClick={grade} style={{ padding: "6px 16px", fontSize: 12, borderRadius: 4, background: "#fa4616", color: "#fff", border: "none", cursor: "pointer" }}>Submit</button>
-            </div>
-            {results && (
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: passed === total ? "#166534" : "#dc2626" }}>
-                  {passed === total ? "✓ All checks passed!" : "Not yet correct"} — {passed}/{total} checks
-                </div>
-                {results.map((r, i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid #f1f5f9", fontSize: 12 }}>
-                    <span style={{ color: "#374151" }}>{r.desc}</span>
-                    <span style={{ padding: "1px 8px", borderRadius: 3, fontSize: 11, fontWeight: 600, background: r.pass ? "#dcfce7" : "#fee2e2", color: r.pass ? "#166534" : "#991b1b" }}>{r.pass ? "PASS" : "FAIL"}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+            </ul>
+          </Section>
+        </aside>
       </div>
-    </div>
+    </LessonFrame>
   );
 }

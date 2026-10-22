@@ -36,11 +36,6 @@ export const gradeWithFeedback = async (req: Request, res: Response) => {
     return res.json({ report });
   }
 
-  try {
-    const aiRemark = await getFeedbackForReport(scenario.title, report);
-    res.json({ report, aiRemark });
-  } catch (err) {
-    console.error("NIM feedback call failed:", err);
-    res.json({ report, aiRemark: null, aiError: "Feedback service unavailable" });
-  }
+  const hint = await getFeedbackForReport(scenario.title, report);
+  res.json({ report, aiRemark: hint.text, remarkSource: hint.source });
 };

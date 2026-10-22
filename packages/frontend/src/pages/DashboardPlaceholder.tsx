@@ -2,27 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 import { ScenarioSession } from "../hooks/useScenarioSession";
-import { PORTS, CABLE_TYPES, acceptsCable } from "../hardware/cables";
+import { PageHeader } from "../components/ui/primitives";
+import { PORTS, CABLE_TYPES, PORT_Y, SOCKET_WIDTH, acceptsCable, connectorKind } from "../hardware/cables";
+import { buildCable, disposeObject, fitFortiGateModel, fortiGateSocket } from "../hardware/cableMesh";
 
 interface DashboardProps { session: ScenarioSession; }
 interface PartInfo { title: string; body: string; }
-
-function disposeObject(object: THREE.Object3D) {
-  const geometries = new Set<THREE.BufferGeometry>();
-  const materials = new Set<THREE.Material>();
-  const textures = new Set<THREE.Texture>();
-  object.traverse(child => {
-    if (!(child instanceof THREE.Mesh)) return;
-    geometries.add(child.geometry);
-    for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
-      materials.add(material);
-      for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
-    }
-  });
-  textures.forEach(texture => texture.dispose());
-  materials.forEach(material => material.dispose());
-  geometries.forEach(geometry => geometry.dispose());
-}
 
 const PART_INFO: Record<string, PartInfo> = {
   chassis:  { title: "Chassis — Desktop Form Factor", body: "The FortiGate 60F sits flat on a desk or shelf. The cream/white polycarbonate enclosure houses the CPU, NP6Lite ASIC, RAM, and flash." },
@@ -48,6 +33,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     portIndicators: Record<string, THREE.Mesh>;
     cableMeshes:    Record<string, THREE.Object3D>;
     size:   THREE.Vector3;
+    baseDistance: number;
     rotX:   number;
     rotY:   number;
   } | null>(null);
@@ -77,18 +63,20 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   }
 
   function handlePortClick(portId: string) {
+    const label = PORTS.find(p => p.id === portId)?.label ?? portId.toUpperCase();
+    // A plugged socket is always unplugged, whichever cable is selected.
+    if (pluggedRef.current[portId]) {
+      setPlugged(p => { const n={...p}; delete n[portId]; return n; });
+      showFeedback(`Unplugged ${label}.`, true);
+      return;
+    }
     const cable = CABLE_TYPES.find(c => c.id === cableRef.current);
     if (!cable) { showFeedback("Select a cable first.", false); return; }
     if (!acceptsCable(cable.id, portId)) {
-      showFeedback(`✗ ${cable.label} cannot plug into ${portId.toUpperCase()}.`, false); return;
+      showFeedback(`✗ ${cable.label} cannot plug into ${label}.`, false); return;
     }
-    if (pluggedRef.current[portId]) {
-      setPlugged(p => { const n={...p}; delete n[portId]; return n; });
-      showFeedback(`Unplugged from ${portId.toUpperCase()}.`, true);
-    } else {
-      setPlugged(p => ({ ...p, [portId]: cable.id }));
-      showFeedback(`✓ ${cable.label} → ${portId.toUpperCase()}.`, true);
-    }
+    setPlugged(p => ({ ...p, [portId]: cable.id }));
+    showFeedback(`✓ ${cable.label} → ${label}.`, true);
   }
 
   useEffect(() => {
@@ -134,49 +122,33 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     const cableMeshes:    Record<string, THREE.Object3D> = {};
 
     // Store in ref immediately — persists across renders
-    threeRef.current = { camera, group, portIndicators, cableMeshes, size: new THREE.Vector3(), rotX: -0.22, rotY: 0 };
+    threeRef.current = { camera, group, portIndicators, cableMeshes, size: new THREE.Vector3(), baseDistance: 10, rotX: 0.3, rotY: 0 };
 
     const loader = new GLTFLoader();
     loader.load("/firewall.glb", (gltf) => {
       const model = gltf.scene;
       if (disposed) { disposeObject(model); return; }
-      const box0 = new THREE.Box3().setFromObject(model);
-      const size0 = new THREE.Vector3(); box0.getSize(size0);
-      const scale = 8 / Math.max(size0.x, size0.y, size0.z);
-      model.scale.setScalar(scale);
-      const box1 = new THREE.Box3().setFromObject(model);
-      const center = new THREE.Vector3(); box1.getCenter(center);
-      model.position.sub(center);
-      model.traverse((c: any) => {
-        if (c.isMesh) {
-          const mats = Array.isArray(c.material) ? c.material : [c.material];
-          mats.forEach((m: any) => { if (m) { m.side = THREE.FrontSide; if (m.emissiveIntensity) m.emissiveIntensity = 0.3; m.needsUpdate = true; }});
-        }
-      });
+      // Measure before the model joins the tilted group; a rotated bounding box
+      // inflates the height and pushed every socket marker below its socket.
+      const sz = fitFortiGateModel(model);
       group.add(model);
 
-      const box2 = new THREE.Box3().setFromObject(group);
-      const sz = new THREE.Vector3(); box2.getSize(sz);
       const fov = camera.fov * Math.PI/180;
-      const dist = (Math.max(sz.x,sz.y,sz.z)/2) / Math.tan(fov/2) * 1.6;
-      camera.position.set(0, -sz.y*0.08, dist * 0.78);
+      const dist = (sz.x / 2) * 1.1 / (Math.tan(fov/2) * camera.aspect) + sz.z / 2;
+      camera.position.set(0, 0, dist);
       camera.near = dist/1000; camera.far = dist*100;
       camera.updateProjectionMatrix();
 
-      if (threeRef.current) threeRef.current.size = sz;
+      if (threeRef.current) { threeRef.current.size = sz; threeRef.current.baseDistance = dist; }
 
-      // Port indicator spheres. These positions are calibrated against the
-      // actual socket centres in firewall.glb; the front-panel spacing is not
-      // uniform, especially between CONSOLE/WAN and HA/LAN.
-      const r = sz.y * 0.028; // smaller — sits in port hole
-      const portY = sz.y * -0.164;
-      const portZ = box2.max.z; // derive from the actual front panel, not an outdated fixed depth
+      const r = SOCKET_WIDTH * sz.x * 0.24;
       PORTS.forEach(({ id, part, x, color }) => {
         const sphere = new THREE.Mesh(
-          new THREE.SphereGeometry(r, 12, 12),
-          new THREE.MeshStandardMaterial({ color: new THREE.Color(color), emissive: new THREE.Color(color), emissiveIntensity: 1.8, roughness: 0.2, metalness: 0.1 })
+          new THREE.SphereGeometry(r, 16, 16),
+          new THREE.MeshBasicMaterial({ color: new THREE.Color(color), transparent: true, opacity: 0.9 })
         );
-        sphere.position.set(x * sz.x, portY, portZ + r * 0.5);
+        sphere.position.copy(fortiGateSocket(x, PORT_Y, sz));
+        sphere.position.z += r * 0.8;
         sphere.visible = modeRef.current === "cable";
         sphere.userData.portId = id;
         sphere.userData.part   = part;
@@ -192,7 +164,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     });
 
     // Orbit
-    let rotX = -0.22, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
+    let rotX = 0.3, rotY = 0.0, isDragging = false, prevX = 0, prevY = 0;
     let autoRotate = true;
     const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let downX = 0, downY = 0, dragged = false;
@@ -211,9 +183,8 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       mouse.x = ((e.clientX-r.left)/r.width)*2-1;
       mouse.y = -((e.clientY-r.top)/r.height)*2+1;
       raycaster.setFromCamera(mouse, camera);
-      const indHits = modeRef.current === "cable"
-        ? raycaster.intersectObjects(Object.values(portIndicators))
-        : [];
+      // Hidden indicators still raycast, so explore mode can identify individual ports.
+      const indHits = raycaster.intersectObjects(Object.values(portIndicators));
       if (indHits.length) {
         const obj = indHits[0].object as THREE.Mesh;
         if (modeRef.current==="cable") handlePortClick(obj.userData.portId);
@@ -231,8 +202,7 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       mouse.x = ((e.clientX-r.left)/r.width)*2-1;
       mouse.y = -((e.clientY-r.top)/r.height)*2+1;
       raycaster.setFromCamera(mouse, camera);
-      const overPort = modeRef.current === "cable"
-        && raycaster.intersectObjects(Object.values(portIndicators)).length > 0;
+      const overPort = raycaster.intersectObjects(Object.values(portIndicators)).length > 0;
       mount.style.cursor = overPort
         ? "pointer"
         : (isDragging ? "grabbing" : "grab");
@@ -324,21 +294,11 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
     if (!t || !t.size.x) return;
     const { group, portIndicators, cableMeshes, size } = t;
 
-    Object.values(cableMeshes).forEach(m => {
-      group.remove(m);
-      if (m instanceof THREE.Mesh) {
-        m.geometry.dispose();
-        const materials = Array.isArray(m.material) ? m.material : [m.material];
-        materials.forEach(material => material.dispose());
-      }
-    });
+    Object.values(cableMeshes).forEach(m => { group.remove(m); disposeObject(m); });
     Object.keys(cableMeshes).forEach(k => delete cableMeshes[k]);
 
     if (mode !== "cable") {
-      Object.values(portIndicators).forEach(mesh => {
-        mesh.visible = false;
-        (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.2;
-      });
+      Object.values(portIndicators).forEach(mesh => { mesh.visible = false; });
       return;
     }
 
@@ -346,75 +306,12 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
       const cableId = plugged[portId];
       const cable   = CABLE_TYPES.find(c => c.id === cableId);
       mesh.visible = !cable;
-      (mesh.material as THREE.MeshStandardMaterial).emissiveIntensity = cable ? 2.5 : 1.2;
       if (!cable) return;
 
-      const sp   = mesh.position.clone();
-      const cCol = new THREE.Color(cable.color);
-      const cMat = new THREE.MeshStandardMaterial({ color: cCol, roughness: 0.45, metalness: 0.2 });
-
-      const isPower = cable.id === "dc-power";
-      const isUsb = cable.id === "usb";
-      const pw = size.y * (isUsb ? 0.09 : isPower ? 0.12 : 0.22);
-      const ph = size.y * (isUsb ? 0.18 : isPower ? 0.12 : 0.18);
-      const pd = size.y * 0.27;
-      const plug = new THREE.Mesh(isPower
-        ? new THREE.CylinderGeometry(pw / 2, pw / 2, pd, 16)
-        : new THREE.BoxGeometry(pw, ph, pd), cMat);
-      if (isPower) plug.rotation.x = Math.PI / 2;
-      // Sink the rear of the connector slightly into the socket so the
-      // projected plug remains visually anchored while the chassis rotates.
-      plug.position.set(sp.x, sp.y, sp.z+pd*0.35);
-      group.add(plug); cableMeshes[portId+"_plug"]=plug;
-
-      if (!isPower && !isUsb) {
-      // RJ-45 latch and eight contacts; USB and power use different connector geometry.
-      const latch = new THREE.Mesh(new THREE.BoxGeometry(pw*0.4,ph*0.12,pd*0.5),
-        new THREE.MeshStandardMaterial({color:cCol,roughness:0.2,metalness:0.6}));
-      latch.position.set(sp.x, sp.y-ph*0.56, sp.z+pd*0.25);
-      group.add(latch); cableMeshes[portId+"_latch"]=latch;
-
-      // Gold pins
-      const pinMat = new THREE.MeshStandardMaterial({color:0xd4a017,roughness:0.15,metalness:0.95});
-      for (let p=0; p<8; p++) {
-        const pin = new THREE.Mesh(new THREE.BoxGeometry(pw*0.06,ph*0.35,pd*0.08),pinMat);
-        pin.position.set(sp.x+(p-3.5)*pw*0.11, sp.y+ph*0.1, sp.z+pd*0.45);
-        group.add(pin); cableMeshes[portId+`_pin${p}`]=pin;
-      }
-      } else {
-        const metal = new THREE.MeshStandardMaterial({ color: 0xb7bdc5, roughness: 0.3, metalness: 0.8 });
-        const tip = new THREE.Mesh(isPower
-          ? new THREE.CylinderGeometry(pw * 0.28, pw * 0.28, pd * 0.45, 16)
-          : new THREE.BoxGeometry(pw * 0.8, ph * 0.8, pd * 0.45), metal);
-        if (isPower) tip.rotation.x = Math.PI / 2;
-        tip.position.set(sp.x, sp.y, sp.z - pd * 0.12);
-        group.add(tip); cableMeshes[portId + "_tip"] = tip;
-      }
-
-      // Boot (strain relief)
-      const boot = new THREE.Mesh(new THREE.CylinderGeometry(size.y*0.048,size.y*0.038,size.y*0.10,12),cMat);
-      boot.rotation.x=Math.PI/2;
-      boot.position.set(sp.x, sp.y, sp.z+pd*0.8+size.y*0.03);
-      group.add(boot); cableMeshes[portId+"_boot"]=boot;
-
-      // Compact, deterministic cable tail. Long randomized tails obscured the
-      // appliance and appeared detached when the chassis was rotated.
-      const cr = size.y*0.018;
-      const sz2 = sp.z+pd*0.8+size.y*0.07;
-      const bendSeed = [...portId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
-      const bend = ((bendSeed % 7) - 3) * size.y * 0.012;
-      const pts = [
-        new THREE.Vector3(sp.x, sp.y, sz2),
-        new THREE.Vector3(sp.x+bend*0.2, sp.y-size.y*0.10, sz2+size.z*0.035),
-        new THREE.Vector3(sp.x+bend*0.7, sp.y-size.y*0.28, sz2+size.z*0.075),
-        new THREE.Vector3(sp.x+bend,     sp.y-size.y*0.48, sz2+size.z*0.10),
-        new THREE.Vector3(sp.x+bend*0.8, sp.y-size.y*0.72, sz2+size.z*0.11),
-      ];
-      const tube = new THREE.Mesh(
-        new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts,false,"catmullrom",0.5),30,cr,10,false),
-        new THREE.MeshStandardMaterial({color:cCol,roughness:0.65,metalness:0.05})
-      );
-      group.add(tube); cableMeshes[portId+"_tube"]=tube;
+      const socket = fortiGateSocket(PORTS.find(p => p.id === portId)!.x, PORT_Y, size);
+      const seed = [...portId].reduce((sum, ch) => sum + ch.charCodeAt(0), 0);
+      const mesh3d = buildCable(socket, SOCKET_WIDTH * size.x, cable.color, connectorKind(cable.id), seed);
+      group.add(mesh3d); cableMeshes[portId] = mesh3d;
     });
   }, [plugged, loading, mode]);
 
@@ -423,19 +320,19 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
   function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); }
   function resetView() {
     if (!threeRef.current) return;
-    threeRef.current.rotX = 0;
+    threeRef.current.rotX = 0.3;
     threeRef.current.rotY = 0;
-    threeRef.current.camera.position.z = 15.5;
+    threeRef.current.camera.position.z = threeRef.current.baseDistance;
   }
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", height:"100%", gap:8 }}>
-      <div>
-        <h1 className="text-[15px] font-semibold text-forti-dark mb-0.5">FortiGate 60F — Interactive Hardware Reference</h1>
-        <p className="text-gray-500 text-[12px]">
-          {mode==="explore" ? "Auto-rotates · drag · scroll to zoom · click any part to learn" : "Select a cable — click the matching glowing port dot to plug in"}
-        </p>
-      </div>
+    // Fixed viewport height: the shell scrolls, so "100%" has nothing to resolve against.
+    <div style={{ display:"flex", flexDirection:"column", height:"calc(100vh - 140px)", minHeight:600, gap:12 }}>
+      <PageHeader
+        eyebrow="Reference"
+        title="FortiGate 60F hardware"
+        description={mode==="explore" ? "Drag to rotate, scroll to zoom, and click any port to learn what it does." : "Choose a cable, then click a matching socket to plug it in. Click a plugged socket to unplug it."}
+      />
 
       {/* 3D Viewport with overlay controls */}
       <div style={{ flex:"1 0 320px", minHeight:320, position:"relative" }}>
@@ -467,8 +364,8 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
         {/* Mode pills — bottom left */}
         <div style={{ position:"absolute", bottom:12, left:12, display:"flex", gap:6 }}>
           {[
-            { m:"explore" as const, label:"🔍 Explore",     bg:"#ef4444" },
-            { m:"cable"   as const, label:"🔌 Cable Mode",  bg:"#2563eb" },
+            { m:"explore" as const, label:"Explore",     bg:"#334155" },
+            { m:"cable"   as const, label:"Cable mode",  bg:"#334155" },
           ].map(({m,label,bg}) => (
             <button key={m}
               aria-pressed={mode === m}
@@ -494,18 +391,19 @@ export function DashboardPlaceholder({ session: _ }: DashboardProps) {
           )}
         </div>
 
+        {/* Feedback toast — overlaid so it never resizes the canvas */}
+        {feedback && (
+          <div role="status" style={{ position:"absolute", top:10, right:12, padding:"6px 14px", borderRadius:4, fontSize:12, fontWeight:500,
+            background:feedback.ok?"#052e16ee":"#450a0aee", color:feedback.ok?"#4ade80":"#f87171",
+            border:`1px solid ${feedback.ok?"#166534":"#991b1b"}` }}>{feedback.msg}</div>
+        )}
+
         {/* Hint — top left */}
         <div style={{ position:"absolute", top:10, left:12, fontSize:11, color:"#3d5270", pointerEvents:"none" }}>
           {mode==="explore" ? "drag · scroll · click to learn" : "select cable → click glowing dot"}
         </div>
       </div>
 
-      {/* Feedback toast */}
-      {feedback && (
-        <div role="status" style={{ padding:"6px 14px", borderRadius:4, fontSize:12, fontWeight:500,
-          background:feedback.ok?"#052e16":"#450a0a", color:feedback.ok?"#4ade80":"#f87171",
-          border:`1px solid ${feedback.ok?"#166534":"#991b1b"}` }}>{feedback.msg}</div>
-      )}
 
       {/* Cable selector */}
       {mode==="cable" && (

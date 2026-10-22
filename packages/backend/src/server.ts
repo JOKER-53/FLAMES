@@ -1,21 +1,9 @@
 import dotenv from "dotenv";
 dotenv.config();
 import { resolve } from "node:path";
-import fs from "node:fs";
 import { createApp } from "./app";
 import { PlatformStore } from "./platform/store";
 import { hashPassword } from "./platform/auth";
-
-try {
-  const src = resolve(__dirname, "../../../pa-220-firewall.glb");
-  const dest = resolve(__dirname, "../../frontend/public/pa-220-firewall.glb");
-  if (fs.existsSync(src) && !fs.existsSync(dest)) {
-    fs.copyFileSync(src, dest);
-    console.log("Copied pa-220-firewall.glb to frontend/public");
-  }
-} catch (e) {
-  console.error("Copy error:", e);
-}
 
 async function main() {
   const store = new PlatformStore(process.env.DATABASE_PATH || resolve("data/fortisim.sqlite"));

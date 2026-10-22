@@ -212,4 +212,38 @@ export const HARD_QUESTIONS: Record<string, HardQuestion> = {
     ],
     correctIndex: 1,
   },
+  // ---------------- Final assignments ----------------
+  "firewall-final-01": {
+    question:
+      "Your final policy table has a broad rule allowing LAN to WAN on all services, and you now add a rule denying one LAN host from reaching anything. Where must the deny rule go, and why?",
+    choices: [
+      "Anywhere — FortiGate always evaluates deny rules before accept rules",
+      "Above the broad accept rule, because policies are evaluated top-down and the first match decides the action",
+      "Below the broad accept rule, so the accept rule handles normal traffic first",
+      "In a separate policy package, because a host-specific deny cannot share a table with subnet rules",
+    ],
+    correctIndex: 1,
+  },
+  "interface-full-01": {
+    question:
+      "While configuring every interface for the final assignment, you enable HTTPS and SSH administrative access on WAN1 so you can manage the firewall from home. What is the main problem?",
+    choices: [
+      "Nothing — HTTPS and SSH are encrypted, so exposing them is safe",
+      "It exposes the firewall's management plane to the whole internet, enlarging the attack surface; admin access belongs on trusted interfaces or behind a VPN",
+      "WAN interfaces do not support administrative protocols, so the setting has no effect",
+      "It breaks NAT for outbound traffic on WAN1",
+    ],
+    correctIndex: 1,
+  },
+  "port-final-01": {
+    question:
+      "In the final port assignment, a port in the middle of the LAN block is actually cabled to the ISP's backup modem. How should you assign it?",
+    choices: [
+      "LAN — ports in the LAN block of the chassis must stay in the LAN zone",
+      "WAN — a zone follows what the port connects to, not where it sits on the chassis",
+      "DMZ — anything that isn't internal belongs in the DMZ",
+      "Leave it unassigned — only the ports labelled WAN can carry internet traffic",
+    ],
+    correctIndex: 1,
+  },
 };

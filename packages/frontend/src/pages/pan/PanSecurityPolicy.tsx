@@ -1,4 +1,8 @@
-import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { LessonFrame } from "../../components/shell/LessonFrame";
+import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
+import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
+import { Callout, Section } from "../../components/ui/primitives";
+import { Icon } from "../../components/ui/Icon";
 import { usePanGrading } from "../../hooks/usePanGrading";
 import { PAN_SECURITY_SCENARIOS as SCENARIOS } from "@fortisim/engine";
 import { useLocation } from "react-router-dom";
@@ -31,7 +35,6 @@ interface Rule {
 }
 
 
-const RISK_COLOR: Record<string,string> = { low:"#22c55e", medium:"#f97316", high:"#ef4444", "—":"#94a3b8" };
 
 import { PanSession } from "../../hooks/usePanSession";
 export function PanSecurityPolicy({ session }: { session: PanSession }) {
@@ -42,10 +45,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
   const [nextId, setNextId] = useState(1);
   const [showNew, setShowNew] = useState(false);
   const [newRule, setNewRule] = useState<Partial<Rule>>({ srcZone:"Trust", dstZone:"Untrust", apps:[], action:"allow", name:"" });
-  const { results, setResults, aiFeedback, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
-  const [showHint, setShowHint] = useState(false);
-  // Knowledge check state
-  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", scenario.id, session.markTaskComplete);
+  const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
 
 
   useEffect(() => {
@@ -78,246 +78,123 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
   const passed = results?.filter(r=>r.pass).length??0;
   const total  = scenario.checks.length;
 
+  const risk = (level: string) => level === "high" ? "bg-danger-soft text-danger" : level === "medium" ? "bg-warn-soft text-warn" : level === "low" ? "bg-success-soft text-success" : "bg-sunken text-muted";
+
   return (
-    <div style={{ maxWidth:1100 }}>
-      {gradeError && <p className="platform-error" role="alert">{gradeError}</p>}
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
-        <div>
-          <h1 style={{ fontSize:18, fontWeight:700, color:"#1e293b", margin:0 }}>Security Policy — PAN-OS</h1>
-          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>App-ID based rules. First match wins. Rules evaluated top-down.</p>
-        </div>
-        <div style={{ display:"flex", gap:6 }}>
-          {SCENARIOS.map((s,i)=>(
-            <button key={s.id} onClick={()=>{ setScenarioIdx(i); setRules([]); setResults(null); setShowHint(false); }}
-              style={{ padding:"4px 12px", fontSize:11, borderRadius:4, cursor:"pointer",
-                background:scenarioIdx===i?"#fa4616":"transparent",
-                color:scenarioIdx===i?"#fff":"#64748b",
-                border:`1px solid ${scenarioIdx===i?"#fa4616":"#e2e8f0"}` }}>
-              {i+1}. {s.title.split(" ").slice(0,2).join(" ")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Scenario description */}
-      <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:14, marginBottom:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, color:"#9a3412", marginBottom:4 }}>{scenario.title}</div>
-        <p style={{ fontSize:12, color:"#7c2d12", margin:0, lineHeight:1.6 }}>{scenario.description}</p>
-        <button onClick={()=>setShowHint(!showHint)}
-          style={{ marginTop:8, background:"none", border:"none", color:"#fa4616", fontSize:11, cursor:"pointer", padding:0 }}>
-          {showHint?"▼ Hide hint":"▶ Show hint"}
-        </button>
-        {showHint && <p style={{ fontSize:11, color:"#9a3412", marginTop:6, marginBottom:0, fontStyle:"italic" }}>{scenario.hint}</p>}
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 280px", gap:16 }}>
-        {/* Left: rule table */}
-        <div>
-          {/* Rules table */}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden", marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderBottom:"1px solid #f1f5f9" }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Security Rules ({rules.length})</span>
-              <button onClick={()=>setShowNew(!showNew)}
-                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>
-                + Add Rule
-              </button>
-            </div>
-
-            {rules.length === 0 && (
-              <div style={{ padding:24, textAlign:"center", color:"#94a3b8", fontSize:12 }}>
-                No rules yet — click "Add Rule" to create your first security policy rule.
-              </div>
-            )}
-
-            {rules.map((r,i) => (
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"10px 14px", borderBottom:"1px solid #f8fafc", fontSize:12 }}>
-                <div style={{ display:"flex", flexDirection:"column", gap:2, marginRight:4 }}>
-                  <button onClick={()=>moveUp(i)}   style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8", fontSize:10, padding:0, lineHeight:1 }}>▲</button>
-                  <button onClick={()=>moveDown(i)} style={{ background:"none", border:"none", cursor:"pointer", color:"#94a3b8", fontSize:10, padding:0, lineHeight:1 }}>▼</button>
-                </div>
-                <span style={{ color:"#94a3b8", width:20 }}>{i+1}</span>
-                <span style={{ fontWeight:500, color:"#374151", minWidth:140, flex:1 }}>{r.name}</span>
-                <span style={{ background:"#dbeafe", color:"#1d4ed8", padding:"2px 7px", borderRadius:4, fontSize:10 }}>{r.srcZone}</span>
-                <span style={{ color:"#94a3b8", fontSize:10 }}>→</span>
-                <span style={{ background:"#fef3c7", color:"#92400e", padding:"2px 7px", borderRadius:4, fontSize:10 }}>{r.dstZone}</span>
-                <span style={{ color:"#64748b", fontFamily:"monospace", fontSize:10, flex:1 }}>{r.apps.join(", ")}</span>
-                <span style={{ background:r.action==="allow"?"#dcfce7":"#fee2e2", color:r.action==="allow"?"#166534":"#991b1b", padding:"2px 8px", borderRadius:4, fontSize:10, fontWeight:600 }}>
-                  {r.action.toUpperCase()}
-                </span>
-                <button onClick={()=>deleteRule(r.id)} style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444", fontSize:12, padding:"0 4px" }}>✕</button>
-              </div>
-            ))}
-
-            {/* Implicit deny */}
-            <div style={{ padding:"8px 14px", background:"#fafafa", borderTop:"1px solid #f1f5f9", fontSize:11, color:"#94a3b8", fontStyle:"italic" }}>
-              Implicit deny-all — any traffic not matched above is denied (PAN-OS default)
-            </div>
-          </div>
-
-          {/* New rule form */}
-          {showNew && (
-            <div style={{ background:"#fff", border:"1px solid #fa461644", borderRadius:8, padding:16, marginBottom:12 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:12 }}>New Rule</div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:12 }}>
-                <div>
-                  <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>Rule Name</label>
-                  <input value={newRule.name??""} onChange={e=>setNewRule(r=>({...r,name:e.target.value}))}
-                    placeholder="e.g. Allow-Web-Outbound"
-                    style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" }}/>
-                </div>
-                <div>
-                  <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>Source Zone</label>
-                  <select value={newRule.srcZone} onChange={e=>setNewRule(r=>({...r,srcZone:e.target.value}))}
-                    style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                    {ZONES.map(z=><option key={z}>{z}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>Destination Zone</label>
-                  <select value={newRule.dstZone} onChange={e=>setNewRule(r=>({...r,dstZone:e.target.value}))}
-                    style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                    {ZONES.map(z=><option key={z}>{z}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              <div style={{ marginBottom:12 }}>
-                <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:6 }}>Applications (App-ID)</label>
-                <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                  {APP_OPTIONS.map(a=>(
-                    <button key={a.id} onClick={()=>toggleApp(a.id)}
-                      style={{ padding:"4px 10px", fontSize:11, borderRadius:4, cursor:"pointer", border:"1.5px solid",
-                        borderColor: newRule.apps?.includes(a.id) ? RISK_COLOR[a.risk] : "#e2e8f0",
-                        background:  newRule.apps?.includes(a.id) ? RISK_COLOR[a.risk]+"22" : "#f8fafc",
-                        color:       newRule.apps?.includes(a.id) ? RISK_COLOR[a.risk] : "#64748b" }}>
-                      {a.label}
-                      <span style={{ fontSize:9, marginLeft:4, opacity:0.7 }}>{a.ports}</span>
-                    </button>
+    <LessonFrame title={scenario.title} brief={scenario.description} hint={scenario.hint}>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          <ConsoleFrame
+            path={["Policies", "Security"]}
+            actions={<button onClick={() => setShowNew(!showNew)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add rule</button>}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12.5px]">
+                <thead>
+                  <tr className="bg-[#eef1f5] text-[#3c4a5c] text-left border-b border-line-strong">
+                    {["", "#", "Name", "Source Zone", "Destination Zone", "Application", "Action", ""].map((h, i) => <th key={i} className="px-3 py-2 font-semibold">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rules.length === 0 && (
+                    <tr><td colSpan={8} className="px-3 py-8 text-center text-muted">No rules yet. Use “Add rule” to create your first security rule.</td></tr>
+                  )}
+                  {rules.map((r, i) => (
+                    <tr key={r.id} className="border-b border-line hover:bg-sunken/60">
+                      <td className="pl-3 py-2 w-6">
+                        <div className="flex flex-col">
+                          <button aria-label={`Move ${r.name} up`} onClick={() => moveUp(i)} disabled={i === 0} className="text-faint hover:text-ink disabled:opacity-30"><Icon name="chevronDown" size={13} className="rotate-180" /></button>
+                          <button aria-label={`Move ${r.name} down`} onClick={() => moveDown(i)} disabled={i === rules.length - 1} className="text-faint hover:text-ink disabled:opacity-30"><Icon name="chevronDown" size={13} /></button>
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted tabular-nums">{i + 1}</td>
+                      <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
+                      <td className="px-3 py-2"><span className="badge bg-info-soft text-info">{r.srcZone}</span></td>
+                      <td className="px-3 py-2"><span className="badge bg-warn-soft text-warn">{r.dstZone}</span></td>
+                      <td className="px-3 py-2 font-mono text-xs text-body">{r.apps.join(", ")}</td>
+                      <td className="px-3 py-2"><span className={`badge font-semibold ${r.action === "allow" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>{r.action}</span></td>
+                      <td className="pr-3 py-2 text-right"><button aria-label={`Delete ${r.name}`} onClick={() => deleteRule(r.id)} className="text-faint hover:text-danger"><Icon name="trash" size={15} /></button></td>
+                    </tr>
                   ))}
-                </div>
-              </div>
+                </tbody>
+              </table>
+            </div>
+            <div className="px-3 py-2 text-xs italic text-muted bg-sunken border-t border-line">interzone-default — traffic between zones that matches no rule above is denied</div>
 
-              <div style={{ display:"flex", alignItems:"center", gap:12 }}>
-                <label style={{ fontSize:11, color:"#64748b" }}>Action:</label>
-                {(["allow","deny"] as Action[]).map(a=>(
-                  <label key={a} style={{ display:"flex", alignItems:"center", gap:4, fontSize:12, cursor:"pointer" }}>
-                    <input type="radio" checked={newRule.action===a} onChange={()=>setNewRule(r=>({...r,action:a}))}/>
-                    <span style={{ color:a==="allow"?"#166534":"#991b1b", fontWeight:500 }}>{a.toUpperCase()}</span>
+            {showNew && (
+              <div className="p-4 border-t border-line-strong bg-[#f8fafc]">
+                <div className="text-sm font-semibold text-ink mb-3">New security rule</div>
+                <div className="grid gap-3 sm:grid-cols-3 mb-4">
+                  <label><span className="field-label">Rule name</span>
+                    <input className="input" value={newRule.name ?? ""} onChange={e => setNewRule(r => ({ ...r, name: e.target.value }))} placeholder="e.g. Allow-Web-Outbound" />
                   </label>
-                ))}
-                <div style={{ marginLeft:"auto", display:"flex", gap:6 }}>
-                  <button onClick={()=>setShowNew(false)}
-                    style={{ padding:"5px 12px", fontSize:11, borderRadius:4, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", color:"#64748b" }}>Cancel</button>
-                  <button onClick={addRule} disabled={!newRule.name||!newRule.apps?.length}
-                    style={{ padding:"5px 12px", fontSize:11, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer", opacity:(!newRule.name||!newRule.apps?.length)?0.4:1 }}>
-                    Add Rule
-                  </button>
+                  <label><span className="field-label">Source zone</span>
+                    <select className="input" value={newRule.srcZone} onChange={e => setNewRule(r => ({ ...r, srcZone: e.target.value }))}>{ZONES.map(z => <option key={z}>{z}</option>)}</select>
+                  </label>
+                  <label><span className="field-label">Destination zone</span>
+                    <select className="input" value={newRule.dstZone} onChange={e => setNewRule(r => ({ ...r, dstZone: e.target.value }))}>{ZONES.map(z => <option key={z}>{z}</option>)}</select>
+                  </label>
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Submit */}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom: results?12:0 }}>
-              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button disabled={grading} onClick={grade}
-                style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>
-                Submit
-              </button>
-            </div>
-            {results && (
-              <div>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===total?"#166534":"#dc2626" }}>
-                  {passed===total?"✓ All checks passed!":"Not yet correct"} — {passed}/{total} checks
-                </div>
-                {results.map((r,i)=>(
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
-                    <span style={{ color:"#374151" }}>{r.desc}</span>
-                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600,
-                      background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>
-                      {r.pass?"PASS":"FAIL"}
-                    </span>
+                <fieldset className="mb-4">
+                  <legend className="field-label">Applications (App-ID)</legend>
+                  <div className="flex flex-wrap gap-1.5">
+                    {APP_OPTIONS.map(a => {
+                      const on = !!newRule.apps?.includes(a.id);
+                      return (
+                        <button key={a.id} aria-pressed={on} onClick={() => toggleApp(a.id)}
+                          className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded border text-xs font-mono ${on ? "border-accent bg-accent-soft text-ink" : "border-line-strong bg-surface text-body hover:border-faint"}`}>
+                          {on && <Icon name="check" size={12} strokeWidth={2.5} className="text-accent" />}{a.label}<span className="text-faint">{a.ports}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* AI Feedback */}
-          {(aiFeedback||loadingFeedback) && (
-            <div style={{ background:"#fff7ed", border:"1px solid #fed7aa", borderRadius:8, padding:14, marginBottom:12 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#9a3412", marginBottom:4 }}>Tutor Feedback</div>
-              {loadingFeedback
-                ? <div style={{ fontSize:12, color:"#c2410c", fontStyle:"italic" }}>Analysing your configuration…</div>
-                : <p style={{ fontSize:12, color:"#7c2d12", margin:0, lineHeight:1.6 }}>{aiFeedback}</p>}
-            </div>
-          )}
-
-          {/* Knowledge Check */}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Knowledge Check</div>
-              {session.completedTaskIds.has(scenario.id) && <span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:"#dcfce7", color:"#166534", fontWeight:600 }}>Task Complete</span>}
-            </div>
-            <p style={{ fontSize:11, color:"#64748b", margin:"0 0 10px" }}>Answer correctly to complete the task without the hands-on exercise. <span style={{ color:"#ef4444", fontWeight:500 }}>One attempt only.</span></p>
-            {!kqData && !kqLoading && !kqError && (
-              <button onClick={loadKQ} style={{ padding:"5px 12px", fontSize:11, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer" }}>Load Question</button>
-            )}
-            {kqLoading && <div style={{ fontSize:12, color:"#94a3b8", fontStyle:"italic" }}>Generating question…</div>}
-            {kqError  && <div style={{ fontSize:12, color:"#ef4444" }}>{kqError}</div>}
-            {kqData && (
-              <>
-                <p style={{ fontSize:12, color:"#374151", fontWeight:500, margin:"0 0 10px", lineHeight:1.5 }}>{kqData.question}</p>
-                <div style={{ display:"flex", flexDirection:"column", gap:6, marginBottom:10 }}>
-                  {kqData.choices.map((c,i)=>(
-                    <label key={i} style={{ display:"flex", alignItems:"flex-start", gap:8, padding:"7px 10px", borderRadius:6, border:`1px solid ${kqSelected===i?"#fa4616":"#e2e8f0"}`, background:kqSelected===i?"#fff7f0":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12, lineHeight:1.4 }}>
-                      <input type="radio" name={`kq-${scenario.id}`} checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);}}} style={{ marginTop:2, flexShrink:0 }}/>
-                      {c}
-                    </label>
-                  ))}
-                </div>
-                <button onClick={answerKQ} disabled={kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id)}
-                  style={{ padding:"5px 14px", fontSize:11, borderRadius:4, background:"#fa4616", color:"#fff", border:"none", cursor:"pointer", opacity:(kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id))?0.4:1 }}>
-                  Answer
-                </button>
-                {kqResult==="correct"   && <div style={{ marginTop:8, fontSize:12, color:"#166534", fontWeight:500 }}>✓ Correct — task marked complete.</div>}
-                {kqResult==="incorrect" && <div style={{ marginTop:8, fontSize:12, color:"#ef4444", fontWeight:500 }}>✗ Incorrect — question locked. Complete the hands-on exercise instead.</div>}
-              </>
-            )}
-          </div>
-
-
-
-        </div>
-
-        {/* Right: App-ID reference */}
-        <div>
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
-            <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:10 }}>App-ID Reference</div>
-            {APP_OPTIONS.filter(a=>a.id!=="any").map(a=>(
-              <div key={a.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f8fafc", fontSize:11 }}>
-                <span style={{ fontFamily:"monospace", color:"#374151" }}>{a.label}</span>
-                <div style={{ display:"flex", gap:6, alignItems:"center" }}>
-                  <span style={{ color:"#94a3b8", fontSize:10 }}>{a.ports}</span>
-                  <span style={{ padding:"1px 6px", borderRadius:3, fontSize:9, fontWeight:600,
-                    background:RISK_COLOR[a.risk]+"22", color:RISK_COLOR[a.risk] }}>{a.risk}</span>
+                </fieldset>
+                <div className="flex flex-wrap items-center gap-4">
+                  <fieldset className="flex items-center gap-4">
+                    <legend className="sr-only">Action</legend>
+                    <span className="text-xs font-medium text-ink">Action</span>
+                    {(["allow", "deny"] as Action[]).map(a => (
+                      <label key={a} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                        <input type="radio" checked={newRule.action === a} onChange={() => setNewRule(r => ({ ...r, action: a }))} />{a}
+                      </label>
+                    ))}
+                  </fieldset>
+                  <div className="ml-auto flex gap-2">
+                    <button onClick={() => setShowNew(false)} className="btn-secondary btn-sm">Cancel</button>
+                    <button onClick={addRule} disabled={!newRule.name || !newRule.apps?.length} className="btn-primary btn-sm">Add rule</button>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+            )}
+          </ConsoleFrame>
 
-          <div style={{ background:"#f0f9ff", border:"1px solid #bae6fd", borderRadius:8, padding:12 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:"#0369a1", marginBottom:6 }}>PAN-OS vs FortiOS</div>
-            <p style={{ fontSize:11, color:"#0c4a6e", margin:0, lineHeight:1.6 }}>
-              <strong>FortiOS:</strong> Service = TCP/443<br/>
-              <strong>PAN-OS:</strong> App = ssl (port doesn't matter)<br/><br/>
-              App-ID signatures identify apps at L7, even if they run on non-standard ports.
-            </p>
-          </div>
+          <CheckYourWork
+            onSubmit={grade}
+            grading={grading}
+            error={gradeError}
+            result={results && { passed: passed === total, checks: results.map(r => ({ label: r.desc, passed: r.pass })) }}
+            tutor={{ text: aiFeedback, source: aiSource, loading: loadingFeedback }}
+          />
+
+          <KnowledgeCheckCard platform="paloalto" taskId={scenario.id} completed={session.completedTaskIds.has(scenario.id)} onComplete={session.markTaskComplete} />
         </div>
+
+        <aside className="min-w-0 space-y-4">
+          <Section title="App-ID reference" bodyClassName="px-5 py-2">
+            <ul className="divide-y divide-line">
+              {APP_OPTIONS.filter(a => a.id !== "any").map(a => (
+                <li key={a.id} className="flex items-center justify-between gap-2 py-2 text-xs">
+                  <span className="font-mono text-ink">{a.label}</span>
+                  <span className="flex items-center gap-2"><span className="text-muted">{a.ports}</span><span className={`badge ${risk(a.risk)}`}>{a.risk}</span></span>
+                </li>
+              ))}
+            </ul>
+          </Section>
+          <Callout tone="info" title="PAN-OS compared with FortiOS">
+            FortiOS matches a <em>service</em> (TCP/443). PAN-OS matches the <em>application</em> (ssl) from its traffic signature, whatever port it runs on.
+          </Callout>
+        </aside>
       </div>
-    </div>
+    </LessonFrame>
   );
 }

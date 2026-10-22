@@ -45,11 +45,6 @@ interfaceSubmissionsRouter.post("/:scenarioId/feedback", async (req, res) => {
     return res.status(400).json({ error: err instanceof Error ? err.message : "Invalid submission" });
   }
   if (report.overallPassed) return res.json({ report });
-  try {
-    const aiRemark = await getFeedbackForInterfaceReport(scenario.title, report);
-    res.json({ report, aiRemark });
-  } catch (err) {
-    console.error("NIM feedback failed:", err);
-    res.json({ report, aiRemark: null, aiError: "Feedback service unavailable" });
-  }
+  const hint = await getFeedbackForInterfaceReport(scenario.title, report);
+  res.json({ report, aiRemark: hint.text, remarkSource: hint.source });
 });

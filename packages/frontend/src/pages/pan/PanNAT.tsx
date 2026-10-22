@@ -1,4 +1,8 @@
-import { useKnowledgeCheck } from "../../hooks/useKnowledgeCheck";
+import { LessonFrame } from "../../components/shell/LessonFrame";
+import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
+import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
+import { Callout, Section } from "../../components/ui/primitives";
+import { Icon } from "../../components/ui/Icon";
 import { usePanGrading } from "../../hooks/usePanGrading";
 import { PAN_NAT_SCENARIOS as SCENARIOS } from "@fortisim/engine";
 import { useLocation } from "react-router-dom";
@@ -9,7 +13,6 @@ type NATType = "source" | "destination" | "static";
 interface NATRule { id:number; name:string; type:NATType; srcZone:string; dstZone:string; dstAddr:string; translated:string; }
 
 
-const TYPE_COLOR: Record<NATType,string> = { source:"#3b82f6", destination:"#f97316", static:"#7c3aed" };
 
 export function PanNAT({ session }: { session: PanSession }) {
   const location = useLocation();
@@ -19,8 +22,7 @@ export function PanNAT({ session }: { session: PanSession }) {
   const [nextId, setNextId] = useState(1);
   const [adding, setAdding] = useState(false);
   const [nr, setNr] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
-  const { results, setResults, aiFeedback, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
-  const { kqLoading, kqError, kqData, kqSelected, setKqSelected, kqResult, kqLocked, loadKQ, answerKQ } = useKnowledgeCheck("paloalto", scenario.id, session.markTaskComplete);
+  const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
 
 
   useEffect(() => {
@@ -42,160 +44,99 @@ export function PanNAT({ session }: { session: PanSession }) {
 
   const passed = results?.filter(r=>r.pass).length??0;
 
+  const TYPE_BADGE: Record<NATType, string> = { source: "bg-info-soft text-info", destination: "bg-warn-soft text-warn", static: "bg-accent-soft text-accent" };
+  const zoneSelect = (key: "srcZone" | "dstZone", label: string) => (
+    <label><span className="field-label">{label}</span>
+      <select className="input" value={nr[key]} onChange={e => setNr(x => ({ ...x, [key]: e.target.value }))}>{["Trust", "Untrust", "DMZ", "any"].map(o => <option key={o}>{o}</option>)}</select>
+    </label>
+  );
+
   return (
-    <div style={{ maxWidth:900 }}>
-      {gradeError && <p className="platform-error" role="alert">{gradeError}</p>}
-      <div style={{ display:"flex", alignItems:"baseline", justifyContent:"space-between", marginBottom:16 }}>
-        <div>
-          <h1 style={{ fontSize:18, fontWeight:700, color:"#1e293b", margin:0 }}>NAT Policy</h1>
-          <p style={{ color:"#64748b", fontSize:12, marginTop:4 }}>NAT uses pre-NAT zones. Security policy uses original addresses and post-NAT zones. Translation alone does not permit traffic.</p>
-        </div>
-        <div style={{ display:"flex", gap:6 }}>
-          {SCENARIOS.map((s,i)=>(
-            <button key={s.id} onClick={()=>{ setSceIdx(i); setRules([]); setResults(null); }}
-              style={{ padding:"4px 10px", fontSize:11, borderRadius:4, cursor:"pointer",
-                background:scenIdx===i?"#7c3aed":"transparent", color:scenIdx===i?"#fff":"#64748b",
-                border:`1px solid ${scenIdx===i?"#7c3aed":"#e2e8f0"}` }}>
-              {i+1}. {s.title.split(" ").slice(0,2).join(" ")}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:14, marginBottom:16 }}>
-        <div style={{ fontSize:13, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>{scenario.title}</div>
-        <p style={{ fontSize:12, color:"#581c87", margin:0 }}>{scenario.desc}</p>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 260px", gap:16 }}>
-        <div>
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, overflow:"hidden", marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"10px 14px", borderBottom:"1px solid #f1f5f9" }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>NAT Rules ({rules.length})</span>
-              <button onClick={()=>setAdding(!adding)}
-                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>+ Add Rule</button>
+    <LessonFrame title={scenario.title} brief={scenario.desc} hint={scenario.hint}>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-6">
+          <ConsoleFrame
+            path={["Policies", "NAT"]}
+            actions={<button onClick={() => setAdding(!adding)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add rule</button>}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full text-[12.5px]">
+                <thead>
+                  <tr className="bg-[#eef1f5] text-[#3c4a5c] text-left border-b border-line-strong">
+                    {["#", "Name", "Type", "Original Packet", "Original Destination", "Translated To", ""].map((h, i) => <th key={i} className="px-3 py-2 font-semibold">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rules.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-muted">No NAT rules yet. Use “Add rule” to create one.</td></tr>}
+                  {rules.map((r, i) => (
+                    <tr key={r.id} className="border-b border-line hover:bg-sunken/60">
+                      <td className="px-3 py-2 text-muted tabular-nums">{i + 1}</td>
+                      <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
+                      <td className="px-3 py-2"><span className={`badge ${TYPE_BADGE[r.type]}`}>{r.type}</span></td>
+                      <td className="px-3 py-2 text-body">{r.srcZone} <Icon name="arrowRight" size={12} className="inline text-faint" /> {r.dstZone}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-body">{r.dstAddr}</td>
+                      <td className="px-3 py-2 font-mono text-xs text-ink">{r.translated}</td>
+                      <td className="pr-3 py-2 text-right"><button aria-label={`Delete ${r.name}`} onClick={() => { setRules(x => x.filter(y => y.id !== r.id)); setResults(null); }} className="text-faint hover:text-danger"><Icon name="trash" size={15} /></button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {rules.length===0 && <div style={{ padding:20, textAlign:"center", color:"#94a3b8", fontSize:12 }}>No rules yet</div>}
-            {rules.map((r,i)=>(
-              <div key={r.id} style={{ display:"flex", alignItems:"center", gap:8, padding:"9px 14px", borderBottom:"1px solid #f8fafc", fontSize:12 }}>
-                <span style={{ color:"#94a3b8", width:20 }}>{i+1}</span>
-                <span style={{ fontWeight:500, color:"#374151", minWidth:140 }}>{r.name}</span>
-                <span style={{ padding:"2px 7px", borderRadius:3, fontSize:10, fontWeight:600, background:TYPE_COLOR[r.type]+"22", color:TYPE_COLOR[r.type] }}>{r.type}</span>
-                <span style={{ color:"#64748b", fontSize:11 }}>{r.srcZone}→{r.dstZone}</span>
-                <span style={{ color:"#94a3b8", fontSize:11, flex:1 }}>{r.dstAddr}</span>
-                <span style={{ color:"#7c3aed", fontFamily:"monospace", fontSize:11 }}>→ {r.translated}</span>
-                <button onClick={()=>{ setRules(x=>x.filter(y=>y.id!==r.id)); setResults(null); }}
-                  style={{ background:"none", border:"none", cursor:"pointer", color:"#ef4444" }}>✕</button>
-              </div>
-            ))}
-          </div>
 
-          {adding && (
-            <div style={{ background:"#fff", border:"1px solid #7c3aed44", borderRadius:8, padding:14, marginBottom:12 }}>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:10 }}>
-                {[["Name","name","text"],["NAT Type","type","sel-type"],["Translated To","translated","text"],
-                  ["Src Zone","srcZone","sel-zone"],["Dst Zone","dstZone","sel-zone"],["Original Dst","dstAddr","text"]].map(([label,key,type])=>(
-                  <div key={key}>
-                    <label style={{ fontSize:11, color:"#64748b", display:"block", marginBottom:3 }}>{label}</label>
-                    {type==="text"
-                      ? <input value={(nr as any)[key]??""} onChange={e=>setNr(x=>({...x,[key]:e.target.value}))}
-                          placeholder={key==="translated"?"e.g. interface / 10.0.1.10":""}
-                          style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12, boxSizing:"border-box" as any }}/>
-                      : type==="sel-type"
-                        ? <select value={nr.type} onChange={e=>setNr(x=>({...x,type:e.target.value as NATType}))}
-                            style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                            {["source","destination","static"].map(o=><option key={o}>{o}</option>)}
-                          </select>
-                        : <select value={(nr as any)[key]} onChange={e=>setNr(x=>({...x,[key]:e.target.value}))}
-                            style={{ width:"100%", padding:"6px 8px", border:"1px solid #e2e8f0", borderRadius:4, fontSize:12 }}>
-                            {["Trust","Untrust","DMZ","any"].map(o=><option key={o}>{o}</option>)}
-                          </select>
-                    }
-                  </div>
-                ))}
-              </div>
-              <div style={{ display:"flex", justifyContent:"flex-end", gap:6 }}>
-                <button onClick={()=>setAdding(false)} style={{ padding:"5px 12px", fontSize:11, borderRadius:4, border:"1px solid #e2e8f0", background:"#f8fafc", cursor:"pointer", color:"#64748b" }}>Cancel</button>
-                <button onClick={addRule} disabled={!nr.name||!nr.translated}
-                  style={{ padding:"5px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer", opacity:(!nr.name||!nr.translated)?0.4:1 }}>Add</button>
-              </div>
-            </div>
-          )}
-
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:results?12:0 }}>
-              <span style={{ fontSize:13, fontWeight:600, color:"#374151" }}>Submit for Grading</span>
-              <button disabled={grading} onClick={grade} style={{ padding:"6px 16px", fontSize:12, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Submit</button>
-            </div>
-            {results && (
-              <div>
-                <div style={{ fontSize:13, fontWeight:600, marginBottom:8, color:passed===scenario.checks.length?"#166534":"#dc2626" }}>
-                  {passed===scenario.checks.length?"✓ Passed!":"Not yet"} — {passed}/{scenario.checks.length}
+            {adding && (
+              <div className="p-4 border-t border-line-strong bg-[#f8fafc]">
+                <div className="text-sm font-semibold text-ink mb-3">New NAT rule</div>
+                <div className="grid gap-3 sm:grid-cols-3 mb-4">
+                  <label><span className="field-label">Rule name</span>
+                    <input className="input" value={nr.name ?? ""} onChange={e => setNr(x => ({ ...x, name: e.target.value }))} placeholder="e.g. Outbound-SNAT" />
+                  </label>
+                  <label><span className="field-label">NAT type</span>
+                    <select className="input" value={nr.type} onChange={e => setNr(x => ({ ...x, type: e.target.value as NATType }))}>{["source", "destination", "static"].map(o => <option key={o}>{o}</option>)}</select>
+                  </label>
+                  <label><span className="field-label">Translated to</span>
+                    <input className="input font-mono" value={nr.translated ?? ""} onChange={e => setNr(x => ({ ...x, translated: e.target.value }))} placeholder="interface or 10.0.1.10" />
+                  </label>
+                  {zoneSelect("srcZone", "Source zone (pre-NAT)")}
+                  {zoneSelect("dstZone", "Destination zone (pre-NAT)")}
+                  <label><span className="field-label">Original destination</span>
+                    <input className="input font-mono" value={nr.dstAddr ?? ""} onChange={e => setNr(x => ({ ...x, dstAddr: e.target.value }))} placeholder="any" />
+                  </label>
                 </div>
-                {results.map((r,i)=>(
-                  <div key={i} style={{ display:"flex", justifyContent:"space-between", padding:"5px 0", borderBottom:"1px solid #f1f5f9", fontSize:12 }}>
-                    <span style={{ color:"#374151" }}>{r.desc}</span>
-                    <span style={{ padding:"1px 8px", borderRadius:3, fontSize:11, fontWeight:600, background:r.pass?"#dcfce7":"#fee2e2", color:r.pass?"#166534":"#991b1b" }}>{r.pass?"PASS":"FAIL"}</span>
-                  </div>
-                ))}
+                <div className="flex justify-end gap-2">
+                  <button onClick={() => setAdding(false)} className="btn-secondary btn-sm">Cancel</button>
+                  <button onClick={addRule} disabled={!nr.name || !nr.translated} className="btn-primary btn-sm">Add rule</button>
+                </div>
               </div>
             )}
-          </div>
+          </ConsoleFrame>
 
-          {(aiFeedback||loadingFeedback)&&(
-            <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:14, marginBottom:12 }}>
-              <div style={{ fontSize:12, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>Tutor Feedback</div>
-              {loadingFeedback?<div style={{ fontSize:12, color:"#7c3aed", fontStyle:"italic" }}>Analysing…</div>:<p style={{ fontSize:12, color:"#581c87", margin:0, lineHeight:1.6 }}>{aiFeedback}</p>}
-            </div>
-          )}
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
-              <span style={{ fontSize:12, fontWeight:600, color:"#374151" }}>Knowledge Check</span>
-              {session.completedTaskIds.has(scenario.id)&&<span style={{ fontSize:10, padding:"1px 6px", borderRadius:3, background:"#dcfce7", color:"#166534", fontWeight:600 }}>Complete</span>}
-            </div>
-            <p style={{ fontSize:11, color:"#64748b", margin:"0 0 8px" }}>Answer correctly to complete without hands-on. <span style={{ color:"#ef4444", fontWeight:500 }}>One attempt only.</span></p>
-            {!kqData&&!kqLoading&&!kqError&&<button onClick={loadKQ} style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer" }}>Load Question</button>}
-            {kqLoading&&<div style={{ fontSize:12, color:"#94a3b8", fontStyle:"italic" }}>Generating…</div>}
-            {kqError&&<div style={{ fontSize:12, color:"#ef4444" }}>{kqError}</div>}
-            {kqData&&(<>
-              <p style={{ fontSize:12, color:"#374151", fontWeight:500, margin:"0 0 8px", lineHeight:1.5 }}>{kqData.question}</p>
-              <div style={{ display:"flex", flexDirection:"column", gap:5, marginBottom:8 }}>
-                {kqData.choices.map((c,i)=>(
-                  <label key={i} style={{ display:"flex", gap:8, padding:"6px 10px", borderRadius:5, border:`1px solid ${kqSelected===i?"#7c3aed":"#e2e8f0"}`, background:kqSelected===i?"#faf5ff":"#f8fafc", cursor:kqLocked||session.completedTaskIds.has(scenario.id)?"not-allowed":"pointer", fontSize:12 }}>
-                    <input type="radio" checked={kqSelected===i} disabled={kqLocked||session.completedTaskIds.has(scenario.id)} onChange={()=>{if(!kqLocked&&!session.completedTaskIds.has(scenario.id)){setKqSelected(i);}}}/>
-                    {c}
-                  </label>
-                ))}
-              </div>
-              <button onClick={answerKQ} disabled={kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id)}
-                style={{ padding:"4px 12px", fontSize:11, borderRadius:4, background:"#7c3aed", color:"#fff", border:"none", cursor:"pointer", opacity:(kqSelected===null||kqLocked||session.completedTaskIds.has(scenario.id))?0.4:1 }}>
-                Answer
-              </button>
-              {kqResult==="correct"&&<div style={{ marginTop:6, fontSize:12, color:"#166534", fontWeight:500 }}>✓ Correct — task complete.</div>}
-              {kqResult==="incorrect"&&<div style={{ marginTop:6, fontSize:12, color:"#ef4444", fontWeight:500 }}>✗ Incorrect — locked.</div>}
-            </>)}
-          </div>
+          <CheckYourWork
+            onSubmit={grade}
+            grading={grading}
+            error={gradeError}
+            result={results && { passed: passed === scenario.checks.length, checks: results.map(r => ({ label: r.desc, passed: r.pass })) }}
+            tutor={{ text: aiFeedback, source: aiSource, loading: loadingFeedback }}
+          />
 
+          <KnowledgeCheckCard platform="paloalto" taskId={scenario.id} completed={session.completedTaskIds.has(scenario.id)} onComplete={session.markTaskComplete} />
         </div>
 
-        <div>
-          <div style={{ background:"#fff", border:"1px solid #e2e8f0", borderRadius:8, padding:14, marginBottom:12 }}>
-            <div style={{ fontSize:12, fontWeight:600, color:"#374151", marginBottom:10 }}>NAT Types</div>
-            {[["source","#3b82f6","SNAT — translate source IP outbound"],["destination","#f97316","DNAT — redirect inbound traffic"],["static","#7c3aed","1:1 bidirectional mapping"]].map(([t,c,d])=>(
-              <div key={t} style={{ marginBottom:8, paddingBottom:8, borderBottom:"1px solid #f8fafc" }}>
-                <span style={{ background:c+"22", color:c, padding:"1px 6px", borderRadius:3, fontSize:10, fontWeight:600 }}>{t}</span>
-                <div style={{ fontSize:11, color:"#64748b", marginTop:3 }}>{d}</div>
-              </div>
-            ))}
-          </div>
-          <div style={{ background:"#faf5ff", border:"1px solid #e9d5ff", borderRadius:8, padding:12 }}>
-            <div style={{ fontSize:11, fontWeight:600, color:"#6b21a8", marginBottom:4 }}>⚠ PAN-OS Order</div>
-            <p style={{ fontSize:11, color:"#581c87", margin:0, lineHeight:1.5 }}>
-              Security policy is checked FIRST. NAT is applied AFTER. Always create a security rule allowing the traffic before creating the NAT rule.
-            </p>
-          </div>
-        </div>
+        <aside className="min-w-0 space-y-4">
+          <Section title="NAT types" bodyClassName="px-5 py-2">
+            <dl className="divide-y divide-line">
+              {([["source", "Translate the source address of outbound traffic"], ["destination", "Redirect inbound traffic to an internal server"], ["static", "1:1 mapping that works in both directions"]] as [NATType, string][]).map(([type, text]) => (
+                <div key={type} className="py-2.5">
+                  <dt><span className={`badge ${TYPE_BADGE[type]}`}>{type}</span></dt>
+                  <dd className="text-xs text-muted mt-1">{text}</dd>
+                </div>
+              ))}
+            </dl>
+          </Section>
+          <Callout tone="info" title="How PAN-OS evaluates NAT">
+            NAT rules match the original packet and its pre-NAT zones. Security rules use the original addresses with the post-NAT destination zone. A NAT rule never allows traffic by itself.
+          </Callout>
+        </aside>
       </div>
-    </div>
+    </LessonFrame>
   );
 }

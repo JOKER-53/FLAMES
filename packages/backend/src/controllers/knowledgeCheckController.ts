@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { generateKnowledgeCheck } from "../services/nimKnowledgeCheck";
-import { checkAnswer, hideAnswer } from "../services/questionStore";
+import { checkAnswer, hideAnswer, shuffleChoices } from "../services/questionStore";
 
-const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
+export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
   // Port Assignment
   "port-assignment-01": {
     title: "Basic Port Assignment",
@@ -94,7 +94,7 @@ export const getKnowledgeCheck = async (req: Request, res: Response) => {
 
   try {
     const question = await generateKnowledgeCheck(taskId, meta.title, meta.concept);
-    res.json(hideAnswer(question));
+    res.json({ ...hideAnswer(shuffleChoices(question)), source: question.source ?? "ai" });
   } catch (err: unknown) {
     res.status(503).json({ error: "Knowledge checks are unavailable. Your lab configuration is still usable." });
   }

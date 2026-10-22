@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { PORTS, CABLE_TYPES, acceptsCable } from "../../frontend/src/hardware/cables";
+import { PORTS, CABLE_TYPES, EXERCISE_SOCKETS, acceptsCable } from "../../frontend/src/hardware/cables";
+import { ALL_PORT_SCENARIOS } from "../src/portScenarios";
+import { portFinalScenario } from "../src/finalAssignments";
 
 describe("cable practice mapping", () => {
   it("covers all 13 sockets exactly once", () => {
@@ -19,5 +21,24 @@ describe("cable practice mapping", () => {
     expect(acceptsCable("usb", "console")).toBe(false);
     expect(acceptsCable("unknown", "power")).toBe(false);
     expect(acceptsCable("dc-power", "unknown")).toBe(false);
+  });
+  it("maps exercise ports to distinct RJ-45 data sockets", () => {
+    const sockets = Object.values(EXERCISE_SOCKETS);
+    expect(new Set(sockets).size).toBe(sockets.length);
+    for (const id of sockets) {
+      const port = PORTS.find(p => p.id === id);
+      expect(port, id).toBeDefined();
+      expect(["power", "usb", "console"]).not.toContain(port!.part);
+    }
+    // Same-numbered LAN sockets keep the model labels consistent with the exercise.
+    for (let n = 1; n <= 5; n++) expect(EXERCISE_SOCKETS[`port${n}`]).toBe(`lan-${n}`);
+  });
+  it("gives every WAN and port1-8 in the port exercises a socket", () => {
+    for (const scenario of [...ALL_PORT_SCENARIOS, portFinalScenario]) {
+      for (const { portId } of scenario.ports) {
+        const n = Number(portId.replace("port", ""));
+        if (portId.startsWith("wan") || n <= 8) expect(EXERCISE_SOCKETS[portId], `${scenario.id}/${portId}`).toBeDefined();
+      }
+    }
   });
 });

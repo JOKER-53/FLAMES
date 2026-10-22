@@ -8,7 +8,6 @@ export const panRouter = Router();
 
 panRouter.get("/model", (_req, res) => {
   const candidatePaths = [
-    path.resolve("/home/kadhir/Projects/fortisim/pa-220-firewall.glb"),
     path.resolve(__dirname, "../../../../pa-220-firewall.glb"),
     path.resolve(__dirname, "../../../pa-220-firewall.glb"),
     path.resolve(__dirname, "../../frontend/public/pa-220-firewall.glb"),
