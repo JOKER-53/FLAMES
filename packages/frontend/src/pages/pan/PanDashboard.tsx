@@ -29,7 +29,7 @@ function disposeMesh(obj: THREE.Object3D) {
   }
 }
 
-// Calibrated PA-220 3D hardware reference and interactive cabling
+// Calibrated PA-220 3D hardware reference and interactive cabling (v3)
 export function PanDashboard({ session: _session }: { session: PanSession }) {
   const mountRef    = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
