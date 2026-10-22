@@ -1,8 +1,8 @@
-import { nimRequest } from "./nimRequest";
+import { sendLLMRequest, getStaticFallbackQuestion } from "./llmClient";
 
 // ============================================================================
 // AI-generated knowledge check questions for PAN-OS exercises.
-// Returns a fresh MCQ on each call — one attempt only.
+// Returns a fresh MCQ on each call — with fallback support.
 // ============================================================================
 
 const SYSTEM_PROMPT = `
@@ -45,35 +45,76 @@ const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
   "pan-iface-01": { title:"Interface Configuration", concept:"How Palo Alto interface types (Layer2, Layer3, Virtual Wire, Tap) work, and why an interface must be assigned to a zone before security policies apply." },
 };
 
+// Fallback questions for Palo Alto tasks when offline or LLM fails
+const PAN_STATIC_FALLBACKS: Record<string, GeneratedQuestion> = {
+  "pan-sec-01": {
+    question: "In PAN-OS security policy, why is configuring an application (App-ID) preferable to simply allowing TCP port 80/443?",
+    choices: [
+      "App-ID consumes less CPU than port inspection",
+      "App-ID inspects actual application signatures regardless of what port or evasion technique is used",
+      "PAN-OS doesn't allow rules without an App-ID",
+      "Port-based rules only work on outbound traffic",
+    ],
+    correctIndex: 1,
+  },
+  "pan-sec-02": {
+    question: "When publishing a web server in the DMZ zone from Untrust, why should the firewall policy explicitly prohibit DMZ-initiated connections to the Trust zone?",
+    choices: [
+      "Trust zone interfaces cannot route traffic to the DMZ",
+      "In the event the DMZ web server is compromised, it prevents lateral pivot attacks into the private network",
+      "PAN-OS automatically allows DMZ to Trust unless blocked by an admin profile",
+      "HTTP traffic requires symmetric bi-directional policies to function",
+    ],
+    correctIndex: 1,
+  },
+  "pan-nat-01": {
+    question: "How does PAN-OS evaluate Security Policies versus NAT Policies for inbound traffic?",
+    choices: [
+      "NAT policy matches pre-NAT IP, Security policy matches pre-NAT zone and post-NAT IP",
+      "Security policy is evaluated before NAT and ignores zones",
+      "Only NAT policy is evaluated; security rules are not needed",
+      "NAT and Security rules are merged into a single table",
+    ],
+    correctIndex: 0,
+  },
+  "pan-zone-01": {
+    question: "Why must every physical interface in PAN-OS be bound to a Security Zone before passing routed traffic?",
+    choices: [
+      "PAN-OS is a zone-based firewall; all security policies are evaluated between source and destination zones",
+      "Without a zone, the interface hardware turns off",
+      "Zones are only needed if OSPF routing is enabled",
+      "Interfaces only support DHCP when assigned to a zone",
+    ],
+    correctIndex: 0,
+  },
+};
+
 export async function generatePanKnowledgeCheck(taskId: string): Promise<GeneratedQuestion> {
   const meta = TASK_CONCEPTS[taskId];
   if (!meta) throw new Error(`No concept mapping for PAN task: ${taskId}`);
 
   const userContent = `Task: ${meta.title}\nConcept to test: ${meta.concept}\n\nGenerate a hard multiple-choice question. Wrong answers should be plausible misconceptions a student might actually hold.`;
 
-  const response = await nimRequest({
-      model: process.env.NVIDIA_NIM_MODEL,
+  try {
+    const raw = await sendLLMRequest({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 400,
+      maxTokens: 400,
       temperature: 0.7,
-  });
+    });
 
-  if (!response.ok) throw new Error(`NIM API error: ${response.status}`);
-
-  const data = await response.json();
-  const raw = data.choices?.[0]?.message?.content ?? "";
-
-  try {
     const jsonMatch = raw.match(/\{[\s\S]*"question"[\s\S]*"choices"[\s\S]*"correctIndex"[\s\S]*\}/);
     if (!jsonMatch) throw new Error("No JSON found");
     const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.question || !Array.isArray(parsed.choices) || parsed.choices.length !== 4 || typeof parsed.correctIndex !== "number")
       throw new Error("Invalid shape");
     return parsed;
-  } catch {
-    throw new Error("The question generator returned unreadable output.");
+  } catch (err) {
+    console.warn(`[PanKnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);
+    const fallback = PAN_STATIC_FALLBACKS[taskId] || getStaticFallbackQuestion(taskId);
+    if (fallback) return fallback;
+    throw new Error("Knowledge check question is temporarily unavailable.");
   }
 }

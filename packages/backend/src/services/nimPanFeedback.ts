@@ -1,11 +1,9 @@
-import { nimRequest } from "./nimRequest";
+import { sendLLMRequest } from "./llmClient";
 
 // ============================================================================
-// NVIDIA NIM feedback for PAN-OS exercises.
-// Receives failing check descriptions and returns tutor guidance.
-// NEVER reveals correct values — concept-level hints only.
+// AI Feedback for PAN-OS exercises.
+// Supports OpenAI / NIM / generic LLM, with graceful fallback.
 // ============================================================================
-import { GradingReport } from "@fortisim/engine";
 
 const SYSTEM_PROMPT = `
 You are a concise PAN-OS firewall tutor. A student is configuring a Palo Alto Networks firewall.
@@ -26,31 +24,30 @@ export async function getPanFeedback(
   const userContent = [
     `Exercise: ${exerciseTitle}`,
     `Failing checks (${failingChecks.length}):`,
-    ...failingChecks.map(c => `- ${c}`),
+    ...failingChecks.map((c) => `- ${c}`),
   ].join("\n");
 
-  const response = await nimRequest({
-      model: process.env.NVIDIA_NIM_MODEL,
+  try {
+    let text = await sendLLMRequest({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 200,
+      maxTokens: 200,
       temperature: 0.5,
-  });
+    });
 
-  if (!response.ok) {
-    throw new Error(`NIM API error: ${response.status}`);
+    // Strip markdown
+    text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
+    text = text.replace(/^#+\s+/gm, "");
+    text = text.replace(/^[-*]\s+/gm, "");
+    text = text.replace(/\n{3,}/g, "\n\n");
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    if (sentences.length > 4) text = sentences.slice(0, 4).join(" ");
+    return text.trim();
+  } catch (err) {
+    console.warn(`[PanFeedback] LLM call failed (${(err as Error).message}). Using rule-based fallback.`);
+    const firstCheck = failingChecks[0] || "One or more rules did not behave as expected.";
+    return `In PAN-OS, review zone assignment and rule ordering carefully. Your configuration did not pass: "${firstCheck}". Remember that policies are evaluated top-down and require correct source/destination zone pairings.`;
   }
-
-  const data = await response.json();
-  let text = data.choices?.[0]?.message?.content ?? "Review your configuration and try again.";
-  // Strip any markdown that leaks through
-  text = text.replace(/\*\*([^*]+)\*\*/g, "$1");
-  text = text.replace(/^#+\s+/gm, "");
-  text = text.replace(/^[-*]\s+/gm, "");
-  text = text.replace(/\n{3,}/g, "\n\n");
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  if (sentences.length > 4) text = sentences.slice(0, 4).join(" ");
-  return text.trim();
 }
