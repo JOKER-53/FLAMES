@@ -1,12 +1,10 @@
-import { nimRequest } from "./nimRequest";
-
-// ============================================================================
-// NVIDIA NIM feedback service. CRITICAL: must only ever receive a
-// GradingReport (facts about the student's own submission). Must NEVER
-// receive expectedOutcomes or a model config.
-// ============================================================================
-
+import { sendLLMRequest } from "./llmClient";
 import { GradingReport } from "@fortisim/engine";
+
+// ============================================================================
+// AI Tutor feedback service.
+// Supports OpenAI / NIM / generic LLM, with deterministic fallback hints.
+// ============================================================================
 
 const SYSTEM_PROMPT = `You are a concise firewall tutor. A student is debugging their FortiGate policy. Respond with ONLY 2-3 short sentences of plain text. No markdown, no bullet points, no headers, no asterisks. Never reveal the correct IP, port, or service name. Hint at which concept to re-examine and why the traffic was denied. Be encouraging and specific.`.trim();
 
@@ -26,32 +24,31 @@ export async function getFeedbackForReport(
     ),
   ].join("\n");
 
-  const response = await nimRequest({
-      model: process.env.NVIDIA_NIM_MODEL,
+  try {
+    let text = await sendLLMRequest({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 300,
+      maxTokens: 300,
       temperature: 0.4,
-  });
+    });
 
-  if (!response.ok) {
-    throw new Error(`NIM API error: ${response.status}`);
+    // Strip markdown formatting and chain-of-thought leakage
+    text = text.replace(/\*\*[^*]+\*\*/g, (m: string) => m.slice(2, -2)); // **bold** -> bold
+    text = text.replace(/^#+\s+/gm, ""); // remove headers
+    text = text.replace(/^[-*]\s+/gm, ""); // remove bullet points
+    text = text.replace(/\n{3,}/g, "\n\n"); // collapse extra newlines
+    const sentences = text.split(/(?<=[.!?])\s+/);
+    if (sentences.length > 4) text = sentences.slice(0, 4).join(" ");
+    return text.trim();
+  } catch (err) {
+    console.warn(`[Feedback] LLM call failed (${(err as Error).message}). Using rule-based hint.`);
+    // Fallback guidance based on failure diagnostics
+    const firstFail = failing[0];
+    if (firstFail) {
+      return `Notice how traffic was treated: ${firstFail.description} resulted in "${firstFail.studentAction}". Check your policy ordering and ensure source/destination interfaces and services match your intended route.`;
+    }
+    return "Check that your rules match the required source, destination, and service parameters, and review rule evaluation order.";
   }
-
-  const data = await response.json();
-  let text = data.choices?.[0]?.message?.content ?? "No feedback returned.";
-  // Strip markdown formatting and chain-of-thought leakage
-  text = text.replace(/\*\*[^*]+\*\*/g, (m: string) => m.slice(2,-2)); // **bold** -> bold
-  text = text.replace(/^#+\s+/gm, '');           // remove headers
-  text = text.replace(/^[-*]\s+/gm, '');          // remove bullet points
-  text = text.replace(/\n{3,}/g, '\n\n');         // collapse extra newlines
-  // If response contains thinking/analysis preamble, extract just the feedback part
-  const feedbackMatch = text.match(/(?:feedback|hint|suggestion|tip)[:\s]+([\s\S]+)$/i);
-  if (feedbackMatch && feedbackMatch[1].length > 20) text = feedbackMatch[1].trim();
-  // Trim to first 3 sentences max
-  const sentences = text.split(/(?<=[.!?])\s+/);
-  if (sentences.length > 3) text = sentences.slice(0,3).join(' ');
-  return text.trim();
 }

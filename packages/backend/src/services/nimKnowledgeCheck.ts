@@ -1,10 +1,9 @@
-import { nimRequest } from "./nimRequest";
+import { sendLLMRequest, getStaticFallbackQuestion } from "./llmClient";
 
 // ============================================================================
-// Generates a fresh, AI-crafted multiple-choice knowledge check question
-// for a given task concept via NVIDIA NIM. Questions are generated on-demand
-// so no two attempts are identical and guessing patterns won't work.
-// NEVER reveals correct configuration values — concept-level only.
+// Generates a multiple-choice knowledge check question for a task.
+// Tries LLM (OpenAI / NIM / custom) first, then gracefully falls back
+// to curated engine questions if the LLM is down or misconfigured.
 // ============================================================================
 
 const SYSTEM_PROMPT = `You generate multiple-choice exam questions about firewall and networking concepts. Output ONLY valid JSON, no markdown, no explanation, no preamble. Format exactly: {"question":"...","choices":["...","...","...","..."],"correctIndex":0}. Rules: one correct answer, three plausible wrong answers, vary correctIndex position, concept-level only (no specific IP/port values from any scenario), requires genuine understanding to answer correctly.`.trim();
@@ -30,27 +29,18 @@ A student who merely memorised terminology should fail. Only someone who truly u
 the underlying networking/security principle should answer correctly.
 `.trim();
 
-  const response = await nimRequest({
-      model: process.env.NVIDIA_NIM_MODEL,
+  try {
+    const raw = await sendLLMRequest({
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userContent },
       ],
-      max_tokens: 400,
+      maxTokens: 400,
       temperature: 0.4,
-  });
+    });
 
-  if (!response.ok) {
-    throw new Error(`NIM API error: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const raw = data.choices?.[0]?.message?.content ?? "";
-
-  try {
-    // Extract JSON object from response (model may include reasoning before it)
     const jsonMatch = raw.match(/\{[\s\S]*"question"[\s\S]*"choices"[\s\S]*"correctIndex"[\s\S]*\}/);
-    if (!jsonMatch) throw new Error("No JSON found in response");
+    if (!jsonMatch) throw new Error("No JSON found in LLM response");
     const parsed = JSON.parse(jsonMatch[0]);
     if (
       typeof parsed.question !== "string" ||
@@ -58,10 +48,15 @@ the underlying networking/security principle should answer correctly.
       parsed.choices.length !== 4 ||
       typeof parsed.correctIndex !== "number"
     ) {
-      throw new Error("Invalid shape");
+      throw new Error("Invalid shape from LLM");
     }
     return parsed as GeneratedQuestion;
-  } catch {
-    throw new Error("The question generator returned unreadable output.");
+  } catch (err) {
+    console.warn(`[KnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);
+    const fallback = getStaticFallbackQuestion(taskId);
+    if (fallback) {
+      return fallback;
+    }
+    throw new Error("Knowledge check generation is temporarily unavailable.");
   }
 }

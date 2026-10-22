@@ -42,9 +42,26 @@ export function useProgress(platform: "fortigate" | "paloalto") {
     ids.add(id); setState({ key, ids });
     live.current = { key, ids };
     try { localStorage.setItem(key, JSON.stringify([...ids])); } catch { /* Keep in memory. */ }
+
+    // Notify parent window (e.g., Incogn1tr1x-Academy or college LMS if embedded via iframe)
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: "FORTISIM_TASK_COMPLETE",
+          platform,
+          taskId: id,
+          completedCount: ids.size,
+          timestamp: Date.now()
+        }, "*");
+      }
+    } catch {
+      // Ignore cross-origin postMessage failures
+    }
+
     if (user) accountRequest(`progress/${platform}`, { completed: [...ids] })
       .then(() => { if (live.current.key === key) setSyncError(null); })
       .catch(error => { if (live.current.key === key) setSyncError(error.message); });
   }, [key, platform, user]);
+
   return { completedTaskIds, markTaskComplete, syncError };
 }
