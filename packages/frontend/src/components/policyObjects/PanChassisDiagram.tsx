@@ -147,17 +147,17 @@ export function PanChassisDiagram({ports,onChange,fullHeight,referenceMode=false
   // The viewport has a fixed height so toasts and info text never resize the canvas mid-interaction.
   return <div style={{display:"flex",flexDirection:"column",height:fullHeight?"100%":undefined,gap:8}}>
     {!referenceMode&&<div style={{display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
-      <span style={{fontSize:11,color:"#64748b",marginRight:3}}>1. Pick a zone cable → 2. click a socket:</span>
+      <span style={{fontSize:11,color:"rgb(var(--muted))",marginRight:3}}>1. Pick a zone cable → 2. click a socket:</span>
       {ASSIGNABLE_ZONES.map(z=><button key={z} aria-pressed={zone===z} onClick={()=>setZone(zone===z?null:z)} style={{display:"flex",alignItems:"center",gap:5,padding:"4px 10px",fontSize:11,borderRadius:14,cursor:"pointer",border:`1.5px solid ${zone===z?PAN_ZONE_COLORS[z]:"#cbd5e1"}`,background:zone===z?PAN_ZONE_COLORS[z]+"20":"#fff",color:zone===z?PAN_ZONE_COLORS[z]:"#475569",fontWeight:zone===z?600:400}}><span style={{width:8,height:8,borderRadius:"50%",background:PAN_ZONE_COLORS[z]}}/>{z==="unassigned"?"Unplug":z}</button>)}
     </div>}
     <div style={{position:"relative",flex:fullHeight?1:undefined,height:fullHeight?undefined:400,minHeight:300,borderRadius:8,overflow:"hidden",border:"1px solid #1e2d45",background:"#0b111b"}}>
       <div ref={mountRef} style={{width:"100%",height:"100%",touchAction:"none"}}/>
-      {!ready&&!loadErr&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#64748b",fontSize:12}}>Loading PA-220 model…</div>}
+      {!ready&&!loadErr&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:"rgb(var(--muted))",fontSize:12}}>Loading PA-220 model…</div>}
       {loadErr&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:"#f87171",fontSize:12,padding:20,textAlign:"center"}}>{loadErr}</div>}
       <div style={{position:"absolute",top:10,left:12,color:"#607089",fontSize:11,pointerEvents:"none"}}>{zone?(zone==="unassigned"?"click a cabled socket to unplug it":`click a socket to connect a ${zone} cable`):"drag · scroll to zoom · click a socket to learn or unplug"}</div>
       {feedback&&<div role="status" style={{position:"absolute",left:12,bottom:12,padding:"6px 12px",borderRadius:4,fontSize:12,fontWeight:500,background:feedback.ok?"#052e16ee":"#450a0aee",color:feedback.ok?"#4ade80":"#f87171",border:`1px solid ${feedback.ok?"#166534":"#991b1b"}`}}>{feedback.msg}</div>}
       <div style={{position:"absolute",right:12,bottom:12,display:"flex",flexDirection:"column",gap:4}}>{[{l:"+",t:"Zoom in",f:()=>zoom(.84)},{l:"−",t:"Zoom out",f:()=>zoom(1.18)},{l:"⟳",t:"Reset view",f:reset}].map(x=><button key={x.l} onClick={x.f} title={x.t} aria-label={x.t} style={{width:32,height:32,borderRadius:6,border:"1px solid #334155",background:"#0b111bdd",color:"#cbd5e1",cursor:"pointer",fontSize:16}}>{x.l}</button>)}</div>
     </div>
-    <div style={{background:"#fff",border:"1px solid #e2e8f0",borderRadius:7,padding:"10px 13px",minHeight:78}}><div style={{fontSize:13,fontWeight:650,color:"#1e293b",marginBottom:3}}>{selected.title}</div><div style={{fontSize:12,color:"#64748b",lineHeight:1.5}}>{selected.body}</div></div>
+    <div style={{background:"rgb(var(--surface))",border:"1px solid rgb(var(--line-strong))",borderRadius:7,padding:"10px 13px",minHeight:78}}><div style={{fontSize:13,fontWeight:650,color:"rgb(var(--ink))",marginBottom:3}}>{selected.title}</div><div style={{fontSize:12,color:"rgb(var(--muted))",lineHeight:1.5}}>{selected.body}</div></div>
   </div>;
 }

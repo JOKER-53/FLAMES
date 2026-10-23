@@ -1,12 +1,14 @@
+import { useCourseCatalog } from "../course/CourseCatalog";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { accountRequest, useAccount } from "../hooks/useAccount";
 import { SiteLayout } from "../components/shell/SiteLayout";
 import { Callout, ProgressBar } from "../components/ui/primitives";
-import { allLessons, COURSES, type Vendor } from "../course/curriculum";
+import { allLessons, type Vendor } from "../course/curriculum";
 
 export function AccountPage() {
-  const { user, loading, registrationEnabled, authRequired, error: serviceError, refresh, logout } = useAccount();
+  const { courses: COURSES } = useCourseCatalog();
+  const { integration, user, loading, registrationEnabled, authRequired, error: serviceError, refresh, logout } = useAccount();
   const navigate = useNavigate();
   const [register, setRegister] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -28,6 +30,8 @@ export function AccountPage() {
     } catch (error) { setError(error instanceof Error ? error.message : "Sign-in failed."); }
     finally { setBusy(false); }
   }
+
+  if (integration?.mode === "academy") return <SiteLayout><h1 className="text-2xl font-semibold">Managed by Academy</h1><p className="mt-3 text-muted">Sign-in, profile, and progress are managed in Academy.</p><a href={integration.parentUrl ?? "/"} target="_top" className="btn-primary mt-5">Back to Academy</a></SiteLayout>;
 
   return (
     <SiteLayout>
@@ -71,8 +75,8 @@ export function AccountPage() {
             <label className="block"><span className="field-label">Email</span><input className="input" name="email" type="email" autoComplete="email" required maxLength={254} /></label>
             <label className="block">
               <span className="field-label">Password</span>
-              <input className="input" name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={12} maxLength={128} aria-describedby="password-help" />
-              <span id="password-help" className="mt-1.5 block text-xs text-muted">12–128 characters. Ask your instructor if registration is disabled.</span>
+              <input aria-label="Password" className="input" name="password" type="password" autoComplete={register ? "new-password" : "current-password"} required minLength={register ? 12 : 1} maxLength={128} aria-describedby="password-help" />
+              <span id="password-help" className="mt-1.5 block text-xs text-muted">{register ? "12–128 characters. Ask your instructor if registration is disabled." : "Enter the password for your account."}</span>
             </label>
             <button className="btn-primary w-full" disabled={busy || loading}>{busy ? "Please wait…" : register ? "Create account" : "Sign in"}</button>
             <div className="flex flex-wrap justify-between gap-2 pt-1 text-sm">

@@ -27,3 +27,4 @@ build/
 *.sqlite-shm
 *.sqlite-wal
 docs/.~lock.*#
+!.env.academy.example

@@ -62,7 +62,7 @@ export function PanZones({ session }: { session: PanSession }) {
             actions={<button onClick={() => setAdding(!adding)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add zone</button>}
           >
             {zones.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-line bg-[#f8fafc]" aria-label="Zone map">
+              <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-line bg-sunken" aria-label="Zone map">
                 {zones.map(z => (
                   <button key={z.id} onClick={() => setSelected(selected?.id === z.id ? null : z)} aria-pressed={selected?.id === z.id}
                     className={`rounded-md border-2 px-3 py-1.5 text-left ${selected?.id === z.id ? "shadow-raised" : ""}`}
@@ -76,7 +76,7 @@ export function PanZones({ session }: { session: PanSession }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="bg-[#eef1f5] text-[#3c4a5c] text-left border-b border-line-strong">
+                  <tr className="bg-sunken text-body text-left border-b border-line-strong">
                     {["Name", "Type", "Zone Protection", "Interfaces", "Log Forwarding", ""].map((h, i) => <th key={i} className="px-3 py-2 font-semibold">{h}</th>)}
                   </tr>
                 </thead>
@@ -97,7 +97,7 @@ export function PanZones({ session }: { session: PanSession }) {
             </div>
 
             {adding && (
-              <div className="p-4 border-t border-line-strong bg-[#f8fafc]">
+              <div className="p-4 border-t border-line-strong bg-sunken">
                 <div className="text-sm font-semibold text-ink mb-3">New zone</div>
                 <div className="grid gap-3 sm:grid-cols-3 mb-4">
                   <label><span className="field-label">Zone name</span>

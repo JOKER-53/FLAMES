@@ -17,5 +17,7 @@ jobs:
       - run: npm run verify
       - name: Validate deployment configuration
         run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml config --quiet
+      - name: Validate Academy integration configuration
+        run: ACADEMY_ORIGIN=http://academy.example:5173 ACADEMY_API_URL=http://academy:4000/api FRONTEND_ORIGIN=http://lab.example:5174 docker compose -f compose.academy.yml config --quiet
       - name: Build deployment images
         run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml build

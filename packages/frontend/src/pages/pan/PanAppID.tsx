@@ -50,28 +50,28 @@ export function PanAppID({ session }: { session?: PanSession }) {
   return (
     <div style={{ maxWidth: 1000, margin: "0 auto", padding: 20 }}>
       <h1 style={{ fontSize: 24, fontWeight: 700, marginBottom: 8 }}>App-ID Configuration</h1>
-      <p style={{ color: "#64748b", marginBottom: 20 }}>Configure Application Identification (App-ID) rules for the scenario.</p>
+      <p style={{ color: "rgb(var(--muted))", marginBottom: 20 }}>Configure Application Identification (App-ID) rules for the scenario.</p>
 
-      <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 8, padding: 14, marginBottom: 16 }}>
+      <div style={{ background: "rgb(var(--sunken))", border: "1px solid rgb(var(--line-strong))", borderRadius: 8, padding: 14, marginBottom: 16 }}>
         <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 8px 0" }}>Scenario: {scenario.title}</h3>
-        <p style={{ fontSize: 13, color: "#374151", margin: 0, lineHeight: 1.5 }}>{scenario.description}</p>
+        <p style={{ fontSize: 13, color: "rgb(var(--body))", margin: 0, lineHeight: 1.5 }}>{scenario.description}</p>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16 }}>
+        <div style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--line-strong))", borderRadius: 8, padding: 16 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Available Applications</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {APPS.map(app => (
               <label key={app.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, background: selectedApps.includes(app.id) ? "#f0f9ff" : "#f8fafc", border: `1px solid ${selectedApps.includes(app.id) ? "#bae6fd" : "#e2e8f0"}`, borderRadius: 6, cursor: "pointer" }}>
                 <input type="checkbox" checked={selectedApps.includes(app.id)} onChange={() => toggleApp(app.id)} />
                 <span style={{ fontFamily: "monospace", fontSize: 13 }}>{app.id}</span>
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#64748b" }}>Risk: {app.risk}</span>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "rgb(var(--muted))" }}>Risk: {app.risk}</span>
               </label>
             ))}
           </div>
         </div>
 
-        <div style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 8, padding: 16 }}>
+        <div style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--line-strong))", borderRadius: 8, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: results ? 12 : 0 }}>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Submit for Grading</span>
             <button onClick={grade} style={{ padding: "6px 16px", fontSize: 12, borderRadius: 4, background: "#fa4616", color: "#fff", border: "none", cursor: "pointer" }}>Submit</button>
@@ -83,7 +83,7 @@ export function PanAppID({ session }: { session?: PanSession }) {
               </div>
               {results.map((r, i) => (
                 <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: "1px solid #f1f5f9", fontSize: 12 }}>
-                  <span style={{ color: "#374151" }}>{r.desc}</span>
+                  <span style={{ color: "rgb(var(--body))" }}>{r.desc}</span>
                   <span style={{ padding: "1px 8px", borderRadius: 3, fontSize: 11, fontWeight: 600, background: r.pass ? "#dcfce7" : "#fee2e2", color: r.pass ? "#166534" : "#991b1b" }}>{r.pass ? "PASS" : "FAIL"}</span>
                 </div>
               ))}

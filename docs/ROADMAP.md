@@ -6,7 +6,7 @@ Accounts and expiring sessions, account-scoped server completion, instructor pro
 
 The listed Palo Alto security/zone/NAT finals now have actual exercises and server grading. Task navigation selects the requested exercise. Hardware practice has distinct connector families, manual rotation, keyboard ports, and no preconnected cables. Explore hides cables and indicators.
 
-See [upgrade report](UPGRADE_2026-10-02.md) for checks actually run and remaining acceptance work.
+See [current application flow](APPLICATION_FLOW.md) and [release checklist](RELEASE_CHECKLIST.md) for current scope and acceptance work. The [upgrade report](archive/UPGRADE_2026-10-02.md) records historical checks.
 
 ## Deliberate future work
 

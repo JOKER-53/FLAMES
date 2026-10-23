@@ -6,7 +6,7 @@ This repository includes deployable configuration, not a running public service.
 
 Run `npm ci`, copy `packages/backend/.env.example` to `packages/backend/.env`, then run `npm run backend:dev` and `npm run frontend:dev` in separate terminals. The database defaults to `packages/backend/data/fortisim.sqlite` when using the workspace dev command. Guest mode is enabled by default. AI settings may remain blank.
 
-Development Docker uses `docker compose up --build`. It exposes 5173 and 4000 on loopback only and keeps account data in a named volume. The Node development images were updated to 22 because SQLite is unavailable in Node 20. Rebuild after shared-engine edits; dev source mounts alone do not rebuild the backend's compiled engine.
+Development Docker uses `docker compose up --build`. It exposes 5173 and 4000 on loopback only and keeps account data in a named volume. The Node development images were updated to 22 because SQLite is unavailable in Node 20. The development backend rebuilds the shared engine at startup. After editing engine source, restart it with `docker compose restart backend`; frontend source and runtime assets are mounted for development.
 
 ## HTTPS-hosted classroom
 
@@ -44,8 +44,14 @@ Test restoration into a separate deployment before relying on a backup. Restorin
 
 Update using the same environment/project name, rebuild, and repeat the smoke checks. Keep an image/backup rollback point. This release initializes its schema with CREATE TABLE IF NOT EXISTS; future incompatible schema changes require a migration plan.
 
-## Verification actually performed
+## Release validation
 
-`npm run verify`, production Compose configuration validation, and Nginx syntax validation against an already-installed Nginx image were run locally. CI is configured to build both production images, but the new Node 22/unprivileged-Nginx images were not downloaded or built locally to avoid additional storage consumption. A passing configuration check does not establish a passing image build or live TLS deployment.
+Run `npm run verify` for the current checkout. It builds the shared engine and API, runs package-owned engine/API/frontend tests, and type-checks/builds the SPA. Local API tests require a temporary localhost listener. A clean dependency install is required after changing branches or manifests.
 
-AI provider calls and full browser/mobile/WebGL visual acceptance were not exercised. No Playwright was used. Use the manual checklist in [the upgrade report](UPGRADE_2026-10-02.md) before public release.
+CI also validates production Compose configuration and builds both production images. Before release, perform the live HTTPS/account/progress smoke checks above and manual browser/mobile/WebGL checks in [the release checklist](RELEASE_CHECKLIST.md). Unit and static-render tests do not establish visual socket alignment or production TLS readiness.
+
+`vercel.json` is a separate hosting configuration. The current backend uses a local SQLite file and in-memory question/rate-limit stores; ephemeral or independently scaled serverless instances do not provide the persistence and shared state assumed by the classroom flow. The documented persistent Compose deployment remains the reference topology.
+
+## College Academy deployment
+
+For parent-owned accounts and progress, use `compose.academy.yml` with `.env.academy.example` and install the parent adapter first. This topology does not mount a local classroom database volume. See [Academy integration](PARENT_LMS_INTEGRATION_GUIDE.md) for the actual college frontend origin, API configuration, framing headers, HTTPS, and installation/acceptance steps.

@@ -58,8 +58,8 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
 
   if (traces.length === 0) {
     return (
-      <div className="bg-white border border-gray-200 rounded-md p-5 text-center">
-        <div className="text-[12.5px] text-gray-400">
+      <div className="bg-surface border border-line rounded-md p-5 text-center">
+        <div className="text-[12.5px] text-faint">
           Click "Run Packet Test (Visual)" below to see test packets flow through your policies.
         </div>
       </div>
@@ -81,16 +81,16 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
   const matchedIndex = current.trace.findIndex((s) => s.matched);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-md overflow-hidden sticky top-4">
-      <div className="px-4 py-2.5 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
+    <div className="bg-surface border border-line rounded-md overflow-hidden sticky top-4">
+      <div className="px-4 py-2.5 border-b border-line bg-sunken flex items-center justify-between">
         <span className="text-[13px] font-semibold text-forti-dark">Packet Flow</span>
-        <span className="text-[11px] text-gray-400">{index + 1} / {traces.length}</span>
+        <span className="text-[11px] text-faint">{index + 1} / {traces.length}</span>
       </div>
 
       <div className="p-4">
-        <div className="bg-gray-50 border border-gray-200 rounded-md p-2.5 mb-3">
-          <div className="text-[11.5px] font-medium text-gray-800 mb-1">{current.packet.description}</div>
-          <div className="text-[10.5px] text-gray-600 font-mono">
+        <div className="bg-sunken border border-line rounded-md p-2.5 mb-3">
+          <div className="text-[11.5px] font-medium text-ink mb-1">{current.packet.description}</div>
+          <div className="text-[10.5px] text-body font-mono">
             {current.packet.srcIp} → {current.packet.dstIp} · {current.packet.protocol}
             {current.packet.port !== undefined ? `/${current.packet.port}` : ""}
           </div>
@@ -173,11 +173,11 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
           )}
         </svg>
 
-        <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100">
+        <div className="flex items-center justify-between pt-3 mt-1 border-t border-line">
           <button
             onClick={goPrev}
             disabled={index === 0}
-            className="px-2 py-1 border border-gray-300 rounded-sm text-[11px] text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+            className="px-2 py-1 border border-line-strong rounded-sm text-[11px] text-body hover:bg-sunken disabled:opacity-30"
           >
             ← Prev
           </button>
@@ -189,7 +189,7 @@ export function PacketFlowPanel({ traces }: PacketFlowPanelProps) {
           <button
             onClick={goNext}
             disabled={index === traces.length - 1}
-            className="px-2 py-1 border border-gray-300 rounded-sm text-[11px] text-gray-600 hover:bg-gray-50 disabled:opacity-30"
+            className="px-2 py-1 border border-line-strong rounded-sm text-[11px] text-body hover:bg-sunken disabled:opacity-30"
           >
             Next →
           </button>

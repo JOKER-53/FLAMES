@@ -5,16 +5,18 @@ import { AccountPage } from "./pages/AccountPage";
 import { ClassroomPage } from "./pages/ClassroomPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CourseShell }       from "./components/shell/CourseShell";
-import { FORTIGATE_COURSE, PALOALTO_COURSE } from "./course/curriculum";
+import { CourseCatalogProvider, useCourseCatalog } from "./course/CourseCatalog";
+const AdminPage = lazy(() => import("./pages/admin/AdminPage").then(module => ({ default: module.AdminPage })));
+const AuthoredLessonPage = lazy(() => import("./pages/course/AuthoredLessonPage").then(module => ({ default: module.AuthoredLessonPage })));
 import { CourseOverviewPage, ModulePage } from "./pages/course/CoursePages";
 import { VendorSelect }      from "./pages/VendorSelect";
-const DashboardPlaceholder = lazy(() => import("./pages/DashboardPlaceholder").then(module => ({ default: module.DashboardPlaceholder })));
-const FirewallPolicyPage = lazy(() => import("./pages/FirewallPolicyPage").then(module => ({ default: module.FirewallPolicyPage })));
-const AddressesPage = lazy(() => import("./pages/AddressesPage").then(module => ({ default: module.AddressesPage })));
-const ServicesPage = lazy(() => import("./pages/ServicesPage").then(module => ({ default: module.ServicesPage })));
-const InterfacesPage = lazy(() => import("./pages/InterfacesPage").then(module => ({ default: module.InterfacesPage })));
-const RoutingPage = lazy(() => import("./pages/RoutingPage").then(module => ({ default: module.RoutingPage })));
-const PanDashboard = lazy(() => import("./pages/pan/PanDashboard").then(module => ({ default: module.PanDashboard })));
+const FortiGateHardwarePage = lazy(() => import("./pages/fortigate/FortiGateHardwarePage").then(module => ({ default: module.FortiGateHardwarePage })));
+const FirewallPolicyPage = lazy(() => import("./pages/fortigate/FirewallPolicyPage").then(module => ({ default: module.FirewallPolicyPage })));
+const AddressesPage = lazy(() => import("./pages/fortigate/AddressesPage").then(module => ({ default: module.AddressesPage })));
+const ServicesPage = lazy(() => import("./pages/fortigate/ServicesPage").then(module => ({ default: module.ServicesPage })));
+const InterfacesPage = lazy(() => import("./pages/fortigate/InterfacesPage").then(module => ({ default: module.InterfacesPage })));
+const RoutingPage = lazy(() => import("./pages/fortigate/RoutingPage").then(module => ({ default: module.RoutingPage })));
+const PanHardwarePage = lazy(() => import("./pages/pan/PanHardwarePage").then(module => ({ default: module.PanHardwarePage })));
 const PanSecurityPolicy = lazy(() => import("./pages/pan/PanSecurityPolicy").then(module => ({ default: module.PanSecurityPolicy })));
 const PanZones = lazy(() => import("./pages/pan/PanZones").then(module => ({ default: module.PanZones })));
 const PanAppID = lazy(() => import("./pages/pan/PanAppID").then(module => ({ default: module.PanAppID })));
@@ -25,26 +27,29 @@ import { useScenarioSession }    from "./hooks/useScenarioSession";
 import { usePanSession }         from "./hooks/usePanSession";
 
 function TrainingAccess({ children }: { children: ReactNode }) {
-  const { loading, authRequired, user } = useAccount();
+  const { loading, authRequired, user, integration, error } = useAccount();
   if (loading) return <p className="p-8 text-muted" role="status">Checking lab access…</p>;
+  if (error && !integration) return <p className="p-8 text-danger" role="alert">Could not load lab settings. Reload to retry: {error}</p>;
+  if (integration?.mode === "academy" && !user) return <div className="min-h-screen bg-canvas p-8 text-body"><h1 className="text-2xl font-semibold">Open this lab from Academy</h1><p className="mt-3">{error || "Your Academy login is required. Return to Academy and open the firewall lab."}</p><a className="btn-primary mt-5" href={integration.parentUrl ?? "/"} target="_top">Return to Academy</a></div>;
   if (authRequired && !user) return <Navigate to="/account" replace />;
   return <>{children}</>;
 }
 
 function ProgressWarning({ error }: { error: string | null }) {
-  return error ? <p className="lab-sync-warning" role="status">Progress is kept on this device, but cloud saving failed: {error} Reopen the lab to retry.</p> : null;
+  return error ? <p className="lab-sync-warning" role="status">Progress saving failed: {error} Reopen the lab to retry.</p> : null;
 }
 
 function FortiGateApp() {
   const session = useScenarioSession();
-  const course = FORTIGATE_COURSE;
+  const course = useCourseCatalog().courses.fortigate;
   return (
     <CourseShell course={course} completed={session.completedTaskIds}>
       <ProgressWarning error={session.syncError} />
       <Routes>
         <Route path="/"                       element={<CourseOverviewPage course={course} completed={session.completedTaskIds} />} />
         <Route path="/modules/:moduleId"      element={<ModulePage course={course} completed={session.completedTaskIds} />} />
-        <Route path="/hardware"               element={<DashboardPlaceholder session={session} />} />
+        <Route path="/lessons/:lessonId" element={<AuthoredLessonPage complete={session.markTaskComplete} />} />
+        <Route path="/hardware"               element={<FortiGateHardwarePage session={session} />} />
         <Route path="/policy/firewall-policy" element={<FirewallPolicyPage session={session} />} />
         <Route path="/policy/addresses"       element={<AddressesPage session={session} />} />
         <Route path="/policy/services"        element={<ServicesPage session={session} />} />
@@ -62,14 +67,15 @@ function FortiGateApp() {
 
 function PaloAltoApp() {
   const session = usePanSession();
-  const course = PALOALTO_COURSE;
+  const course = useCourseCatalog().courses.paloalto;
   return (
     <CourseShell course={course} completed={session.completedTaskIds}>
       <ProgressWarning error={session.syncError} />
       <Routes>
         <Route path="/"                  element={<CourseOverviewPage course={course} completed={session.completedTaskIds} />} />
         <Route path="/modules/:moduleId" element={<ModulePage course={course} completed={session.completedTaskIds} />} />
-        <Route path="/hardware"          element={<PanDashboard session={session} />} />
+        <Route path="/lessons/:lessonId" element={<AuthoredLessonPage complete={session.markTaskComplete} />} />
+        <Route path="/hardware"          element={<PanHardwarePage session={session} />} />
         <Route path="/security"          element={<PanSecurityPolicy session={session} />} />
         <Route path="/zones"             element={<PanZones session={session} />} />
         <Route path="/appid"             element={<PanAppID />} />
@@ -93,10 +99,11 @@ function LegacyTrackRedirect({ base, map }: { base: string; map: Record<string, 
 export default function App() {
   return (
     <BrowserRouter>
-      <AccountProvider><ErrorBoundary><Suspense fallback={<p className="p-8 text-muted" role="status">Loading…</p>}>
+      <AccountProvider><CourseCatalogProvider><ErrorBoundary><Suspense fallback={<p className="p-8 text-muted" role="status">Loading…</p>}>
       <Routes>
         <Route path="/"            element={<VendorSelect />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/admin" element={<AdminPage />} />
         <Route path="/classroom" element={<ClassroomPage />} />
         <Route path="/fortigate/*" element={<TrainingAccess><FortiGateApp /></TrainingAccess>} />
         <Route path="/paloalto/*"  element={<TrainingAccess><PaloAltoApp /></TrainingAccess>} />
@@ -105,7 +112,7 @@ export default function App() {
         <Route path="/network/*"   element={<Navigate to="/fortigate/modules/interface" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      </Suspense></ErrorBoundary></AccountProvider>
+      </Suspense></ErrorBoundary></CourseCatalogProvider></AccountProvider>
     </BrowserRouter>
   );
 }

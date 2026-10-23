@@ -91,7 +91,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="bg-[#eef1f5] text-[#3c4a5c] text-left border-b border-line-strong">
+                  <tr className="bg-sunken text-body text-left border-b border-line-strong">
                     {["", "#", "Name", "Source Zone", "Destination Zone", "Application", "Action", ""].map((h, i) => <th key={i} className="px-3 py-2 font-semibold">{h}</th>)}
                   </tr>
                 </thead>
@@ -122,7 +122,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
             <div className="px-3 py-2 text-xs italic text-muted bg-sunken border-t border-line">interzone-default — traffic between zones that matches no rule above is denied</div>
 
             {showNew && (
-              <div className="p-4 border-t border-line-strong bg-[#f8fafc]">
+              <div className="p-4 border-t border-line-strong bg-sunken">
                 <div className="text-sm font-semibold text-ink mb-3">New security rule</div>
                 <div className="grid gap-3 sm:grid-cols-3 mb-4">
                   <label><span className="field-label">Rule name</span>

@@ -1,9 +1,11 @@
+import { useCourseCatalog } from "../course/CourseCatalog";
+import { useAccount } from "../hooks/useAccount";
 import { Link } from "react-router-dom";
 import { SiteLayout } from "../components/shell/SiteLayout";
 import { Icon, type IconName } from "../components/ui/Icon";
 import { ProgressBar } from "../components/ui/primitives";
 import { useProgress } from "../hooks/useProgress";
-import { allLessons, courseMinutes, courseProgress, nextLesson, COURSES, type Course } from "../course/curriculum";
+import { allLessons, courseMinutes, courseProgress, nextLesson, type Course } from "../course/curriculum";
 
 const hours = (course: Course) => `${Math.round(courseMinutes(course) / 60)} hours`;
 
@@ -59,13 +61,15 @@ const STEPS: { icon: IconName; title: string; text: string }[] = [
 ];
 
 export function VendorSelect() {
+  const { courses: COURSES } = useCourseCatalog();
+  const { integration } = useAccount();
   return (
     <SiteLayout>
       <section className="max-w-2xl">
         <div className="eyebrow">Firewall training</div>
         <h1 className="mt-3 text-3xl sm:text-4xl font-semibold leading-tight">Learn firewall administration by configuring one.</h1>
         <p className="mt-4 text-lg text-muted leading-relaxed">
-          Two hands-on courses on simulated FortiGate and Palo Alto firewalls. Work through graded lessons at your own pace; sign in to keep your progress across devices.
+          Two hands-on courses on simulated FortiGate and Palo Alto firewalls. {integration?.mode === "academy" ? "Your Academy account keeps your progress across devices." : "Work through graded lessons at your own pace; sign in to keep your progress across devices."}
         </p>
       </section>
 

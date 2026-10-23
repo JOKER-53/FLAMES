@@ -8,10 +8,7 @@ export const panRouter = Router();
 
 panRouter.get("/model", (_req, res) => {
   const candidatePaths = [
-    path.resolve(__dirname, "../../../../pa-220-firewall.glb"),
-    path.resolve(__dirname, "../../../pa-220-firewall.glb"),
-    path.resolve(__dirname, "../../frontend/public/pa-220-firewall.glb"),
-    path.resolve(process.cwd(), "pa-220-firewall.glb"),
+    path.resolve(__dirname, "../../../frontend/public/pa-220-firewall.glb"),
   ];
 
   for (const filePath of candidatePaths) {

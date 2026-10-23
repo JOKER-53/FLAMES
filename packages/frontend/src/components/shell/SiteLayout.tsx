@@ -16,7 +16,7 @@ export function SiteLayout({ children, wide = false }: { children: ReactNode; wi
       </main>
       <footer className="border-t border-line bg-surface">
         <div className="mx-auto max-w-[1120px] px-4 lg:px-8 py-5 flex flex-wrap justify-between gap-2 text-xs text-muted">
-          <span>FortiSim Academy · Firewall training on simulated FortiOS and PAN-OS consoles. No live equipment is configured.</span>
+          <span>FLAMES Academy · Firewall training on simulated FortiOS and PAN-OS consoles. No live equipment is configured.</span>
           <span>Not affiliated with Fortinet or Palo Alto Networks.</span>
         </div>
       </footer>

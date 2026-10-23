@@ -1,5 +1,6 @@
 services:
   backend:
+    command: ["npm", "--prefix", "/app", "run", "backend:dev"]
     build:
       context: .
       dockerfile: packages/backend/Dockerfile
@@ -27,6 +28,8 @@ services:
       - backend
     volumes:
       - ./packages/frontend/src:/app/packages/frontend/src
+      - ./packages/frontend/public:/app/packages/frontend/public:ro
+      - ./packages/frontend/index.html:/app/packages/frontend/index.html:ro
       - ./packages/engine/src:/app/packages/engine/src
       - ./packages/frontend/vite.config.ts:/app/packages/frontend/vite.config.ts
       - ./packages/frontend/tailwind.config.js:/app/packages/frontend/tailwind.config.js

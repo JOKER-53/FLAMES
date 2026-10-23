@@ -1,14 +1,17 @@
+import { ContentStore } from "./content/store";
 import dotenv from "dotenv";
 dotenv.config();
-import { resolve } from "node:path";
+import { resolve, dirname } from "node:path";
 import { createApp } from "./app";
 import { PlatformStore } from "./platform/store";
 import { hashPassword } from "./platform/auth";
 
 async function main() {
-  const store = new PlatformStore(process.env.DATABASE_PATH || resolve("data/fortisim.sqlite"));
-  const email = process.env.INSTRUCTOR_EMAIL?.trim().toLowerCase();
-  const password = process.env.INSTRUCTOR_PASSWORD;
+  const academy = process.env.PLATFORM_MODE === "academy";
+  const store = new PlatformStore(academy ? ":memory:" : process.env.DATABASE_PATH || resolve("data/fortisim.sqlite"));
+  const content = new ContentStore(process.env.CONTENT_DATABASE_PATH || resolve(dirname(process.env.DATABASE_PATH || resolve("data/fortisim.sqlite")), "content.sqlite"));
+  const email = academy ? undefined : process.env.INSTRUCTOR_EMAIL?.trim().toLowerCase();
+  const password = academy ? undefined : process.env.INSTRUCTOR_PASSWORD;
   if (email && password) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("INSTRUCTOR_EMAIL must be a valid email address.");
     if (password.length < 12 || password.length > 128) throw new Error("INSTRUCTOR_PASSWORD must contain 12–128 characters.");
@@ -18,9 +21,9 @@ async function main() {
   } else if (email || password) {
     throw new Error("Set both INSTRUCTOR_EMAIL and INSTRUCTOR_PASSWORD, or neither.");
   }
-  const server = createApp(store).listen(Number(process.env.PORT) || 4000, () => console.log("FortiSim API ready"));
+  const server = createApp(store, content).listen(Number(process.env.PORT) || 4000, () => console.log("FLAMES API ready"));
   const shutdown = () => {
-    server.close(() => { store.close(); process.exit(0); });
+    server.close(() => { store.close(); content.close(); process.exit(0); });
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.once("SIGTERM", shutdown);
