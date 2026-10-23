@@ -26,8 +26,8 @@ function inferZone(addr: AddressObject): "WAN" | "LAN" | "DMZ" {
 }
 
 const CANVAS_STYLE: React.CSSProperties = {
-  backgroundColor: "#fbfcfd",
-  backgroundImage: "radial-gradient(#d8dee5 1px, transparent 1px)",
+  backgroundColor: "rgb(var(--sunken))",
+  backgroundImage: "radial-gradient(rgb(var(--line-strong)) 1px, transparent 1px)",
   backgroundSize: "16px 16px",
 };
 
@@ -64,10 +64,10 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
   }, [activeFlow]);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-4 overflow-hidden">
-      <div className="text-[12px] font-medium text-gray-600 mb-3 uppercase tracking-wide">Network Topology</div>
+    <div className="bg-surface border border-line rounded-md p-4 overflow-hidden">
+      <div className="text-[12px] font-medium text-body mb-3 uppercase tracking-wide">Network Topology</div>
 
-      <div className="relative rounded border border-gray-200 p-4" style={CANVAS_STYLE}>
+      <div className="relative rounded border border-line p-4" style={CANVAS_STYLE}>
         {/* Star topology: FortiGate in center, systems around it */}
         <div className="flex flex-col items-center gap-3">
 
@@ -79,19 +79,19 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
               return (
                 <div key={sys.id} className="flex flex-col items-center gap-1">
                   <div
-                    className={`relative w-14 h-11 rounded-sm bg-white border-2 flex items-center justify-center shadow-sm transition-all ${
+                    className={`relative w-14 h-11 rounded-sm bg-surface border-2 flex items-center justify-center shadow-sm transition-all ${
                       highlighted ? "border-forti-red scale-110" : "border-gray-400"
                     }`}
                   >
                     <svg width="26" height="20" viewBox="0 0 26 20">
-                      <rect x="1" y="1" width="24" height="14" rx="1" fill="#e5e7eb" stroke="currentColor" strokeWidth="1.5" className={highlighted ? "text-forti-red" : "text-gray-500"} />
-                      <rect x="9" y="16" width="8" height="2" fill="currentColor" className={highlighted ? "text-forti-red" : "text-gray-500"} />
-                      <rect x="6" y="18" width="14" height="1.5" rx="0.5" fill="currentColor" className={highlighted ? "text-forti-red" : "text-gray-500"} />
+                      <rect x="1" y="1" width="24" height="14" rx="1" fill="#e5e7eb" stroke="currentColor" strokeWidth="1.5" className={highlighted ? "text-forti-red" : "text-muted"} />
+                      <rect x="9" y="16" width="8" height="2" fill="currentColor" className={highlighted ? "text-forti-red" : "text-muted"} />
+                      <rect x="6" y="18" width="14" height="1.5" rx="0.5" fill="currentColor" className={highlighted ? "text-forti-red" : "text-muted"} />
                     </svg>
                     {highlighted && <div className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-forti-red animate-pulse"></div>}
                   </div>
-                  <div className={`text-[9px] font-semibold ${highlighted ? "text-forti-red" : "text-gray-700"}`}>{sys.label}</div>
-                  <div className="text-[8px] text-gray-400 font-mono">{sys.address.value.split("/")[0]}</div>
+                  <div className={`text-[9px] font-semibold ${highlighted ? "text-forti-red" : "text-body"}`}>{sys.label}</div>
+                  <div className="text-[8px] text-faint font-mono">{sys.address.value.split("/")[0]}</div>
                   <div className="text-[8px] font-bold px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: ZONE_DOTS[zone] }}>{zone}</div>
                   {/* Cable down to firewall */}
                   <ConnectorDot color={ZONE_DOTS[zone]} />
@@ -117,7 +117,7 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
           </div>
 
           {/* FortiGate in center */}
-          <div className={`border-2 rounded-md px-4 py-2 bg-white flex items-center gap-2 shadow-sm transition-all ${activeFlow && phase === 2 ? "scale-110" : ""} border-forti-red`}>
+          <div className={`border-2 rounded-md px-4 py-2 bg-surface flex items-center gap-2 shadow-sm transition-all ${activeFlow && phase === 2 ? "scale-110" : ""} border-forti-red`}>
             <svg width="18" height="18" viewBox="0 0 18 18">
               <path d="M9 1.5 15 3.5v5c0 4-3 6.5-6 8-3-1.5-6-4-6-8v-5L9 1.5Z" fill="#fee2e2" stroke="#DA291C" strokeWidth="1.6" strokeLinejoin="round" />
             </svg>
@@ -125,7 +125,7 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
           </div>
 
           {activeFlow && phase === 4 && (
-            <div className={`text-[10.5px] font-bold px-2 py-0.5 rounded ${activeFlow.action === "ACCEPT" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>
+            <div className={`text-[10.5px] font-bold px-2 py-0.5 rounded ${activeFlow.action === "ACCEPT" ? "bg-success-soft text-success" : "bg-danger-soft text-danger"}`}>
               {activeFlow.action === "ACCEPT" ? "✓ ACCEPTED" : "✕ DENIED"}
             </div>
           )}

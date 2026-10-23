@@ -1,3 +1,4 @@
+import { isCompletionTask as builtinCompletionTask } from "@fortisim/engine";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { randomUUID, createHash } from "node:crypto";
@@ -25,6 +26,11 @@ export const tokenHash = (token: string) => createHash("sha256").update(token).d
 
 export class PlatformStore {
   private db: Database;
+  private customCompletion: (platform: string, id: unknown) => boolean = () => false;
+  setCompletionResolver(resolver: (platform: string, id: unknown) => boolean) { this.customCompletion = resolver; }
+  isCompletionTask(platform: string, id: unknown): id is string {
+    return typeof id === "string" && (builtinCompletionTask(platform, id) || this.customCompletion(platform, id));
+  }
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
@@ -72,7 +78,7 @@ export class PlatformStore {
   revoke(token: string) { this.db.prepare("DELETE FROM sessions WHERE hash=?").run(tokenHash(token)); }
   progress(userId: string, platform: string): string[] {
     return this.db.prepare("SELECT task_id FROM progress WHERE user_id=? AND platform=? ORDER BY task_id")
-      .all(userId, platform).map(row => String(row.task_id));
+      .all(userId, platform).map(row => String(row.task_id)).filter(id => this.isCompletionTask(platform, id));
   }
   mergeProgress(userId: string, platform: string, ids: string[]) {
     this.db.exec("BEGIN IMMEDIATE");

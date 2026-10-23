@@ -1,3 +1,4 @@
+import { ThemeToggle } from "../ThemeToggle";
 // ============================================================================
 // Learning-platform frame shared by both vendors: course outline on the left,
 // breadcrumb and account on top, lesson content in the middle. Lesson
@@ -33,23 +34,29 @@ export function lessonForLocation(course: Course, pathname: string, search: stri
 
 export function BrandMark({ className = "" }: { className?: string }) {
   return (
-    <Link to="/" className={`flex items-center gap-2.5 ${className}`} aria-label="FortiSim home">
+    <Link to="/" className={`flex items-center gap-2.5 ${className}`} aria-label="FLAMES home">
       <span className="grid place-items-center w-7 h-7 rounded-md bg-ink text-white">
         <Icon name="shield" size={15} strokeWidth={2} />
       </span>
-      <span className="text-[15px] font-semibold tracking-tight text-ink">FortiSim</span>
+      <span className="text-[15px] font-semibold tracking-tight text-ink">FLAMES</span>
       <span className="hidden sm:inline text-2xs font-medium text-muted border border-line rounded px-1.5 py-px">Academy</span>
     </Link>
   );
 }
 
 export function AccountMenu() {
-  const { user } = useAccount();
+  return <div className="flex items-center gap-2"><ThemeToggle /><AccountActions /></div>;
+}
+
+function AccountActions() {
+  const { user, integration } = useAccount();
+  if (integration?.mode === "academy") return <div className="flex items-center gap-2">{user?.canManageContent && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}<span className="hidden md:block text-sm text-muted">{user?.name || "Academy lab"}</span><a className="btn-secondary btn-sm" href={integration.parentUrl ?? "/"} target="_top">Back to Academy</a></div>;
   if (!user) return <Link to="/account" className="btn-secondary btn-sm"><span className="sm:hidden">Sign in</span><span className="hidden sm:inline">Sign in to save progress</span></Link>;
   const initials = user.name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="flex items-center gap-2">
-      {user.role === "instructor" && <Link to="/classroom" className="btn-ghost btn-sm"><Icon name="users" size={15} />Classroom</Link>}
+      {user.role === "instructor" && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}
+      {user.role === "instructor" && <Link to="/classroom" aria-label="Classroom" className="btn-ghost btn-sm"><Icon name="users" size={15} /><span className="hidden sm:inline">Classroom</span></Link>}
       <Link to="/account" className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-sunken" title={`Signed in as ${user.email}`}>
         <span className="grid place-items-center w-7 h-7 rounded-full bg-sunken text-2xs font-semibold text-ink">{initials}</span>
         <span className="hidden md:block text-sm font-medium text-ink max-w-[140px] truncate">{user.name}</span>
@@ -151,7 +158,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
 
   useEffect(() => { setDrawer(false); }, [location.pathname, location.search]);
   useEffect(() => {
-    document.title = current ? `${current.lesson.title} · ${course.product} · FortiSim` : `${course.product} · FortiSim`;
+    document.title = current ? `${current.lesson.title} · ${course.product} · FLAMES` : `${course.product} · FLAMES`;
   }, [current, course.product]);
 
   return (
@@ -193,7 +200,9 @@ export function CourseShell({ course, completed, children }: { course: Course; c
           <AccountMenu />
         </header>
         <main className="flex-1 overflow-y-auto">
-          <div className="mx-auto w-full max-w-[1280px] px-4 lg:px-8 py-6 lg:py-8">{children}</div>
+          <div className={location.pathname === `${course.base}/hardware`
+            ? "mx-auto w-full px-4 lg:px-6 py-4"
+            : "mx-auto w-full max-w-[1280px] px-4 lg:px-8 py-6 lg:py-8"}>{children}</div>
         </main>
       </div>
     </div>

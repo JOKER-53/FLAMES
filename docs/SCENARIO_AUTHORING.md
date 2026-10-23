@@ -68,7 +68,7 @@ See `packages/engine/src/portScenarios.ts`.
 ## Palo Alto exercises
 
 Add security, zone, or NAT exercises in `packages/engine/src/panExercises.ts`,
-metadata in `packages/frontend/src/pages/pan/panTasks.ts`, and a concept mapping
+metadata in `packages/frontend/src/course/curriculum.ts`, and a concept mapping
 for optional knowledge checks. Exercise selectors and server grading share
 these definitions. Prove every listed exercise and final with positive and
 negative fixtures in `packages/engine/test/panExercises.test.ts`.
@@ -76,3 +76,11 @@ negative fixtures in `packages/engine/test/panExercises.test.ts`.
 Security tests must evaluate effective traffic in rule order, not the mere
 existence of an allow/deny rule. Zone checks must reject shared interface
 ownership. NAT mappings must match exactly within one coherent rule.
+
+## Navigation and verification
+
+Register lesson metadata in `packages/frontend/src/course/curriculum.ts`. FortiGate routes use `scenario` and, for interface/port exercises, `track`; Palo Alto routes use `task`. Update the server registry where appropriate and add offline knowledge-question coverage. Run `npm run verify`; engine fixtures live in `packages/engine/test/` and frontend rendering/hardware checks in `packages/frontend/test/`.
+
+For new built-in simulator lessons, add each lesson ID to `packages/engine/src/completion.ts`. The API and device caches accept only that registry; a frontend test checks it against the complete curriculum to prevent drift.
+
+For instructional lessons and multiple-choice/short-answer tasks, use the `/admin` [content studio](ADMIN_CONTENT.md). Published authored lessons are registered dynamically and do not require editing the static completion registry.

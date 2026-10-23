@@ -13,8 +13,8 @@ const ROLE_DOT: Record<string, string> = {
 };
 
 const CANVAS_STYLE: React.CSSProperties = {
-  backgroundColor: "#fbfcfd",
-  backgroundImage: "radial-gradient(#d8dee5 1px, transparent 1px)",
+  backgroundColor: "rgb(var(--sunken))",
+  backgroundImage: "radial-gradient(rgb(var(--line-strong)) 1px, transparent 1px)",
   backgroundSize: "16px 16px",
 };
 
@@ -53,11 +53,11 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
     : "This task tests full interface configuration";
 
   return (
-    <div className="bg-white border border-gray-200 rounded-md p-4">
-      <div className="text-[12px] font-medium text-gray-600 mb-1 uppercase tracking-wide">Network Topology</div>
-      <div className="text-[10.5px] text-gray-400 mb-3">{focusLabel}</div>
+    <div className="bg-surface border border-line rounded-md p-4">
+      <div className="text-[12px] font-medium text-body mb-1 uppercase tracking-wide">Network Topology</div>
+      <div className="text-[10.5px] text-faint mb-3">{focusLabel}</div>
 
-      <div className="rounded border border-gray-200 p-4" style={CANVAS_STYLE}>
+      <div className="rounded border border-line p-4" style={CANVAS_STYLE}>
         <div className="flex items-center justify-center gap-3">
           {ROLE_ORDER.map((role, idx) => {
             const intf = byRole(role);
@@ -65,14 +65,14 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
             return (
               <div key={role} className="flex items-center gap-3">
                 <div className="flex flex-col items-center gap-1.5">
-                  <div className={`w-16 h-12 rounded-sm bg-white border-2 flex items-center justify-center shadow-sm ${focus === "ip" ? "ring-2 ring-forti-red/30" : ""}`} style={{ borderColor: intf ? ROLE_DOT[role] : "#e5e7eb" }}>
+                  <div className={`w-16 h-12 rounded-sm bg-surface border-2 flex items-center justify-center shadow-sm ${focus === "ip" ? "ring-2 ring-forti-red/30" : ""}`} style={{ borderColor: intf ? ROLE_DOT[role] : "#e5e7eb" }}>
                     {role === "WAN" ? <CloudIcon /> : <SwitchIcon />}
                   </div>
                   <div className="text-[9.5px] font-bold px-2 py-0.5 rounded text-white" style={{ backgroundColor: ROLE_DOT[role] }}>
                     {role}
                   </div>
                   {(focus === "ip" || focus === "all") && (
-                    <div className="text-[9.5px] font-mono text-gray-600 min-h-[14px]">
+                    <div className="text-[9.5px] font-mono text-body min-h-[14px]">
                       {hasIp ? `${intf!.ip}${intf!.subnet ? `/${intf!.subnet}` : ""}` : "—"}
                     </div>
                   )}
@@ -101,7 +101,7 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
         </div>
 
         <div className="flex justify-center">
-          <div className="border-2 border-forti-red rounded-md px-4 py-2 bg-white flex items-center gap-2 shadow-sm">
+          <div className="border-2 border-forti-red rounded-md px-4 py-2 bg-surface flex items-center gap-2 shadow-sm">
             <svg width="16" height="16" viewBox="0 0 18 18">
               <path d="M9 1.5 15 3.5v5c0 4-3 6.5-6 8-3-1.5-6-4-6-8v-5L9 1.5Z" fill="#fee2e2" stroke="#DA291C" strokeWidth="1.6" strokeLinejoin="round" />
             </svg>

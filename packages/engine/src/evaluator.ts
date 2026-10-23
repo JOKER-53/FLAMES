@@ -67,12 +67,20 @@ export function evaluatePacket(
       continue;
     }
 
+    if (policy.webFilterProfileId && !webFilterProfiles.some(profile => profile.id === policy.webFilterProfileId)) {
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: "Policy references an unknown web filter profile" });
+      continue;
+    }
+
     if (policy.action === "ACCEPT" && policy.webFilterProfileId && packet.domain) {
       const profile = webFilterProfiles.find((p) => p.id === policy.webFilterProfileId);
       if (profile) {
-        const blocked = profile.blockedDomains.some(
-          (d) => packet.domain === d || packet.domain!.endsWith(`.${d}`)
-        );
+        const normalizeDomain = (domain: string) => domain.trim().toLowerCase().replace(/\.+$/, "");
+        const domain = normalizeDomain(packet.domain);
+        const blocked = profile.blockedDomains.some(value => {
+          const blockedDomain = normalizeDomain(value);
+          return !!blockedDomain && (domain === blockedDomain || domain.endsWith(`.${blockedDomain}`));
+        });
         if (blocked) {
           trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Policy matched but domain "${packet.domain}" blocked by Web Filter profile "${profile.name}"` });
           return { finalAction: "DENY", matchedPolicyId: policy.id, webFiltered: true, trace };

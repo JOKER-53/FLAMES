@@ -1,6 +1,8 @@
-# 📖 FortiSim & PAN-Sim: Comprehensive Master Learning Guide
+# 📖 FLAMES & PAN-Sim: Comprehensive Master Learning Guide
 
-Welcome to the ultimate learning manual for **FortiSim** (Fortinet FortiOS) and **PAN-Sim** (Palo Alto PAN-OS). This comprehensive guide explains every single module, task, button, parameter, acronym, and underlying networking/security concept built into this application.
+Implementation note: this guide includes networking background beyond the implemented simulator. Current navigation and supported features are documented in [application flow](APPLICATION_FLOW.md). The UI exposes basic static routing; OSPF/SD-WAN and broader security-profile concepts discussed below are not all available as interactive lessons. App-ID is a reference/selected-label model rather than live application inspection.
+
+Welcome to the ultimate learning manual for **FLAMES** (Fortinet FortiOS) and **PAN-Sim** (Palo Alto PAN-OS). This comprehensive guide explains every single module, task, button, parameter, acronym, and underlying networking/security concept built into this application.
 
 ---
 

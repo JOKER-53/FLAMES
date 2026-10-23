@@ -1,6 +1,6 @@
-# 📚 FortiSim & PAN-Sim: Comprehensive Networking & Security Glossary
+# 📚 FLAMES & PAN-Sim: Comprehensive Networking & Security Glossary
 
-Welcome to the creator's educational reference guide for **FortiSim** and **PAN-Sim**. This document breaks down every physical component, networking protocol, security abbreviation, and vendor-specific concept featured in your project.
+Welcome to the creator's educational reference guide for **FLAMES** and **PAN-Sim**. This document breaks down every physical component, networking protocol, security abbreviation, and vendor-specific concept featured in your project.
 
 ---
 

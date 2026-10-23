@@ -1,14 +1,17 @@
+import { useCourseCatalog } from "../course/CourseCatalog";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { accountRequest, useAccount, type AccountUser } from "../hooks/useAccount";
 import { SiteLayout } from "../components/shell/SiteLayout";
 import { Callout, PageHeader, ProgressBar } from "../components/ui/primitives";
-import { allLessons, COURSES, type Vendor } from "../course/curriculum";
+import { allLessons, type Vendor } from "../course/curriculum";
 
 type Student = AccountUser & { fortigate: string[]; paloalto: string[] };
-const TOTALS: Record<Vendor, number> = { fortigate: allLessons(COURSES.fortigate).length, paloalto: allLessons(COURSES.paloalto).length };
+
 
 function CourseCell({ vendor, done }: { vendor: Vendor; done: number }) {
+  const { courses: COURSES } = useCourseCatalog();
+  const TOTALS = { fortigate: allLessons(COURSES.fortigate).length, paloalto: allLessons(COURSES.paloalto).length };
   return (
     <div data-vendor={vendor} className="min-w-[140px]">
       <div className="flex justify-between text-xs text-muted mb-1"><span className="tabular-nums">{done}/{TOTALS[vendor]}</span><span className="tabular-nums">{Math.round((done / TOTALS[vendor]) * 100)}%</span></div>
@@ -18,6 +21,7 @@ function CourseCell({ vendor, done }: { vendor: Vendor; done: number }) {
 }
 
 export function ClassroomPage() {
+  const { courses: COURSES } = useCourseCatalog();
   const { user, loading } = useAccount();
   const [students, setStudents] = useState<Student[] | null>(null);
   const [error, setError] = useState<string | null>(null);

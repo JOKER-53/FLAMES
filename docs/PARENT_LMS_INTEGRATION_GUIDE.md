@@ -1,114 +1,125 @@
-# FLAMES / FortiSim & PAN-Sim - Parent LMS Integration Guide
+# Academy integration
 
-This guide explains how to integrate **FortiSim / PAN-Sim** into your parent project (**Incogn1tr1x-Academy** / your college server deployment) as an embedded or linked interactive simulator, where:
-1. **Authentication (Login/Register/JWT)** is handled exclusively by the parent LMS project.
-2. **Progress & Scoring** are relayed directly back to the parent LMS.
+FLAMES supports two runtime modes. `standalone` retains its own optional accounts and SQLite completion; `academy` delegates identity and saved completion to the parent Academy project. Set the mode on the **backend**, not with a browser query parameter.
 
----
+## Inspected source and college host
 
-## 🎯 Architecture Overview
+The public reference is [liyander/Incogn1tr1x-Academy](https://github.com/liyander/Incogn1tr1x-Academy), `main` commit `e7b04c60a92fe81c40130dbeae369fd69cebbee5` (2026-10-21). Its backend is Express/MySQL, `authenticate` validates bearer tokens, and `/api/auth/me` returns the token identity. The frontend reads its session through `getAuthSession()` and calls APIs through `src/services/api.js`.
 
-```
- ┌─────────────────────────────────────────────────────────┐
- │       Incogn1tr1x-Academy (Parent LMS Application)       │
- │   - Handles User Login / Auth (Student / Instructor)   │
- │   - Manages Courses, Modules, Labs & Leaderboards       │
- │   - Stores Student Completion & Scores                  │
- └─────────────┬─────────────────────────────▲─────────────┘
-               │ Launch Lab                  │ Progress Events
-               │ (Iframe or Redirect)        │ (postMessage or Webhook)
-               ▼                             │
- ┌───────────────────────────────────────────┴─────────────┐
- │           FortiSim / PAN-Sim Lab Container              │
- │   - Runs Fortinet & Palo Alto Simulation UI             │
- │   - Evaluates rule logic via @fortisim/engine           │
- │   - Knowledge Check MCQ (LLM + Offline Fallbacks)       │
- └─────────────────────────────────────────────────────────┘
-```
+The supplied college frontend is `http://110.172.151.108:5173/`; it responded to a read-only HTTP check. This does **not** verify its deployed source revision or backend configuration. On the server, run `git rev-parse HEAD` inside the actual Academy checkout and compare the middleware, `/api/auth/me`, API base URL, and MySQL `users.id` schema before applying the adapter. The API port is not established by the frontend port; confirm it with the server operator.
 
----
+## Runtime flow
 
-## 🚀 Option 1: Iframe + `postMessage` (Recommended for Seamless Embedding)
+1. A student signs in to Academy using its existing flow.
+2. Academy renders `FlamesLab`, an iframe wrapper. The lab sends `FORTISIM_READY` to the exact configured parent origin.
+3. The wrapper replies with `FORTISIM_AUTH` and the current bearer token. Both sides check the exact origin, message version, and iframe/parent window identity. No token or user ID is put in URLs.
+4. FLAMES keeps that token in memory, sends it only on same-origin API calls, and validates it against Academy `/auth/me`. It neither shares Academy's signing secret nor creates a duplicate local student.
+5. Completion goes through FLAMES's API to Academy's authenticated adapter. Academy derives `user_id` from `req.user`, validates public lesson IDs, and merges completion into its own MySQL table.
+6. Only after a successful save does FLAMES send `FORTISIM_PROGRESS_SAVED`. The wrapper refreshes progress from the Academy API; it does not trust a message's score or count.
+7. Parent logout clears the iframe credential and training access. Reloading restores completion from Academy.
 
-You can embed the simulator directly inside an Incogn1tr1x-Academy lab page using an `<iframe>`.
+In Academy mode, FLAMES writes no account/progress database file and no browser progress or token cache. Temporary in-memory progress and the optional local theme preference are separate from saved Academy completion. There is no fallback to standalone accounts if Academy is unavailable.
 
-### 1. In Incogn1tr1x-Academy (Parent React/Vue/HTML Page):
-```html
-<iframe
-  id="fortisim-lab-frame"
-  src="http://your-server-ip:5173/fortigate?parent=true&userId=STUDENT_123"
-  style="width: 100%; height: 90vh; border: none;"
-></iframe>
+## Install the Academy adapter
 
-<script>
-  // Listen for score/task completion events from the FortiSim lab
-  window.addEventListener("message", async (event) => {
-    // Optional: verify event.origin
-    if (event.data?.type === "FORTISIM_TASK_COMPLETE") {
-      const { platform, taskId, completedCount } = event.data;
-      console.log(`Student completed task: ${taskId} on ${platform}`);
+The reviewable files are in [`integrations/academy`](../integrations/academy/README.md). They are supplied for installation; the college server has not been modified.
 
-      // Call your Incogn1tr1x-Academy backend API to record the score/progress
-      await fetch("/api/lms/record-progress", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          studentId: "STUDENT_123",
-          lab: platform,
-          taskId: taskId,
-          timestamp: new Date().toISOString()
-        })
-      });
-    }
-  });
-</script>
-```
+1. Copy `fortisim.routes.mjs` and `lesson-manifest.mjs` into Academy's `backend/src/routes/`.
+2. Apply `schema.sql` to Academy's existing MySQL database using its normal migration procedure. It creates `fortisim_progress` with a foreign key to Academy `users`; it does not create a second user table.
+3. In Academy `backend/src/app.js`, add imports:
 
-### 2. Supported `postMessage` Events Emitted by FortiSim:
-When a task is successfully completed (either through valid policy configuration or by answering the Knowledge Check), FortiSim emits:
-```json
-{
-  "type": "FORTISIM_TASK_COMPLETE",
-  "platform": "fortigate" | "paloalto",
-  "taskId": "web-server-access-01",
-  "completedCount": 4
-}
-```
-
----
-
-## 🔗 Option 2: Direct Redirect with Return Callback / Webhook
-
-If opening in a new tab rather than an iframe:
-1. Student clicks **"Open Lab"** in Incogn1tr1x-Academy.
-2. Link navigates to:
+   ```js
+   import { createFortisimRouter } from './routes/fortisim.routes.mjs'
+   import { authenticate } from './middleware/auth.js'
+   import { pool } from './db/pool.js'
    ```
-   http://your-server-ip:5173/fortigate?userId=USER_ID&callback=https://academy.edu/api/labs/complete
+
+   Mount before the final error handler:
+
+   ```js
+   app.use('/api/integrations/fortisim', createFortisimRouter({
+     Router: express.Router, authenticate, pool,
+   }))
    ```
-3. When finished, a "Return to Academy" button submits progress back to your callback URL and redirects the student back to the Academy dashboard.
 
----
+4. Copy `FlamesLab.jsx` into Academy `src/components/`. It uses the inspected project's existing `../auth` and `../services/api` helpers.
+5. Set Academy's frontend build environment:
 
-## 🤖 Knowledge Check & AI Tutor Configuration (NVIDIA NIM / OpenAI Fallback)
+   ```dotenv
+   VITE_FORTISIM_URL=http://110.172.151.108:5174
+   ```
 
-To ensure the Knowledge Check and AI Tutor never show 500 errors even if NVIDIA NIM is down, configure your backend environment (`packages/backend/.env`):
+6. Import the component in Academy `src/App.jsx` and add routes inside its **authenticated student** `<Routes>` block (after its existing login/role gates):
 
-```env
-PORT=4000
-FRONTEND_ORIGIN=http://localhost:5173,https://your-academy-domain.com
+   ```jsx
+   import FlamesLab from './components/FlamesLab'
 
-# 1. OpenAI (Alternative to NIM)
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4o-mini
+   <Route path="/firewall-lab" element={<FlamesLab />} />
+   <Route path="/firewall-lab/paloalto" element={<FlamesLab vendor="paloalto" />} />
+   ```
 
-# 2. Or NVIDIA NIM
-NVIDIA_NIM_API_KEY=nvapi-...
-NVIDIA_NIM_BASE_URL=https://integrate.api.nvidia.com/v1
-NVIDIA_NIM_MODEL=meta/llama-3.1-70b-instruct
+   Add links in Academy's navigation. The component can also be rendered directly inside a room page or dashboard.
 
-# 3. Disabling Internal Auth (Since parent LMS handles auth)
-AUTH_REQUIRED=false
-ALLOW_REGISTRATION=false
+7. Restart Academy's backend and rebuild/restart its frontend using the college's normal deployment process.
+
+The wrapper displays both firewall courses' saved counts in Academy and refreshes them after task completion. The adapter also exposes `/api/integrations/fortisim/summary` for other Academy dashboard components. It does **not** automatically change existing room-question scores, leaderboards, certificates, or room completion; that requires an explicit room/task mapping rather than inventing one.
+
+## Configure FLAMES locally or on the college server
+
+Backend environment:
+
+```dotenv
+PLATFORM_MODE=academy
+ACADEMY_ORIGIN=http://110.172.151.108:5173
+ACADEMY_API_URL=http://110.172.151.108:4000/api
+FRONTEND_ORIGIN=http://110.172.151.108:5174
 ```
 
-> **Note on Zero-Downtime:** If no API keys are provided or if the AI provider times out/fails, the system **automatically falls back to curated static questions from `@fortisim/engine`**, guaranteeing that students are never blocked by API issues.
+The API URL above is an example; confirm its actual port and reachability. `ACADEMY_ORIGIN` must be an exact origin, without paths. `FRONTEND_ORIGIN` is the lab origin, not the Academy origin. Keep both apps on different ports/origins. Academy mode ignores instructor-bootstrap credentials and its own cookie accounts.
+
+For the container topology:
+
+```bash
+cp .env.academy.example .env.academy
+# Set the actual Academy API URL and desired bind address in .env.academy.
+node scripts/configure-academy.mjs http://110.172.151.108:5173
+docker compose --env-file .env.academy -f compose.academy.yml config --quiet
+docker compose --env-file .env.academy -f compose.academy.yml up -d --build
+```
+
+The example uses `host.docker.internal:4000/api` for an Academy API on the Docker host; Linux Compose adds the host-gateway mapping. If Academy is another container, use its reachable service address/network instead. The lab API is not published on a host port.
+
+`FORTISIM_BIND` defaults to loopback for a reverse proxy. To expose port 5174 directly during college acceptance, set it to `0.0.0.0` and confirm the host firewall permits access. The supplied Academy Nginx configuration allows only `http://110.172.151.108:5173` as a frame ancestor. Regenerate it with `node scripts/configure-academy.mjs YOUR_ACADEMY_ORIGIN` whenever changing `ACADEMY_ORIGIN`, including a move to HTTPS. Standalone production continues to forbid embedding.
+
+The supplied public address is HTTP. Academy bearer credentials cross this connection; use HTTPS for both parent and lab before real authenticated student use. An HTTPS parent also requires an HTTPS lab to avoid mixed-content blocking. No API secret belongs in frontend build variables.
+
+## Endpoints and messages
+
+| Endpoint | Owner | Purpose |
+| --- | --- | --- |
+| `GET /api/integration/config` | FLAMES | Public runtime mode and trusted parent frontend origin |
+| `GET /api/account/session` | FLAMES | Academy-validated display identity in Academy mode |
+| `GET/POST /api/account/progress/:platform` | FLAMES | Authenticated proxy; no local persistent writes in Academy mode |
+| `GET /api/integrations/fortisim/summary` | Academy adapter | Current user's course completion and totals |
+| `GET/POST /api/integrations/fortisim/progress/:platform` | Academy adapter | Current user's idempotent task completion merge/read |
+
+Messages have `version: 1`. Parent → lab: `{ type: 'FORTISIM_AUTH', version: 1, token }`; use `token: null` on logout. Lab → parent: `FORTISIM_READY`, and `FORTISIM_PROGRESS_SAVED` with `platform`, `taskId`, and saved `completed` IDs. `FORTISIM_AUTH_REQUIRED` reports an expired/rejected parent credential; the wrapper refreshes Academy state and its existing API helper handles authentication expiry. Credentials never appear in lab → parent notifications. No wildcard message origins are used.
+
+The parent wrapper checks for token changes every five seconds and on focus/storage/auth-expiry events. Repeated unchanged credentials do not reload the lab. A failed save shows a warning in the lab; it is not reported as saved to Academy.
+
+## Acceptance before deployment
+
+- Confirm the live Academy commit/API address and test migrations against a database backup.
+- Confirm two different users see only their own task IDs.
+- Complete a lab, confirm the wrapper updates, reload it, and check that completion returns.
+- Log out of Academy; confirm the iframe loses training access.
+- Test forged origins/windows, expired tokens, and parent API failure; no local-account fallback should occur.
+- Check direct navigation: Academy-mode training must ask users to launch through Academy.
+- Verify the actual framing headers, HTTPS, firewall/port routing, and both vendor flows.
+- Keep `lesson-manifest.mjs` synchronized with engine completion IDs when adding lessons; a repository test checks the shipped manifest.
+
+Automated API/adapter/bridge tests use a mock Academy and injected database interface; they do not establish live MySQL migration or college deployment acceptance.
+
+## Content administrators and custom lessons
+
+Verified Academy users with the `admin` role can open the FLAMES `/admin` page inside the lab. Expose the wrapper in an authenticated admin route if needed. Authored modules and answer keys persist in FLAMES content storage; student identity and completion remain in Academy. Set `FLAMES_CATALOG_URL` in the Academy backend to the reachable FLAMES `/api/content/catalog` endpoint so the updated adapter recognizes newly published lessons and updates totals. See [content administration](ADMIN_CONTENT.md).

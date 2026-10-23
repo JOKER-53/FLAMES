@@ -1,6 +1,14 @@
+import { academyAuthorization, expireAcademySession } from "../integration/academy";
 /** All lab requests are same-origin and bounded, including optional tutor calls. */
-export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
-  return fetch(input, { credentials: "same-origin", ...init, signal: init.signal ?? AbortSignal.timeout(25_000) });
+export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const authorization = academyAuthorization();
+  const target = typeof input === "string" || input instanceof URL ? String(input) : input.url;
+  const sameOrigin = typeof window === "undefined" ? target.startsWith("/") : new URL(target, window.location.origin).origin === window.location.origin;
+  if (authorization && sameOrigin) headers.set("Authorization", authorization);
+  const response = await fetch(input, { credentials: "same-origin", ...init, headers, signal: init.signal ?? AbortSignal.timeout(25_000) });
+  if (response.status === 401 && sameOrigin) expireAcademySession();
+  return response;
 }
 
 export async function apiJson<T>(path: string, data?: unknown): Promise<T> {

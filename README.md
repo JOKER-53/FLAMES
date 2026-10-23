@@ -1,19 +1,12 @@
-# FortiSim
+# FLAMES
 
-A dual-vendor firewall training lab with FortiOS-style and PAN-OS-style consoles. It simulates configuration and traffic checks; it does not connect to or configure real firewalls.
+A dual-vendor firewall training lab with FortiOS-style and PAN-OS-style consoles, guided exercises, and interactive 3D hardware. It simulates configuration and traffic checks; it does not connect to real firewalls.
 
-## What works
-
-- FortiGate: 11 policy exercises including a final, three interface exercises plus a final, five port exercises plus a final, and a static-routing exercise.
-- Palo Alto: five security exercises plus a final, three zone exercises plus a final, three NAT exercises plus a final, interface practice, port assignment, and App-ID reference.
-- FortiGate hardware: clean Explore mode, empty-by-default cable practice, seven cable categories across 13 sockets, manual rotation, reset, and keyboard-accessible port controls. Power, USB, and RJ-45 have distinct connector shapes.
-- Optional student accounts, password hashing, expiring HTTP-only sessions, SQLite-saved completion across devices, and an instructor roster. Guests retain device-local completion.
-- Optional NVIDIA NIM tutoring and one-use generated knowledge questions. Grading remains usable when AI is unavailable.
-- Responsive navigation and account/classroom screens; page-level code splitting, error recovery, tests, and CI.
+Current changes: [updation.md](updation.md). Prioritized future work: [TODO.md](TODO.md).
 
 ## Run locally
 
-Use Node 22.13 or newer and npm. No browser automation or extra browser installation is required.
+Use Node 22.13+ and npm. Run these commands from the repository root:
 
 ```bash
 npm ci
@@ -27,28 +20,61 @@ In a second terminal:
 npm run frontend:dev
 ```
 
-Open http://localhost:5173. The development proxy defaults to 127.0.0.1:4000. For Docker networking it uses API_PROXY_TARGET=http://backend:4000.
+Open http://localhost:5173. Vite forwards `/api` to `127.0.0.1:4000`; `API_PROXY_TARGET` overrides the target. AI credentials are optional and stay in the backend environment. Never put secrets in `VITE_` variables.
 
-AI settings are optional. Never put an API key in a VITE_ variable. To create the first instructor, set INSTRUCTOR_EMAIL and a unique 12–128 character INSTRUCTOR_PASSWORD in the backend environment before starting. The bootstrap does not change an existing account's password or promote students. Remove both bootstrap fields from the environment after creating the account.
+## Academy integration and appearance
 
-For development containers, copy the example environment file and run `docker compose up --build`. Ports bind to localhost; completion uses a persistent volume. Engine source edits in Docker require rebuilding its compiled output; frontend source edits hot-reload.
+To use Academy-owned authentication and progress, set `PLATFORM_MODE=academy` and install the supplied [Academy adapter](integrations/academy/README.md). In this mode FLAMES uses the parent login and saves completion only to Academy; it creates no local student accounts or persistent progress cache. Follow the [college integration guide](docs/PARENT_LMS_INTEGRATION_GUIDE.md) for the current host, configuration, and installation steps. Standalone mode remains the default.
 
-## Verify
+The header provides light/dark mode on landing, course, and account pages. The first visit follows the system theme; an explicit choice is saved on the device.
+
+## Current app flow
+
+Choose a vendor at `/`, open its course overview, select a module, then work through lessons and final assessments. The sidebar tracks completion and provides hardware and reference tools. See [application flow](docs/APPLICATION_FLOW.md) for routes and grading boundaries.
+
+- **FortiGate:** firewall policies, interfaces, port assignment, and basic static routing; address/service references; a 60F hardware explorer and cable practice.
+- **Palo Alto:** security policies, zones, NAT, interfaces and ports; App-ID reference; a PA-220 hardware explorer and cable practice.
+- **Hardware:** full-width in-page viewers with tall canvases, a smaller initial model scale, manual rotation, zoom/reset, component inspection, and cable/socket controls.
+- **Accounts:** optional student sign-in, SQLite-saved completion, account-specific caches, and an instructor roster. Guests retain device-local completion.
+- **Tutoring:** optional AI hints and one-use knowledge questions, with offline fallbacks when the provider is unavailable.
+
+To create the first instructor, set `INSTRUCTOR_EMAIL` and a unique 12–128 character `INSTRUCTOR_PASSWORD` in the backend environment before starting. Bootstrap never changes an existing password or promotes a student. Remove both settings after account creation. `AUTH_REQUIRED=true` requires training sign-in; `ALLOW_REGISTRATION=false` disables self-registration.
+
+Configuration drafts are not persisted. Completion is student-reported practice progress rather than a certified exam score. Browser bundles contain exercise definitions; answer stripping in the scenario API is not an answer-key secrecy guarantee. PAN behavior is intentionally simplified; see [architecture](docs/ARCHITECTURE.md).
+
+## Repository layout
+
+| Location | Responsibility |
+| --- | --- |
+| `packages/engine` | Shared simulation, graders, types, scenarios, engine tests |
+| `packages/backend` | Express API, SQLite accounts/progress, optional AI services, API tests |
+| `packages/frontend` | React app, vendor pages, 3D hardware, frontend tests and runtime assets |
+| `integrations/academy` | Copy-in Academy auth/progress adapter, database schema, and iframe wrapper |
+| `scripts` | Maintained development utilities |
+| `assets/source` | Non-runtime source assets |
+| `deploy` | Nginx configuration |
+| `docs` | Current documentation and a separate historical archive |
+
+Use the single root `package-lock.json` for workspace dependencies. See [file placement rules](docs/REPOSITORY_STRUCTURE.md).
+
+## Content administration
+
+Open `/admin` with an instructor account (or a verified Academy admin) to create modules, lessons, and tasks. Drafts remain private until published. Lessons support instructions, multiple-choice questions, short answers, preview, ordering, and server-side grading. Published lessons appear in course navigation and progress totals.
+
+Create your own local administrator with `npm run admin:create`, or `docker compose exec backend npm --prefix /app run admin:create`. Password input is hidden; no shared default account is installed. See [admin setup and authoring](docs/ADMIN_CONTENT.md).
+
+## Verification and builds
 
 ```bash
 npm run verify
 ```
 
-This builds the shared engine and API, runs engine/API/render-smoke regression tests, type-checks the frontend, and builds the production SPA. API tests open a temporary localhost listener. CI also validates the production Compose configuration and builds deployment images.
+This builds the engine/API, runs tests in all three packages, type-checks the frontend, and builds the SPA. API tests open a temporary localhost listener. Frontend tests cover static rendering and hardware maps; they do not replace browser/WebGL interaction checks.
 
-Production setup: [deployment guide](docs/DEPLOYMENT.md). Architecture: [architecture guide](docs/ARCHITECTURE.md). Changes and verification: [upgrade report](docs/UPGRADE_2026-10-02.md).
+`npm run build` builds all packages. `npm run engine:demo` runs the engine demonstration. Rebuild the engine after shared-source changes used by a running backend.
 
-## Teaching and security boundaries
+## Hosting and documentation
 
-Completion is student-reported practice progress, not a certified exam score. Policy/interface/port grading uses backend endpoints; Palo Alto security, zones, and NAT use a shared engine and server grading. Some reference/practice tools, including routing and Palo Alto interface practice, evaluate locally. Configuration drafts are not saved to the account; only completion markers are synchronized.
+For development containers, copy the backend example environment file and run `docker compose up --build`. For production use the [deployment guide](docs/DEPLOYMENT.md), including HTTPS, persistent storage, backups, and recovery planning. The repository's Vercel configuration is not a substitute for durable SQLite hosting.
 
-Scenario definitions used by browser exercises are included in frontend bundles. The scenario API removes expected outcomes, but this is not an answer-key secrecy guarantee. Tutor prompts request conceptual hints; they cannot guarantee that an LLM never supplies an answer. Secrets stay in backend environment variables, and provider requests have a 15-second timeout.
-
-The PAN model is intentionally simplified: HA and Management are synthetic practice buckets rather than native security-zone types, NAT does not simulate a full packet/session pipeline, and App-ID is represented by a selected application label. NAT guidance distinguishes pre-NAT policy zones from post-NAT security zones; see [Palo Alto's NAT policy documentation](https://docs.paloaltonetworks.com/ngfw/networking/nat/nat-policy-rules).
-
-A public deployment still needs HTTPS, backup/restore operations, an operator-defined account recovery process, and visual acceptance on actual devices. No deployment or GitHub push is performed by these changes.
+Start at the [documentation index](docs/README.md). Contributors should read [CONTRIBUTING.md](CONTRIBUTING.md); dated reports and retired prototypes are in [docs/archive](docs/archive/README.md).

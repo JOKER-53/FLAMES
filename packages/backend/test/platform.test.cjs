@@ -70,11 +70,11 @@ test("rejects duplicate accounts and invalid credentials", async () => {
   assert.equal((await request("/api/account/login", { email: "absent@example.org", password })).status, 401);
 });
 test("progress is authenticated, account-scoped, vendor-scoped, and merged monotonically", async () => {
-  assert.equal((await request("/api/account/progress/fortigate", { completed: ["task-1"] })).status, 401);
+  assert.equal((await request("/api/account/progress/fortigate", { completed: ["web-server-access-01"] })).status, 401);
   assert.equal((await request("/api/account/progress/unknown", undefined, aliceCookie)).status, 400);
   assert.equal((await request("/api/account/progress/fortigate", { completed: ["invalid task"] }, aliceCookie)).status, 400);
-  assert.deepEqual((await request("/api/account/progress/fortigate", { completed: ["task-1", "task-1"] }, aliceCookie)).body.completed, ["task-1"]);
-  assert.deepEqual((await request("/api/account/progress/fortigate", { completed: ["task-2"] }, aliceCookie)).body.completed, ["task-1", "task-2"]);
+  assert.deepEqual((await request("/api/account/progress/fortigate", { completed: ["web-server-access-01", "web-server-access-01"] }, aliceCookie)).body.completed, ["web-server-access-01"]);
+  assert.deepEqual((await request("/api/account/progress/fortigate", { completed: ["db-lockdown-01"] }, aliceCookie)).body.completed, ["db-lockdown-01", "web-server-access-01"]);
   assert.deepEqual((await request("/api/account/progress/fortigate", undefined, bobCookie)).body.completed, []);
   assert.deepEqual((await request("/api/account/progress/paloalto", undefined, aliceCookie)).body.completed, []);
 });
@@ -157,10 +157,10 @@ test("SQLite persists accounts and completion through a restart", async () => {
   try {
     disk = new PlatformStore(filename);
     const user = disk.createUser("persistent@example.org", "Persistent", await hashPassword(password));
-    disk.mergeProgress(user.id, "fortigate", ["task-1"]); disk.close(); disk = undefined;
+    disk.mergeProgress(user.id, "fortigate", ["web-server-access-01"]); disk.close(); disk = undefined;
     disk = new PlatformStore(filename);
     assert.equal(disk.findEmail(user.email).user.id, user.id);
-    assert.deepEqual(disk.progress(user.id, "fortigate"), ["task-1"]);
+    assert.deepEqual(disk.progress(user.id, "fortigate"), ["web-server-access-01"]);
   } finally { disk?.close(); rmSync(directory, { recursive: true, force: true }); }
 });
 test("sign-in attempt limits bound password-derivation work", async () => {
@@ -170,4 +170,46 @@ test("sign-in attempt limits bound password-derivation work", async () => {
     if (result.status === 429) { limited = true; break; }
   }
   assert.equal(limited, true);
+});
+
+// Separate identities on one classroom network must not share a 20-login quota.
+test("successful classroom logins do not exhaust another student's quota", async () => {
+  for (let index = 0; index < 25; index++) {
+    assert.equal((await request("/api/account/login", { email: "alice@example.org", password })).status, 200);
+  }
+  assert.equal((await request("/api/account/login", { email: "bob@example.org", password })).status, 200);
+});
+test("unknown and wrong-vendor completion IDs are rejected", async () => {
+  const login = await request("/api/account/login", { email: "alice@example.org", password });
+  for (const id of ["unknown-task", "pan-sec-01"]) {
+    assert.equal((await request("/api/account/progress/fortigate", { completed: [id] }, login.cookie)).status, 400);
+  }
+  store.mergeProgress(aliceId, "fortigate", ["legacy-invalid-id"]);
+  const progress = await request("/api/account/progress/fortigate", undefined, login.cookie);
+  assert.equal(progress.body.completed.includes("legacy-invalid-id"), false);
+});
+test("submission validation rejects malformed nested fields and duplicate identities", async () => {
+  const login = await request("/api/account/login", { email: "bob@example.org", password });
+  const valid = { id: "rule", name: "Rule", srcIntf: "LAN", dstIntf: "WAN", srcAddrIds: [], dstAddrIds: [], serviceIds: [], action: "ACCEPT", log: false, enabled: true };
+  for (const policies of [[{ ...valid, enabled: "false" }], [valid, valid], [null]]) {
+    const result = await request("/api/submissions/web-server-access-01/grade", { scenarioId: "web-server-access-01", addresses: [], services: [], policies }, login.cookie);
+    assert.equal(result.status, 400);
+  }
+  const result = await request("/api/port-submissions/port-assignment-01/grade", { scenarioId: "port-assignment-01", assignments: [{ portId: "port1", zone: "LAN" }, { portId: "port1", zone: "WAN" }] }, login.cookie);
+  assert.equal(result.status, 400);
+});
+test("failed-login throttling isolates identities and supplies a retry interval", async () => {
+  for (let index = 0; index < 20; index++) {
+    assert.equal((await request("/api/account/login", { email: "limited@example.org", password })).status, 401);
+  }
+  const limited = await request("/api/account/login", { email: "limited@example.org", password });
+  assert.equal(limited.status, 429);
+  assert.ok(Number(limited.headers.get("retry-after")) > 0);
+  assert.equal((await request("/api/account/login", { email: "bob@example.org", password })).status, 200);
+});
+
+test("sign-in accepts an operator-provisioned short test password while registration retains its minimum", async () => {
+  store.createUser("provisioned@example.org", "Provisioned", await hashPassword("admin123"), "instructor");
+  assert.equal((await request("/api/account/login", { email: "provisioned@example.org", password: "admin123" })).status, 200);
+  assert.equal((await request("/api/account/register", { email: "short-new@example.org", name: "Short", password: "admin123" })).status, 400);
 });

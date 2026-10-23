@@ -2,7 +2,9 @@
   "name": "fortisim",
   "version": "0.1.0",
   "private": true,
-  "engines": { "node": ">=22.13.0" },
+  "engines": {
+    "node": ">=22.13.0"
+  },
   "workspaces": [
     "packages/engine",
     "packages/backend",
@@ -10,11 +12,12 @@
   ],
   "scripts": {
     "build": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm run build --workspace=@fortisim/frontend",
-    "test": "npm run build --workspace=@fortisim/engine && npm test --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm test --workspace=@fortisim/backend",
+    "test": "npm run build --workspace=@fortisim/engine && npm test --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm test --workspace=@fortisim/backend && npm test --workspace=@fortisim/frontend",
     "verify": "npm test && npm run build --workspace=@fortisim/frontend",
     "engine:demo": "npm run demo --workspace=@fortisim/engine",
     "backend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/backend",
-    "frontend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/frontend"
+    "frontend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/frontend",
+    "admin:create": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && node scripts/create-admin.cjs"
   },
   "allowScripts": {
     "esbuild@0.21.5": true

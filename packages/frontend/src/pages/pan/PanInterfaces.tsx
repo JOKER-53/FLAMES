@@ -1,3 +1,4 @@
+import { gradePanInterfaces } from "../../course/panInterfaceGrader";
 import { type TutorSource } from "../../components/TutorSourceTag";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
@@ -5,7 +6,7 @@ import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
 import { Callout } from "../../components/ui/primitives";
 import { Icon } from "../../components/ui/Icon";
 import { apiFetch } from "../../api/http";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { PanSession } from "../../hooks/usePanSession";
 
 type IfaceType = "layer3" | "layer2" | "tap" | "ha" | "management";
@@ -52,6 +53,13 @@ export function PanInterfaces({ session }: { session: PanSession }) {
 
   const scenarioId = "pan-iface-01";
 
+  const feedbackGeneration = useRef(0);
+  useEffect(() => {
+    feedbackGeneration.current++;
+    setResults(null); setAiFeedback(null); setAiSource(null); setLoadingFeedback(false);
+    return () => { feedbackGeneration.current++; };
+  }, [ifaces]);
+
   function startEdit(iface: Interface) {
     setEditing(iface.id);
     setEditVal({ zone:iface.zone, ip:iface.ip, type:iface.type, comment:iface.comment });
@@ -63,12 +71,9 @@ export function PanInterfaces({ session }: { session: PanSession }) {
   }
 
   function grade() {
-    const checks = [
-      { desc: "ethernet1/1 is a Layer 3 interface in Untrust with 203.0.113.1/30", pass: ifaces.some(i => i.id === "ethernet1/1" && i.type === "layer3" && i.zone === "Untrust" && i.ip.trim() === "203.0.113.1/30") },
-      { desc: "ethernet1/2 is a Layer 3 interface in Trust with 10.0.0.1/24", pass: ifaces.some(i => i.id === "ethernet1/2" && i.type === "layer3" && i.zone === "Trust" && i.ip.trim() === "10.0.0.1/24") },
-      // MGT is out-of-band: it gets an address but never joins a security zone.
-      { desc: "MGT has 192.168.1.1/24 and is not in any security zone", pass: ifaces.some(i => i.id === "management" && i.zone === "—" && i.ip.trim() === "192.168.1.1/24") },
-    ];
+    const generation = ++feedbackGeneration.current;
+    setAiFeedback(null); setAiSource(null); setLoadingFeedback(false);
+    const checks = gradePanInterfaces(ifaces);
     setResults(checks);
     if (checks.every(c => c.pass)) {
       session.markTaskComplete(scenarioId);
@@ -78,7 +83,10 @@ export function PanInterfaces({ session }: { session: PanSession }) {
       apiFetch("/api/pan/feedback", {
         method:"POST", headers:{"Content-Type":"application/json"},
         body: JSON.stringify({ taskId: "pan-iface-01", exerciseTitle: "Interface Configuration", failingChecks: failing })
-      }).then(r=>r.json()).then(d=>{ setAiFeedback(d.feedback??null); setAiSource(d.source??null); }).catch(()=>{ setAiFeedback(null); setAiSource(null); }).finally(()=>setLoadingFeedback(false));
+      }).then(r => { if (!r.ok) throw new Error("Tutor unavailable"); return r.json(); })
+        .then(d => { if (generation === feedbackGeneration.current) { setAiFeedback(d.feedback ?? null); setAiSource(d.source ?? null); } })
+        .catch(() => { if (generation === feedbackGeneration.current) { setAiFeedback(null); setAiSource(null); } })
+        .finally(() => { if (generation === feedbackGeneration.current) setLoadingFeedback(false); });
     }
   }
 
@@ -96,7 +104,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame path={["Network", "Interfaces", "Ethernet"]}>
-            <div className="flex flex-wrap items-end gap-2 px-4 py-3 border-b border-line bg-[#f8fafc]" aria-label="Port status">
+            <div className="flex flex-wrap items-end gap-2 px-4 py-3 border-b border-line bg-sunken" aria-label="Port status">
               {ifaces.map(i => (
                 <div key={i.id} className="text-center w-12">
                   <div className="mx-auto w-9 h-7 rounded border-2 grid place-items-center" style={{ borderColor: i.zone === "—" ? "#cbd5e1" : ZONE_COLOR[i.zone], background: i.zone === "—" ? "#fff" : ZONE_COLOR[i.zone] + "14" }}>
@@ -109,7 +117,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead>
-                  <tr className="bg-[#eef1f5] text-[#3c4a5c] text-left border-b border-line-strong">
+                  <tr className="bg-sunken text-body text-left border-b border-line-strong">
                     {["Interface", "Type", "Security Zone", "IP Address", "Link", "Comment", ""].map((h, i) => <th key={i} className="px-3 py-2 font-semibold whitespace-nowrap">{h}</th>)}
                   </tr>
                 </thead>

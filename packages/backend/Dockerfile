@@ -17,9 +17,11 @@ RUN npm ci
 # Now copy actual source for the packages this service needs.
 COPY packages/engine packages/engine
 COPY packages/backend packages/backend
+COPY scripts scripts
 RUN npm run build --workspace=@fortisim/engine
 
 WORKDIR /app/packages/backend
 EXPOSE 4000
 
-CMD ["npx", "ts-node-dev", "--respawn", "src/server.ts"]
+# Recompile mounted engine source before starting the API.
+CMD ["npm", "--prefix", "/app", "run", "backend:dev"]

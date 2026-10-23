@@ -19,17 +19,16 @@ function normalizeIp(ip: string): string {
 function normalizeSubnet(subnet: string): string {
   // Accept both prefix length ("24") and dotted notation ("255.255.255.0")
   // Normalize to prefix length for comparison
-  const dotted: Record<string, string> = {
-    "255.255.255.0": "24",
-    "255.255.0.0": "16",
-    "255.0.0.0": "8",
-    "255.255.255.128": "25",
-    "255.255.255.192": "26",
-    "255.255.255.224": "27",
-    "255.255.255.240": "28",
-  };
-  const trimmed = subnet.trim();
-  return dotted[trimmed] ?? trimmed;
+  const trimmed = subnet.trim().replace(/^\//, "");
+  if (/^\d{1,2}$/.test(trimmed) && Number(trimmed) <= 32) return String(Number(trimmed));
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(trimmed)) {
+    const octets = trimmed.split(".").map(Number);
+    if (octets.every(octet => octet <= 255)) {
+      const bits = octets.map(octet => octet.toString(2).padStart(8, "0")).join("");
+      if (/^1*0*$/.test(bits)) return String(bits.indexOf("0") === -1 ? 32 : bits.indexOf("0"));
+    }
+  }
+  return trimmed;
 }
 
 function normalizeAccess(access: string[]): string[] {

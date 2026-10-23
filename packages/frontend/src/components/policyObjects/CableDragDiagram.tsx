@@ -268,7 +268,7 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
     <div className="space-y-3">
       {/* Cable selector */}
       <div className="bg-gray-900 border border-gray-700 rounded-md p-3">
-        <div className="text-[10px] text-gray-400 uppercase tracking-wider mb-2 font-mono">
+        <div className="text-[10px] text-faint uppercase tracking-wider mb-2 font-mono">
           1. Pick a cable &nbsp;→&nbsp; 2. Click a labelled socket on the model, or use the port list
         </div>
         <div className="flex gap-2 flex-wrap">
@@ -330,11 +330,11 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
       )}
 
       {/* Port list: every exercise port is configurable here, including ports without a socket on the 60F model. */}
-      <div className="border border-gray-200 rounded-md">
-        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-200 bg-gray-50">
-          <span className="text-[12px] font-medium text-gray-700">Ports — {connected}/{assignable.length} connected</span>
+      <div className="border border-line rounded-md">
+        <div className="flex items-center justify-between px-3 py-2 border-b border-line bg-sunken">
+          <span className="text-[12px] font-medium text-body">Ports — {connected}/{assignable.length} connected</span>
           {connected > 0 && (
-            <button className="text-[11px] text-gray-500 hover:text-gray-800" onClick={() => assignable.forEach(p => p.zone !== "unassigned" && onChange(p.portId, "unassigned"))}>
+            <button className="text-[11px] text-muted hover:text-ink" onClick={() => assignable.forEach(p => p.zone !== "unassigned" && onChange(p.portId, "unassigned"))}>
               ↺ Unplug all
             </button>
           )}
@@ -343,16 +343,16 @@ export function CableDragDiagram({ ports, onChange, fullHeight }: CableDragDiagr
           {ports.map(port => (
             <label key={port.portId} className="flex items-center gap-2 text-[12px]">
               <span className="w-3 h-3 rounded-sm shrink-0" style={{ background: ZONE_COLOR[port.zone] }} />
-              <span className="font-medium text-gray-800 w-14">{portName(port)}</span>
-              <span className="text-[10px] text-gray-400 w-14 truncate" title="Socket on the 3D model">{socketLabel(port.portId)}</span>
+              <span className="font-medium text-ink w-14">{portName(port)}</span>
+              <span className="text-[10px] text-faint w-14 truncate" title="Socket on the 3D model">{socketLabel(port.portId)}</span>
               {port.locked ? (
-                <span className="text-[11px] text-gray-500">{port.zone} (fixed)</span>
+                <span className="text-[11px] text-muted">{port.zone} (fixed)</span>
               ) : (
                 <select
                   aria-label={`Zone for ${portName(port)}`}
                   value={port.zone}
                   onChange={e => onChange(port.portId, e.target.value as PortZone)}
-                  className="text-[12px] px-1.5 py-0.5 rounded border border-gray-300 bg-white"
+                  className="text-[12px] px-1.5 py-0.5 rounded border border-line-strong bg-surface"
                 >
                   <option value="unassigned">Unassigned</option>
                   <option value="WAN">WAN</option>

@@ -1,3 +1,5 @@
+import { parseCidr, ipToInt } from "../matching";
+
 export interface StaticRoute {
   id: string;
   destination: string; // e.g., "0.0.0.0/0"
@@ -49,16 +51,35 @@ export function evaluateRoutingConfiguration(
   if (!config) {
     return { success: false, message: "No routing configuration provided." };
   }
-  if (expectedConfig.staticRoutes) {
-    const missing = expectedConfig.staticRoutes.find(expected =>
-      !config.staticRoutes.some(route =>
-        route.destination === expected.destination &&
-        route.gateway === expected.gateway &&
-        route.interfaceName === expected.interfaceName &&
-        route.distance === expected.distance
-      )
-    );
-    if (missing) return { success: false, message: "A required static route is missing or has incorrect settings." };
+  const sameNetwork = (a: string, b: string) => {
+    const left = parseCidr(a), right = parseCidr(b);
+    return left.start === right.start && left.end === right.end;
+  };
+  try {
+    if (!Array.isArray(config.staticRoutes) || !Array.isArray(config.sdwanMembers) || !Array.isArray(config.sdwanRules)) {
+      return { success: false, message: "Invalid routing configuration." };
+    }
+    for (const route of config.staticRoutes) {
+      parseCidr(route.destination); ipToInt(route.gateway);
+      if (!route.interfaceName.trim() || !Number.isInteger(route.distance) || route.distance < 1 || route.distance > 255) {
+        return { success: false, message: "Invalid static route settings." };
+      }
+    }
+    if (expectedConfig.staticRoutes) {
+      for (const expected of expectedConfig.staticRoutes) {
+        const correct = (route: StaticRoute) => route.gateway === expected.gateway && route.interfaceName === expected.interfaceName;
+        const candidates = config.staticRoutes.filter(route => sameNetwork(route.destination, expected.destination));
+        if (!candidates.some(route => correct(route) && route.distance === expected.distance)) {
+          return { success: false, message: "A required static route is missing or has incorrect settings." };
+        }
+        const minimum = Math.min(...candidates.map(route => route.distance));
+        if (candidates.some(route => route.distance === minimum && !correct(route))) {
+          return { success: false, message: "A conflicting static route takes priority or creates an equal-cost path." };
+        }
+      }
+    }
+  } catch {
+    return { success: false, message: "Invalid static route settings." };
   }
 
   if (expectedConfig.ospf) {

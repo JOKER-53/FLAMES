@@ -358,10 +358,10 @@ export function NetworkSimCanvas({ addresses, traces, onClose }: NetworkSimCanva
               <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
               <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
             </div>
-            <span className="text-[13px] font-semibold text-gray-200">FortiSim — Network Simulation</span>
-            <span className="text-[10px] text-gray-500 font-mono">FortiGate-6000F (Simulated)</span>
+            <span className="text-[13px] font-semibold text-gray-200">FLAMES — Network Simulation</span>
+            <span className="text-[10px] text-muted font-mono">FortiGate-6000F (Simulated)</span>
           </div>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-200 text-xl leading-none px-1 transition-colors">×</button>
+          <button onClick={onClose} className="text-muted hover:text-gray-200 text-xl leading-none px-1 transition-colors">×</button>
         </div>
 
         <canvas ref={canvasRef} className="block w-full" />
@@ -369,11 +369,11 @@ export function NetworkSimCanvas({ addresses, traces, onClose }: NetworkSimCanva
         <div
           ref={logRef}
           className="px-4 py-2 font-mono text-[11px] overflow-y-auto"
-          style={{ minHeight: 72, maxHeight: 100, background: "#020617", color: "#64748b" }}
+          style={{ minHeight: 72, maxHeight: 100, background: "#020617", color: "rgb(var(--muted))" }}
         />
 
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-700 bg-gray-800">
-          <div className="flex items-center gap-4 text-[11px] text-gray-500">
+          <div className="flex items-center gap-4 text-[11px] text-muted">
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>ACCEPT</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>DENY</span>
             <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>WAN</span>
