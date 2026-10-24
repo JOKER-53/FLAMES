@@ -35,3 +35,14 @@ test('malformed AI question contents fall back to validated banks for both vendo
   }
  }finally{global.fetch=originalFetch;process.env=env;}
 });
+
+test('LLM credentials never mix with another configured provider namespace',async()=>{
+ const env={...process.env};const originalFetch=global.fetch;const calls=[];
+ try{
+  Object.assign(process.env,{OPENAI_API_KEY:'openai-test',OPENAI_BASE_URL:'https://openai-fixture.invalid/v1',OPENAI_MODEL:'openai-model',LLM_API_KEY:'custom-test',LLM_BASE_URL:'https://custom-fixture.invalid/v1',LLM_MODEL:'custom-model',NVIDIA_NIM_API_KEY:'nim-test',NVIDIA_NIM_BASE_URL:'https://nim-fixture.invalid/v1',NVIDIA_NIM_MODEL:'nim-model'});
+  global.fetch=async(url,init)=>{calls.push({url,key:init.headers.Authorization,model:JSON.parse(init.body).model,redirect:init.redirect});return new Response(JSON.stringify({choices:[{message:{content:'Grounded concept explanation.'}}]}));};
+  await sendLLMRequest({messages:[]});delete process.env.OPENAI_API_KEY;await sendLLMRequest({messages:[]});delete process.env.LLM_API_KEY;await sendLLMRequest({messages:[]});
+  assert.deepEqual(calls.map(x=>[x.url,x.key,x.model]),[['https://openai-fixture.invalid/v1/chat/completions','Bearer openai-test','openai-model'],['https://custom-fixture.invalid/v1/chat/completions','Bearer custom-test','custom-model'],['https://nim-fixture.invalid/v1/chat/completions','Bearer nim-test','nim-model']]);assert.ok(calls.every(x=>x.redirect==='error'));
+  global.fetch=async()=>new Response('Provider echoed nim-test',{status:403});await assert.rejects(sendLLMRequest({messages:[]}),error=>!error.message.includes('nim-test')&&error.message.includes('[redacted]'));
+ }finally{global.fetch=originalFetch;process.env=env;}
+});

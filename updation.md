@@ -224,3 +224,7 @@ The routing evaluator validates nested OSPF and SD-WAN lists, object fields and 
 ## 19. Effective NAT grading — 2026-10-24
 
 Outbound source and inbound destination NAT checks now evaluate the first matching original-packet rule instead of accepting any later correct-looking row. Source translation also requires the intended unrestricted destination scope. Regressions reject shadowed translations and an overly narrow source rule while preserving satisfiable exercises. The 41-test engine suite passed. This remains the documented simplified NAT model, not a full PAN-OS dataplane.
+
+## 20. AI provider credential isolation — 2026-10-24
+
+The LLM client now selects credentials, URL and model from one provider namespace rather than mixing OPENAI/LLM/NVIDIA values. Mixed environment settings previously could send one provider's key to another configured endpoint. Provider redirects are rejected, malformed credential-bearing URLs are rejected, and echoed keys are redacted from bounded error text. Three focused recovery tests passed, including namespace selection and key redaction. The environment example documents precedence.
