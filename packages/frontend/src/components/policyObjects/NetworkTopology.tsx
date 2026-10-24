@@ -13,7 +13,6 @@ interface NetworkTopologyProps {
 
 interface SystemNode {
   id: string;
-  label: string;
   address: AddressObject;
   zone: "WAN" | "LAN" | "DMZ";
 }
@@ -35,15 +34,12 @@ function ConnectorDot({ color = "#6b7280" }: { color?: string }) {
   return <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />;
 }
 
-const ZONE_ORDER: ("WAN" | "LAN" | "DMZ")[] = ["WAN", "LAN", "DMZ"];
 const ZONE_DOTS: Record<string, string> = { WAN: "#fb923c", LAN: "#10b981", DMZ: "#60a5fa" };
 
 export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow = null }: NetworkTopologyProps) {
   const systems: SystemNode[] = addresses
     .filter((a) => a.value.toLowerCase() !== "all" && a.value !== "0.0.0.0/0")
-    .map((a, i) => ({ id: a.id, label: `System ${i + 1}`, address: a, zone: inferZone(a) }));
-
-  const presentZones = ZONE_ORDER.filter((z) => systems.some((s) => s.zone === z));
+    .map((a) => ({ id: a.id, address: a, zone: inferZone(a) }));
 
   const [phase, setPhase] = useState(0);
 
@@ -64,20 +60,20 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
   }, [activeFlow]);
 
   return (
-    <div className="bg-surface border border-line rounded-md p-4 overflow-hidden">
+    <section aria-label="Network topology" className="bg-surface border border-line rounded-md p-4 min-w-0">
       <div className="text-[12px] font-medium text-body mb-3 uppercase tracking-wide">Network Topology</div>
 
       <div className="relative rounded border border-line p-4" style={CANVAS_STYLE}>
-        {/* Star topology: FortiGate in center, systems around it */}
+        {/* Endpoints wrap within the sidebar; the diagram represents logical zones. */}
         <div className="flex flex-col items-center gap-3">
 
-          {/* Top row: systems */}
-          <div className="flex items-end justify-center gap-4">
+          {/* Endpoint grid */}
+          <div className="flex flex-wrap items-end justify-center gap-x-3 gap-y-4 w-full">
             {systems.map((sys) => {
               const highlighted = highlightSystemIds.includes(sys.id);
               const zone = sys.zone;
               return (
-                <div key={sys.id} className="flex flex-col items-center gap-1">
+                <div key={sys.id} data-topology-device={sys.id} className="flex flex-col items-center gap-1 min-w-0 w-[calc(50%-0.375rem)]">
                   <div
                     className={`relative w-14 h-11 rounded-sm bg-surface border-2 flex items-center justify-center shadow-sm transition-all ${
                       highlighted ? "border-forti-red scale-110" : "border-gray-400"
@@ -90,8 +86,8 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
                     </svg>
                     {highlighted && <div className="absolute -top-1.5 -right-1.5 w-3 h-3 rounded-full bg-forti-red animate-pulse"></div>}
                   </div>
-                  <div className={`text-[9px] font-semibold ${highlighted ? "text-forti-red" : "text-body"}`}>{sys.label}</div>
-                  <div className="text-[8px] text-faint font-mono">{sys.address.value.split("/")[0]}</div>
+                  <div title={sys.address.name} className={`text-[11px] text-center break-words w-full font-semibold ${highlighted ? "text-forti-red" : "text-body"}`}>{sys.address.name}</div>
+                  <div className="text-[10px] text-muted font-mono text-center break-all w-full">{sys.address.value.split("/")[0]}</div>
                   <div className="text-[8px] font-bold px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: ZONE_DOTS[zone] }}>{zone}</div>
                   {/* Cable down to firewall */}
                   <ConnectorDot color={ZONE_DOTS[zone]} />
@@ -131,6 +127,6 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
           )}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

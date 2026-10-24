@@ -108,3 +108,14 @@ test('Palo Alto network view shows security decisions and separate NAT translati
  await expect(dialog.getByText('Accepted',{exact:true})).toHaveCount(0);
  await dialog.getByRole('button',{name:'Close network view',exact:true}).click();await expect(dialog).toHaveCount(0);
 });
+
+test('multi-server topology keeps every endpoint inside its card',async({page})=>{
+ await page.goto('/fortigate/policy/firewall-policy?scenario=multi-dmz-access-01');
+ const topology=page.getByRole('region',{name:'Network topology',exact:true});
+ await expect(topology.locator('[data-topology-device]')).toHaveCount(5);
+ for(const width of [1440,390]){
+  await page.setViewportSize({width,height:1000});
+  const fits=await topology.evaluate(card=>{const bounds=card.getBoundingClientRect();return [...card.querySelectorAll('[data-topology-device]')].every(node=>{const box=node.getBoundingClientRect();return box.left>=bounds.left&&box.right<=bounds.right&&node.scrollWidth<=node.clientWidth;});});
+  expect(fits).toBe(true);
+ }
+});

@@ -299,3 +299,7 @@ Moved the built-in firewall policy knowledge check from the topology sidebar int
 ## 37. Policy editor opens on demand
 
 FortiGate policy lessons initially show the policy table without the editor. Create New opens a fresh form; Edit opens the selected policy. Saving or cancelling closes the form, and changing lessons clears the editor. Updated the empty-table instruction to point to Create New above. Frontend production build and the browser create/cancel/add/edit/save/trace workflow passed.
+
+## 38. Sidebar topology fits multiple servers
+
+Replaced the unbounded endpoint row with a wrapping two-column layout inside the topology card. Devices now display their address-object names and readable wrapping IP labels. Verified production build and a browser layout check confirming all five multi-DMZ endpoints remain within the card at desktop and mobile widths.
