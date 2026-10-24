@@ -339,6 +339,8 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
           </ul>
         </Section>
 
+        {!scenarioId.startsWith("custom-") && <HardQuestionCard taskId={scenarioId} session={session} />}
+
         <CheckYourWork
           onSubmit={submitForGrading}
           grading={grading}
@@ -351,7 +353,6 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       <aside className="space-y-4 min-w-0">
         <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} onSelectPolicy={id=>{setSelectedRow(id);focusConfigurationRow("policy-row",id);}} />
-        {!scenarioId.startsWith("custom-") && <HardQuestionCard taskId={scenarioId} session={session} />}
       </aside>
 
       {showSim && (

@@ -291,3 +291,7 @@ Final checks passed: 162 engine/API/frontend tests, nine isolated browser workfl
 - Security replays the current allow/deny decision. NAT shows translated/unchanged outcomes without implying a security decision; unspecified endpoints are labelled illustrative.
 - Preserved FortiGate replay, keyboard dismissal, focus restoration and reduced-motion support.
 - Verified frontend production build and three targeted browser workflows covering FortiGate trace behavior, translated NAT, and Palo Alto security/NAT dialog behavior.
+
+## 36. FortiGate knowledge check placement
+
+Moved the built-in firewall policy knowledge check from the topology sidebar into the main lesson column, directly after Test your policy and before Check your work. Custom policy exercises retain their existing behavior. Verified frontend type checking and production build.
