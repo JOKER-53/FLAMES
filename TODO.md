@@ -1,6 +1,6 @@
 # FLAMES — work plan
 
-Updated: 2026-10-23
+Updated: 2026-10-24
 
 Completed implementation and verification are recorded in [updation.md](updation.md). Checked feature items are implemented; unchecked items remain future work or deployment acceptance. Completing implementation does not imply the college deployment has been performed.
 
@@ -32,7 +32,7 @@ Local tools delivered: verified SQLite backup/restore, instructor password recov
 - [ ] Establish consistent backups and test restoration of Academy progress plus FLAMES authored content.
 - [ ] Replace or remove the local checking account before public access; establish an administrator account recovery process.
 - [x] Revalidate a supported live AI provider/model locally; verify labelled offline fallback behavior on failure. Repeat in the college deployment.
-- [ ] Triage dependency audit findings and apply compatible fixes with regression testing.
+- [x] Triage dependency audit findings and apply compatible fixes with regression testing (2026-10-24: zero audit findings; router and parser compatibility verified).
 - [ ] Record the deployed commit, rollback image, backup location, and operator runbook.
 
 Acceptance: a documented fresh deployment, restart, backup restore, and rollback succeed without losing content or student progress.

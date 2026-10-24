@@ -192,3 +192,7 @@ See [the feature guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md) and [verification
 Guides: [operations and recovery](docs/OPERATIONS_RUNBOOK.md), [classrooms/content transfer/hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md).
 
 Verification: 131 automated checks (39 engine, 68 backend, 24 frontend) and production frontend build and final verification passed. Real local browser checks covered group creation/enrollment, assignment start/completion, CSV download, content preview/import/export/publication, escaped script text, staged hints, and light/dark/mobile network playback, Escape and focus restoration. Temporary browser content, groups and student accounts were removed. No new commit/push or college deployment is implied.
+
+## 12. Dependency remediation — 2026-10-24
+
+Patched the Express body-parser dependency and Vitest packages, upgraded React Router to 7.18.4, and pinned the shared PostCSS selector parser to a patched release through a direct tooling dependency/override. `npm audit` reports zero vulnerabilities. `npm run verify` passed (131 tests plus frontend production build). Advisory references: [React Router](https://github.com/advisories/GHSA-wrjc-x8rr-h8h6), [selector parser](https://github.com/advisories/GHSA-rj75-hqrm-r3gf).
