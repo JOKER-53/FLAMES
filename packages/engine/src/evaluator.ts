@@ -12,6 +12,8 @@ export interface PolicyTraceEntry {
   policyName: string;
   matched: boolean;
   reason: string;
+  comparisons?: { label: string; matched: boolean; detail: string }[];
+  filter?: { profileId: string; profileName: string; domain: string; blocked: boolean };
 }
 
 export interface EvaluationResult {
@@ -31,13 +33,13 @@ export function evaluatePacket(
   const trace: PolicyTraceEntry[] = [];
 
   for (const policy of policies) {
-    if (!policy.enabled) continue;
+    if (!policy.enabled) { trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: "Policy is disabled" }); continue; }
 
     const srcIntfMatch = policy.srcIntf === packet.srcIntf;
     const dstIntfMatch = policy.dstIntf === packet.dstIntf;
 
     if (!srcIntfMatch || !dstIntfMatch) {
-      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: `Interface mismatch (${packet.srcIntf}→${packet.dstIntf} vs ${policy.srcIntf}→${policy.dstIntf})` });
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: `Interface mismatch (${packet.srcIntf}→${packet.dstIntf} vs ${policy.srcIntf}→${policy.dstIntf})`, comparisons: [{label:"Incoming interface",matched:srcIntfMatch,detail:`Packet ${packet.srcIntf}; policy ${policy.srcIntf}`},{label:"Outgoing interface",matched:dstIntfMatch,detail:`Packet ${packet.dstIntf}; policy ${policy.dstIntf}`}] });
       continue;
     }
 
@@ -62,13 +64,20 @@ export function evaluatePacket(
       (!s.port || (packet.port !== undefined && portMatchesServiceValue(packet.port, s.port)))
     );
 
+    const comparisons = [
+      {label:"Interfaces",matched:true,detail:`${packet.srcIntf} → ${packet.dstIntf}`},
+      {label:"Source address",matched:srcMatch,detail:`${packet.srcIp}; objects: ${srcAddrs.map(a=>`${a.name} (${a.value})`).join(", ")||"any"}`},
+      {label:"Destination address",matched:dstMatch,detail:`${packet.dstIp}; objects: ${dstAddrs.map(a=>`${a.name} (${a.value})`).join(", ")||"any"}`},
+      {label:"Service",matched:svcMatch,detail:`${packet.protocol}${packet.port===undefined?"":`/${packet.port}`}; services: ${svcs.map(s=>`${s.name} (${s.protocol}${s.port?`/${s.port}`:""})`).join(", ")||"any"}`},
+    ];
+    let filter: PolicyTraceEntry["filter"];
     if (!srcMatch || !dstMatch || !svcMatch) {
-      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: !srcMatch ? "Source address no match" : !dstMatch ? "Destination address no match" : "Service no match" });
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: !srcMatch ? "Source address no match" : !dstMatch ? "Destination address no match" : "Service no match", comparisons });
       continue;
     }
 
     if (policy.webFilterProfileId && !webFilterProfiles.some(profile => profile.id === policy.webFilterProfileId)) {
-      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: "Policy references an unknown web filter profile" });
+      trace.push({ policyId: policy.id, policyName: policy.name, matched: false, reason: "Policy references an unknown web filter profile", comparisons });
       continue;
     }
 
@@ -81,14 +90,15 @@ export function evaluatePacket(
           const blockedDomain = normalizeDomain(value);
           return !!blockedDomain && (domain === blockedDomain || domain.endsWith(`.${blockedDomain}`));
         });
+        filter = { profileId: profile.id, profileName: profile.name, domain: packet.domain, blocked };
         if (blocked) {
-          trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Policy matched but domain "${packet.domain}" blocked by Web Filter profile "${profile.name}"` });
+          trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Policy matched but domain "${packet.domain}" blocked by Web Filter profile "${profile.name}"`, comparisons, filter });
           return { finalAction: "DENY", matchedPolicyId: policy.id, webFiltered: true, trace };
         }
       }
     }
 
-    trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Matched — ${policy.action}` });
+    trace.push({ policyId: policy.id, policyName: policy.name, matched: true, reason: `Matched — ${policy.action}`, comparisons, ...(filter ? {filter} : {}) });
     return { finalAction: policy.action, matchedPolicyId: policy.id, webFiltered: false, trace };
   }
 

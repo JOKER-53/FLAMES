@@ -1,3 +1,5 @@
+import { PacketExplorer } from "../../components/configuration/PacketExplorer";
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
@@ -17,6 +19,8 @@ interface NATRule { id:number; name:string; type:NATType; srcZone:string; dstZon
 
 
 export function PanNAT({ session }: { session: PanSession }) {
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  function showTraceRow(id: string) { setHighlightedRow(id); focusConfigurationRow("nat-row", id); }
   const location = useLocation();
   const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
@@ -33,7 +37,7 @@ export function PanNAT({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setSceIdx(index);
   }, [location.key]);
-  useEffect(() => { setResults(null); }, [scenario.id, rules, setResults]);
+  useEffect(() => { setHighlightedRow(null); setResults(null); }, [scenario.id, rules, setResults]);
 
   function addRule() {
     if (!nr.name||!nr.translated) return;
@@ -73,7 +77,7 @@ export function PanNAT({ session }: { session: PanSession }) {
                 <tbody>
                   {rules.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-muted">No NAT rules yet. Use “Add rule” to create one.</td></tr>}
                   {rules.map((r, i) => (
-                    <tr key={r.id} className="border-b border-line hover:bg-sunken/60">
+                    <tr key={r.id} id={`nat-row-${encodeURIComponent(String(r.id))}`} tabIndex={-1} className={`border-b border-line ${highlightedRow===String(r.id)?"bg-info-soft":"hover:bg-sunken/60"}`}>
                       <td className="px-3 py-2 text-muted tabular-nums">{i + 1}</td>
                       <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
                       <td className="px-3 py-2"><span className={`badge ${TYPE_BADGE[r.type]}`}>{r.type}</span></td>
@@ -114,6 +118,7 @@ export function PanNAT({ session }: { session: PanSession }) {
             )}
           </ConsoleFrame>
 
+        <PacketExplorer family="pan-nat" config={rules} onShowRow={showTraceRow}/>
           <CheckYourWork
             onSubmit={grade}
             grading={grading}

@@ -23,7 +23,7 @@ export interface ConfigurationCheck {
  expectedGateway?:string;expectedInterface?:string;
 }
 export interface ConfigurationExercise {schemaVersion:1;family:ConfigurationFamily;starterConfig:ConfigurationRow[];referenceConfig:ConfigurationRow[];checks:ConfigurationCheck[];}
-export interface ConfigurationTraceStep {element:string;detail:string;selected?:boolean;}
+export interface ConfigurationTraceStep {element:string;detail:string;selected?:boolean;rowId?:string;}
 export interface ConfigurationResult {id:string;description:string;passed:boolean;trace:ConfigurationTraceStep[];}
 const text=(value:unknown,max=200):value is string=>typeof value==="string"&&value.length<=max;
 const required=(value:unknown,max=200):value is string=>text(value,max)&&!!value.trim();
@@ -39,6 +39,35 @@ export function selectConfigurationRoute(rows:ConfigurationRow[],destination:str
  const ip=ipToInt(destination);for(const row of rows){ipToInt(String(row.gateway));if(!Number.isInteger(row.distance)||Number(row.distance)<1||Number(row.distance)>255)throw new Error("Invalid route distance.");}const matches=rows.map(row=>{const range=parseCidr(String(row.destination));const prefix=Number(String(row.destination).split("/")[1]);return{row,prefix,matches:ip>=range.start&&ip<=range.end};}).filter(item=>item.matches).sort((a,b)=>b.prefix-a.prefix||Number(a.row.distance)-Number(b.row.distance));
  const best=matches[0];return{matches,selected:best?matches.filter(item=>item.prefix===best.prefix&&item.row.distance===best.row.distance):[]};
 }
+export interface ConfigurationPacket {srcZone?:string;dstZone?:string;application?:string;destination?:string;}
+export interface ConfigurationExplanation {outcome:string;trace:ConfigurationTraceStep[];note:string;action?:"allow"|"deny";translation?:string;natType?:string;paths?:{gateway:string;interfaceName:string}[];}
+function explainRows(family:ConfigurationFamily,rows:ConfigurationRow[],packet:ConfigurationPacket):ConfigurationExplanation {
+ const trace:ConfigurationTraceStep[]=[];
+ if(family==="routing"){
+  assert(required(packet.destination),"Enter a destination IPv4 address.");
+  const route=selectConfigurationRoute(rows,packet.destination!);const matches=new Set(route.matches.map(item=>item.row));const selected=new Set(route.selected.map(item=>item.row));
+  trace.push({element:"Destination lookup",detail:`Find a prefix containing ${packet.destination}.`});
+  for(const row of rows)trace.push({element:`Route ${row.id}`,rowId:String(row.id),detail:`${row.destination} via ${row.gateway} on ${row.interfaceName}, distance ${row.distance}: ${matches.has(row)?selected.has(row)?"selected":"matches but less preferred":"prefix does not match"}.`,selected:selected.has(row)});
+  const paths=route.selected.map(item=>({gateway:String(item.row.gateway),interfaceName:String(item.row.interfaceName)}));trace.push({element:"Route selection",detail:paths.length?`Longest prefix, then lowest distance; ${paths.length} selected path${paths.length===1?"":"s"}.`:"No matching route. This model cannot forward to the destination.",selected:!paths.length});
+  return{outcome:paths.length?paths.map(path=>`${path.interfaceName} via ${path.gateway}`).join("; "):"No route",paths,trace,note:"Static IPv4 lookup only. Gateway reachability, dynamic routing, security policy and NAT are not evaluated here."};
+ }
+ assert(required(packet.srcZone)&&required(packet.dstZone)&&packet.srcZone!=="any"&&packet.dstZone!=="any","Enter concrete source and destination zones.");
+ if(family==="pan-security"){
+  assert(required(packet.application),"Enter an application.");trace.push({element:"Original flow",detail:`${packet.srcZone} → ${packet.dstZone}; application ${packet.application}.`});
+  for(const row of rows){const src=row.srcZone==="any"||row.srcZone===packet.srcZone,dst=row.dstZone==="any"||row.dstZone===packet.dstZone,app=(row.apps as string[]).includes("any")||(row.apps as string[]).includes(packet.application!);const selected=src&&dst&&app;trace.push({element:`Rule ${row.id} · ${row.name}`,rowId:String(row.id),detail:`Source zone ${src?"matches":"differs"}; destination zone ${dst?"matches":"differs"}; application ${app?"matches":"differs"}.${selected?` First match: ${row.action}. Later rules are not evaluated.`:""}`,selected});if(selected)break;}
+  const action=evaluatePanPacket(rows as unknown as PanSecurityRule[],packet.srcZone!,packet.dstZone!,packet.application!);if(!trace.some(step=>step.selected))trace.push({element:"Implicit deny",detail:"No rule matched all three criteria.",selected:true});
+  return{outcome:action,action,trace,note:"Zone and application matching only. Route lookup, real App-ID detection, NAT and stateful reply traffic are not simulated."};
+ }
+ assert(family==="pan-nat","Packet tracing is available for routing, security and NAT exercises.");assert(required(packet.destination),"Enter a destination IPv4 address.");ipToInt(packet.destination!);
+ trace.push({element:"Original packet",detail:`${packet.srcZone} → ${packet.dstZone}; destination ${packet.destination}.`});const rules=rows as unknown as PanNatRule[];const selected=evaluatePanNat(rules,packet.srcZone!,packet.dstZone!,packet.destination!);
+ for(const rule of rules){const match=rule===selected;trace.push({element:`NAT rule ${rule.id} · ${rule.name}`,rowId:String(rule.id),detail:`Original scope ${rule.srcZone} → ${rule.dstZone}, destination ${rule.dstAddr}. ${match?`First match: ${rule.type} → ${rule.translated}. Later rules are skipped.`:"Does not match this original packet."}`,selected:match});if(match)break;}
+ if(!selected)trace.push({element:"No translation",detail:"No NAT rule matched. The original packet remains unchanged.",selected:true});
+ trace.push({element:"Separate security decision",detail:"A translation does not grant permission; this NAT exercise does not evaluate a security policy."});
+ return{outcome:selected?`${selected.type} → ${selected.translated}`:"Unchanged",translation:selected?.translated.trim()??"none",natType:selected?.type,trace,note:"Simplified original-zone/destination matching and configured translation only; no connection tracking, route lookup or security permission is inferred."};
+}
+export function explainConfigurationPacket(family:ConfigurationFamily,value:unknown,packet:ConfigurationPacket):ConfigurationExplanation {
+ return explainRows(family,configurationRows(family,value),packet);
+}
 export function gradeConfigurationExercise(exercise:ConfigurationExercise,value:unknown){
  const rows=configurationRows(exercise.family,value);const info=CONFIGURATION_FAMILIES[exercise.family];
  const results:ConfigurationResult[]=exercise.checks.map(check=>{
@@ -47,25 +76,17 @@ export function gradeConfigurationExercise(exercise:ConfigurationExercise,value:
    const row=rows.find(row=>String(row[info.key])===check.target);const actual=row?.[check.field!];
    if(exercise.family==="interfaces"&&row){const definition={interfaceName:String(row.name),field:check.field,description:check.description,expectedValue:check.expected} as InterfaceFieldCheck;passed=gradeInterfaceSubmission({id:"custom",title:"",description:"",starterInterfaces:[],checks:[definition]} as any,{scenarioId:"custom",interfaces:rows as unknown as InterfaceConfig[]}).overallPassed;}
    else if(row)passed=Array.isArray(check.expected)?Array.isArray(actual)&&(check.operator==="contains"?check.expected.every(item=>actual.includes(item)):actual.length===check.expected.length&&new Set(actual).size===actual.length&&check.expected.every(item=>actual.includes(item))):actual===check.expected;
-   trace.push({element:row?`${info.label} · ${String(row[info.key])}`:"Missing row",detail:row?`${check.field}: ${JSON.stringify(actual)}`:"No matching configuration row was found.",selected:!!row});
-  }else if(check.type==="security-packet"){
-   const rules=rows as unknown as PanSecurityRule[];
-   for(const rule of rules){const match=(rule.srcZone==="any"||rule.srcZone===check.srcZone)&&(rule.dstZone==="any"||rule.dstZone===check.dstZone)&&(rule.apps.includes("any")||rule.apps.includes(check.application!));trace.push({element:`Rule ${rule.id} · ${rule.name}`,detail:match?`First match: ${rule.action}`:"Zone or application did not match.",selected:match});if(match)break;}
-   const action=evaluatePanPacket(rules,check.srcZone!,check.dstZone!,check.application!);if(!trace.some(step=>step.selected))trace.push({element:"Implicit deny",detail:"No security policy matched.",selected:true});passed=action===check.expectedAction;
-  }else if(check.type==="nat-packet"){
-   const rules=rows as unknown as PanNatRule[];const selected=evaluatePanNat(rules,check.srcZone!,check.dstZone!,check.destination!);
-   for(const rule of rules){const match=rule===selected;trace.push({element:`NAT rule ${rule.id} · ${rule.name}`,detail:match?`${rule.type} translation → ${rule.translated}`:"Original zones or destination did not match.",selected:match});if(match)break;}
-   if(!selected)trace.push({element:"No translation",detail:"Original packet is unchanged; security permission is a separate decision.",selected:true});
-   passed=check.expectedTranslation==="none"?!selected:!!selected&&selected.translated.trim()===check.expectedTranslation&&selected.type===check.expectedNatType;
+   trace.push({element:row?`${info.label} · ${String(row[info.key])}`:"Missing row",detail:row?`${check.field}: ${JSON.stringify(actual)}`:"No matching configuration row was found.",selected:!!row,...(row?{rowId:String(row[info.key])}:{})});
   }else{
-   try{const route=selectConfigurationRoute(rows,check.destination!);for(const entry of route.matches)trace.push({element:`Route ${entry.row.id}`,detail:`${entry.row.destination} via ${entry.row.gateway} on ${entry.row.interfaceName}, distance ${entry.row.distance}`,selected:route.selected.includes(entry)});
-    if(!route.selected.length)trace.push({element:"No route",detail:"No destination prefix contains this address.",selected:true});
-    passed=check.expectedInterface==="none"?!route.selected.length:route.selected.length>0&&route.selected.every(entry=>entry.row.gateway===check.expectedGateway&&entry.row.interfaceName===check.expectedInterface);
-   }catch{trace.push({element:"Invalid route",detail:"Check CIDR notation, gateway and administrative distance."});}
+   try{const explanation=explainRows(exercise.family,rows,check);trace.push(...explanation.trace);
+    if(check.type==="security-packet")passed=explanation.action===check.expectedAction;
+    else if(check.type==="nat-packet")passed=explanation.translation===check.expectedTranslation&&(check.expectedTranslation==="none"||explanation.natType===check.expectedNatType);
+    else passed=check.expectedInterface==="none"?!explanation.paths?.length:!!explanation.paths?.length&&explanation.paths.every(path=>path.gateway===check.expectedGateway&&path.interfaceName===check.expectedInterface);
+   }catch{trace.push({element:"Invalid packet or configuration",detail:"Check the supplied addressing, route and packet fields."});}
   }
   return{id:check.id,description:check.description,passed,trace};
  });
- if(exercise.family==="pan-zones"){const owned=rows.flatMap(row=>row.interfaces as string[]);results.push({id:"zone-ownership",description:"Interfaces belong to one zone each",passed:new Set(owned).size===owned.length,trace:rows.map(row=>({element:`Zone ${row.name}`,detail:(row.interfaces as string[]).join(", ")}))});}
+ if(exercise.family==="pan-zones"){const owned=rows.flatMap(row=>row.interfaces as string[]);results.push({id:"zone-ownership",description:"Interfaces belong to one zone each",passed:new Set(owned).size===owned.length,trace:rows.map(row=>({element:`Zone ${row.name}`,rowId:String(row.name),detail:(row.interfaces as string[]).join(", ")}))});}
  return{overallPassed:results.length>0&&results.every(result=>result.passed),results};
 }
 export function validateConfigurationExercise(value:unknown,publishing=false,checkReference=true):ConfigurationExercise{

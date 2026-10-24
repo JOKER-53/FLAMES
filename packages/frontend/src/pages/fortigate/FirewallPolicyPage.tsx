@@ -1,3 +1,4 @@
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -190,7 +191,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             <tbody>
               {policies.length === 0 && <tr><td colSpan={13} className="px-3 py-6 text-center text-faint">No policies yet — use "Create New" below.</td></tr>}
               {policies.map((p, idx) => (
-                <tr key={p.id} onClick={() => setSelectedRow(p.id)} className={`border-b border-line cursor-pointer ${selectedRow === p.id ? "bg-info-soft" : "hover:bg-sunken"}`}>
+                <tr key={p.id} id={`policy-row-${encodeURIComponent(p.id)}`} tabIndex={-1} onClick={() => setSelectedRow(p.id)} className={`border-b border-line cursor-pointer ${selectedRow === p.id ? "bg-info-soft" : "hover:bg-sunken"}`}>
                   <td className="px-3 py-2 text-faint">{idx + 1}</td>
                   <td className="px-3 py-2 font-medium text-ink">{p.name}</td>
                   <td className="px-3 py-2">{p.srcIntf}</td>
@@ -349,7 +350,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
 
       <aside className="space-y-4 min-w-0">
         <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
-        <PacketFlowPanel traces={flowTraces} />
+        <PacketFlowPanel traces={flowTraces} onSelectPolicy={id=>{setSelectedRow(id);focusConfigurationRow("policy-row",id);}} />
         {!scenarioId.startsWith("custom-") && <HardQuestionCard taskId={scenarioId} session={session} />}
       </aside>
 

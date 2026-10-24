@@ -276,3 +276,7 @@ The Docker API had stopped compiling after new engine exports were added while i
 ## 32. Readable account recovery after proxy failures — 2026-10-24
 
 Empty/non-JSON proxy errors are normalized to readable API errors; account JSON decoding also handles malformed successful responses without exposing parser diagnostics. Account progress has a Retry action and clears stale errors after a successful reload. Three HTTP regressions and a browser outage/retry workflow passed. The real port-5173 checking account displayed both course progress bars without an alert; its temporary verification session was logged out.
+
+## 33. Decision explanations and row highlighting — 2026-10-24
+
+Added expected-value-free route/PAN security/PAN NAT packet explorers, shared with configuration grading, and detailed authored check explanations. The FortiGate policy panel now shows disabled rules, interface/address/service criteria and actual filter decisions with clear routing/NAT/TLS limits. Row links highlight/focus the responsible policy, route or custom configuration row; configuration edits clear stale results and reduced-motion scrolling is respected. New engine and browser regressions verify effective decisions, privacy, all-five-family highlighting and stale clearing. See [packet explanations](docs/PACKET_EXPLANATIONS.md).

@@ -1,3 +1,5 @@
+import { PacketExplorer } from "../../components/configuration/PacketExplorer";
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { contentId } from "../../utils/id";
@@ -9,6 +11,8 @@ import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts
 import { Icon } from "../../components/ui/Icon";
 
 export function RoutingPage({ session }: { session: ReturnType<typeof useScenarioSession> }) {
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  function showTraceRow(id: string) { setHighlightedRow(id); focusConfigurationRow("route-row", id); }
   const persisted = useSimulatorDraft<StaticRoute[]>("fortigate", staticRoutingScenario.id, "routing", []);
   const routes = persisted.value, setRoutes = persisted.setValue;
   const [newDest, setNewDest] = useState("");
@@ -19,7 +23,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
   const [error, setError] = useState<string | null>(null);
   
   const scenarioId = staticRoutingScenario.id;
-  useEffect(() => { setResults(null); }, [routes]);
+  useEffect(() => { setHighlightedRow(null); setResults(null); }, [routes]);
 
   function addRoute() {
     const ipv4 = (value: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(value) && value.split(".").every(octet => Number(octet) <= 255);
@@ -55,7 +59,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
               <tbody>
                 {routes.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-muted">No static routes yet. Add one below.</td></tr>}
                 {routes.map(r => (
-                  <tr key={r.id} className="border-b border-line">
+                  <tr key={r.id} id={`route-row-${encodeURIComponent(r.id)}`} tabIndex={-1} className={`border-b border-line ${highlightedRow===r.id?"bg-info-soft":""}`}>
                     <td className="px-3 py-2 font-mono">{r.destination}</td>
                     <td className="px-3 py-2 font-mono">{r.gateway}</td>
                     <td className="px-3 py-2">{r.interfaceName}</td>
@@ -81,6 +85,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
           </div>
         </ConsoleFrame>
 
+        <PacketExplorer family="routing" config={routes} onShowRow={showTraceRow}/>
         <CheckYourWork onSubmit={grade} result={results && { passed: results.success, checks: [{ label: results.message, passed: results.success }] }} />
       </div>
     </DraftWorkspace>

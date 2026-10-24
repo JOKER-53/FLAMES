@@ -1,3 +1,5 @@
+import { PacketExplorer } from "../../components/configuration/PacketExplorer";
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
@@ -40,6 +42,8 @@ interface Rule {
 
 import { PanSession } from "../../hooks/usePanSession";
 export function PanSecurityPolicy({ session }: { session: PanSession }) {
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  function showTraceRow(id: string) { setHighlightedRow(id); focusConfigurationRow("security-row", id); }
   const location = useLocation();
   const [scenarioIdx, setScenarioIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenarioIdx];
@@ -56,7 +60,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setScenarioIdx(index);
   }, [location.key]);
-  useEffect(() => { setResults(null); }, [scenario.id, rules, setResults]);
+  useEffect(() => { setHighlightedRow(null); setResults(null); }, [scenario.id, rules, setResults]);
 
   function addRule() {
     if (!newRule.name || !newRule.apps?.length) return;
@@ -104,7 +108,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
                     <tr><td colSpan={8} className="px-3 py-8 text-center text-muted">No rules yet. Use “Add rule” to create your first security rule.</td></tr>
                   )}
                   {rules.map((r, i) => (
-                    <tr key={r.id} className="border-b border-line hover:bg-sunken/60">
+                    <tr key={r.id} id={`security-row-${encodeURIComponent(String(r.id))}`} tabIndex={-1} className={`border-b border-line ${highlightedRow===String(r.id)?"bg-info-soft":"hover:bg-sunken/60"}`}>
                       <td className="pl-3 py-2 w-6">
                         <div className="flex flex-col">
                           <button aria-label={`Move ${r.name} up`} onClick={() => moveUp(i)} disabled={i === 0} className="text-faint hover:text-ink disabled:opacity-30"><Icon name="chevronDown" size={13} className="rotate-180" /></button>
@@ -172,6 +176,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
             )}
           </ConsoleFrame>
 
+        <PacketExplorer family="pan-security" config={rules} onShowRow={showTraceRow}/>
           <CheckYourWork
             onSubmit={grade}
             grading={grading}

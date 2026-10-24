@@ -88,9 +88,9 @@ Acceptance: a student sees a relevant explanation for a reproducible error, can 
 
 ### Packet explanation tools
 
-- [ ] Show a step-by-step path through route selection, rule matching, filtering, and the simplified NAT model where implemented.
-- [ ] Highlight the exact configuration element responsible for each decision.
-- [ ] Keep simulator simplifications explicit in teaching content.
+- [x] Show step-by-step route, rule, filter and simplified NAT decisions in the relevant simulator models, with explicit boundaries.
+- [x] Highlight and focus the policy, route, NAT or configuration row responsible for each decision.
+- [x] Keep simulator simplifications explicit in teaching content and the explanation panels.
 
 Acceptance: students can explain why a packet passed or failed using the displayed trace rather than guessing from a score.
 
