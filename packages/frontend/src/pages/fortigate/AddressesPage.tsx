@@ -1,3 +1,4 @@
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 // ============================================================================
 // Address object manager. Visual layout tightened against real FortiGate
 // reference screenshots: objects are grouped under a labeled section
@@ -99,6 +100,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
   }
 
   return (
+    <DraftWorkspace draft={session.draft}>
     <div className="max-w-3xl">
       <h1 className="text-lg font-semibold text-forti-dark mb-1">Addresses</h1>
       <p className="text-muted text-[12.5px] mb-4">
@@ -239,5 +241,6 @@ export function AddressesPage({ session }: AddressesPageProps) {
         </div>
       </div>
     </div>
+    </DraftWorkspace>
   );
 }

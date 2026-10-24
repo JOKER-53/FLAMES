@@ -23,10 +23,15 @@ async function main() {
     const confirmation = await prompt.question(''); hidden = false; process.stdout.write('\n');
     if (password.length < 12 || password.length > 128 || password !== confirmation) throw new Error('Passwords must match and contain 12–128 characters.');
     store = new PlatformStore(process.env.DATABASE_PATH || resolve('packages/backend/data/fortisim.sqlite'));
-    if (store.findEmail(email)) throw new Error('This account already exists. Existing accounts are not changed or promoted.');
-    store.createUser(email, name, await hashPassword(password), 'instructor');
+    if (process.argv.includes('--reset-password')) {
+      store.rotateInstructorPassword(email, await hashPassword(password));
+      process.stdout.write('Instructor password replaced; all existing sessions revoked.\n');
+    } else {
+      if (store.findEmail(email)) throw new Error('This account already exists. Use --reset-password for instructor recovery.');
+      store.createUser(email, name, await hashPassword(password), 'instructor');
+    }
     process.stdout.write('FLAMES administrator created. Sign in at /account, then open /admin.\n');
   } finally { hidden = false; prompt.close(); store?.close(); }
 }
-if (process.argv.includes('--help')) console.log('FLAMES administrator setup: run npm run admin:create in an interactive terminal. The command asks for your email, display name, and a hidden password. In Academy mode use your Academy admin instead.');
+if (process.argv.includes('--help')) console.log('FLAMES administrator setup: run npm run admin:create in an interactive terminal. The command asks for your email, display name, and a hidden password. Add --reset-password to recover an existing instructor and revoke sessions. In Academy mode use your Academy admin instead.');
 else main().catch(error => { console.error(error.message); process.exitCode = 1; });

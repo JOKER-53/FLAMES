@@ -105,7 +105,7 @@ The content studio supports:
 
 Authored content persists in a separate SQLite content database. In Academy mode, it contains teaching material and answer keys; student identity and saved completion remain in Academy.
 
-The studio authors instructional lessons and question tasks. New firewall simulator behavior and packet-based scenario types still require engine/UI development; a visual simulator exercise builder is proposed in [TODO.md](TODO.md).
+The studio authors instructional lessons, question tasks, and visual FortiGate policy exercises with a checked reference solution. Additional simulator builder families remain future work.
 
 ### Set up your own local administrator
 
@@ -133,7 +133,7 @@ See [administrator guide](docs/ADMIN_CONTENT.md) and [authoring verification](do
 6. Guests use device-local completion; standalone accounts synchronize through SQLite; Academy mode saves through the parent platform.
 7. Administrators manage custom content through `/admin`.
 
-Configuration drafts for the built-in simulated devices are still temporary; persistent lab autosave is planned. Completion is student-reported practice progress, not certified exam evidence.
+Applied configurations across all nine existing simulator families now autosave, with guest/account isolation, server persistence, and Academy-owned draft storage. Completion is student-reported practice progress, not certified exam evidence.
 
 ## 8. Verification
 
@@ -142,9 +142,9 @@ Latest `npm run verify` result:
 | Package | Passing tests |
 | --- | ---: |
 | Engine | 39 |
-| Backend | 45 |
-| Frontend | 23 |
-| **Total** | **107** |
+| Backend | 57 |
+| Frontend | 24 |
+| **Total** | **120** |
 
 Also passed:
 
@@ -161,4 +161,34 @@ Live college authentication, MySQL migration, real multi-user college deployment
 
 ## 9. Next work
 
-Use [TODO.md](TODO.md) as the action plan. The recommended order is college integration acceptance, configuration autosave, and the visual simulator exercise builder, followed by targeted hints, instructor assignments, and content import/export.
+Use [TODO.md](TODO.md) as the action plan. Autosave and the FortiGate visual policy builder are implemented. The next work is college integration acceptance, targeted hints, instructor assignments, and content import/export.
+
+## 10. Simulator autosave and visual policy builder
+
+- Applied configurations now autosave across FortiGate policies, interfaces, ports, and routing, plus Palo Alto security, zones, NAT, interfaces, and ports.
+- Standalone accounts resume through SQLite; guests use per-lesson device storage; Academy keeps drafts in the parent MySQL table through the upgraded adapter.
+- Versioned snapshots, owner checks, revision conflicts, reset tombstones, status/retry controls, and expired-session handling protect configuration ownership and prevent stale overwrites.
+- The admin studio now includes visual FortiGate policy authoring: starter addresses/services/profiles/rules, packet checks, expected actions/logging, and ordered reference policies.
+- Reference validation blocks publication of invalid, over-permissive, or failing exercises. Student APIs omit reference policies and expected outcomes; student grading reports omit expected-action fields.
+- Custom published exercises open in the normal FortiGate console, contribute to progress, and use autosave with scenario-version invalidation.
+- Browser checks passed all nine guest restorations, real saves/resets, cross-context account resume, account isolation, stale-device conflicts, corrupt/blocked storage recovery, retry, expired sessions, custom exercise grading, changed-version reset, and dark/mobile builder layouts.
+- Academy needs the updated router, generated simulator contract, and additive draft-table migration installed before parent-side autosave is available there. No college deployment was changed.
+
+See [the feature guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md) and [verification record](docs/AUTOSAVE_BUILDER_VERIFICATION_2026-10-23.md).
+
+
+## 11. Operations, targeted guidance, assignments and content transfer
+
+- Added `data:backup` / `data:restore`: WAL-aware SQLite snapshots, integrity/foreign-key checks, SHA-256 manifests, private file permissions, isolated restore and overwrite rejection. A snapshot of the actual local Docker data was restored successfully; its private copy is ignored under `.backups/verified-2026-10-23`.
+- Added instructor recovery through `admin:create -- --reset-password`, preserving identity/progress and revoking existing sessions. Production startup refuses the local checking password. The requested checking account remains available in development; permanent credentials must be selected before public use.
+- Added an operator release/rollback runbook. College MySQL backup, production restore/rollback and authenticated deployment acceptance remain operator work, not claimed completed.
+- Added deterministic staged hints across simulator checks for rule ordering, CIDR scope, services, route selection, zones, NAT, logging and management access. These work offline and reset with the report/lesson.
+- Added instructor-owned groups, invitation-based authenticated enrollment, module assignments with deadline/required count snapshots, assigned/started/completed/overdue views, authorized name/status filters and CSV export. The old global roster endpoint now respects group ownership.
+- Group teaching metadata is stored in the FLAMES content database; integrated identities/progress remain in Academy. The supplied Academy adapter now has a validated admin-only classroom progress endpoint. It still needs installation on the college server.
+- Added versioned, admin-only module export, import validation/preview and explicit private-draft import. Every imported module/lesson/question gets new IDs; ordering, keys and policy definitions are retained, while unrelated progress is never transferred. HTML-looking instructions render as text, with no remote asset loading.
+- Replaced the retired local NVIDIA model with `nvidia/nemotron-3.5-lightning-30b-a3b`, verified actual app hints and knowledge questions, and retained labelled offline fallback. Tutor AI now receives vetted concept guidance rather than raw answer-bearing scenario/check text; concrete value/prescription and unsupported NAT guards reject unsuitable responses.
+- Restyled the network view to match FLAMES surfaces, light/dark tokens, typography, buttons and badges. Added a responsive SVG, actual packet endpoints, correct FortiGate 60F branding, keyboard dialog behavior and reduced-motion results; replay remains available.
+
+Guides: [operations and recovery](docs/OPERATIONS_RUNBOOK.md), [classrooms/content transfer/hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md).
+
+Verification: 131 automated checks (39 engine, 68 backend, 24 frontend) and production frontend build and final verification passed. Real local browser checks covered group creation/enrollment, assignment start/completion, CSV download, content preview/import/export/publication, escaped script text, staged hints, and light/dark/mobile network playback, Escape and focus restoration. Temporary browser content, groups and student accounts were removed. No new commit/push or college deployment is implied.

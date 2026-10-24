@@ -37,6 +37,7 @@ export function AuthoredLessonPage({ complete }: { complete: (id: string) => voi
     } catch (error) { if (current === generation.current) setError(error instanceof Error ? error.message : "Could not check your answers."); }
     finally { if (current === generation.current) setBusy(false); }
   }
+  if (lesson?.kind === "policy") return <Navigate to={`/fortigate/policy/firewall-policy?scenario=${lesson.id}`} replace />;
   if (lesson && lesson.vendor !== course.vendor) return <Navigate to={`/${lesson.vendor}/lessons/${lesson.id}`} replace />;
   return <LessonFrame title={lesson?.title ?? "Lesson"} brief={lesson?.summary || "Read the instructions, then complete the lesson tasks."}>
     {error && <Callout tone="danger" className="mb-5">{error}</Callout>}

@@ -7,7 +7,7 @@ export function mergeCatalog(modules: CatalogModule[]): Record<Vendor, Course> {
   return Object.fromEntries((["fortigate", "paloalto"] as const).map(vendor => [vendor, {
     ...COURSES[vendor], modules: [...COURSES[vendor].modules, ...modules.filter(module => module.vendor === vendor).map(module => ({
       id: module.id, title: module.title, summary: module.summary, icon: "book" as const,
-      lessons: module.lessons.map(lesson => ({ ...lesson, route: `/${vendor}/lessons/${lesson.id}` })),
+      lessons: module.lessons.map(lesson => ({ ...lesson, route: lesson.kind === "policy" ? `/fortigate/policy/firewall-policy?scenario=${lesson.id}` : `/${vendor}/lessons/${lesson.id}` })),
     }))],
   }])) as Record<Vendor, Course>;
 }

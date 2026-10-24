@@ -1,3 +1,5 @@
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
 import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
@@ -41,8 +43,9 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
   const location = useLocation();
   const [scenarioIdx, setScenarioIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenarioIdx];
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const persisted = useSimulatorDraft<Rule[]>("paloalto", scenario.id, "pan-security", []);
+  const rules = persisted.value, setRules = persisted.setValue;
+
   const [showNew, setShowNew] = useState(false);
   const [newRule, setNewRule] = useState<Partial<Rule>>({ srcZone:"Trust", dstZone:"Untrust", apps:[], action:"allow", name:"" });
   const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
@@ -53,12 +56,12 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setScenarioIdx(index);
   }, [location.key]);
-  useEffect(() => { setRules([]); setResults(null); }, [scenario.id]);
+  useEffect(() => { setResults(null); }, [scenario.id, rules, setResults]);
 
   function addRule() {
     if (!newRule.name || !newRule.apps?.length) return;
-    setRules(r => [...r, { id:nextId, name:newRule.name!, srcZone:newRule.srcZone!, dstZone:newRule.dstZone!, apps:newRule.apps!, action:newRule.action! }]);
-    setNextId(n=>n+1);
+    setRules(r => [...r, { id:Math.max(0, ...rules.map(item => item.id)) + 1, name:newRule.name!, srcZone:newRule.srcZone!, dstZone:newRule.dstZone!, apps:newRule.apps!, action:newRule.action! }]);
+
     setNewRule({ srcZone:"Trust", dstZone:"Untrust", apps:[], action:"allow", name:"" });
     setShowNew(false);
     setResults(null);
@@ -82,6 +85,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.description} hint={scenario.hint}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
@@ -195,6 +199,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

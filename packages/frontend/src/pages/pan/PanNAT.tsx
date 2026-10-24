@@ -1,3 +1,5 @@
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
 import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
@@ -18,8 +20,9 @@ export function PanNAT({ session }: { session: PanSession }) {
   const location = useLocation();
   const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
-  const [rules, setRules] = useState<NATRule[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const persisted = useSimulatorDraft<NATRule[]>("paloalto", scenario.id, "pan-nat", []);
+  const rules = persisted.value, setRules = persisted.setValue;
+
   const [adding, setAdding] = useState(false);
   const [nr, setNr] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
@@ -30,12 +33,12 @@ export function PanNAT({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setSceIdx(index);
   }, [location.key]);
-  useEffect(() => { setRules([]); setResults(null); }, [scenario.id]);
+  useEffect(() => { setResults(null); }, [scenario.id, rules, setResults]);
 
   function addRule() {
     if (!nr.name||!nr.translated) return;
-    setRules(r=>[...r,{ id:nextId, name:nr.name!, type:nr.type!, srcZone:nr.srcZone!, dstZone:nr.dstZone!, dstAddr:nr.dstAddr||"any", translated:nr.translated! }]);
-    setNextId(n=>n+1); setAdding(false); setResults(null);
+    setRules(r=>[...r,{ id:Math.max(0, ...rules.map(item => item.id)) + 1, name:nr.name!, type:nr.type!, srcZone:nr.srcZone!, dstZone:nr.dstZone!, dstAddr:nr.dstAddr||"any", translated:nr.translated! }]);
+     setAdding(false); setResults(null);
     setNr({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   }
 
@@ -53,6 +56,7 @@ export function PanNAT({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.desc} hint={scenario.hint}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
@@ -137,6 +141,7 @@ export function PanNAT({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

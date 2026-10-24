@@ -84,3 +84,5 @@ Register lesson metadata in `packages/frontend/src/course/curriculum.ts`. FortiG
 For new built-in simulator lessons, add each lesson ID to `packages/engine/src/completion.ts`. The API and device caches accept only that registry; a frontend test checks it against the complete curriculum to prevent drift.
 
 For instructional lessons and multiple-choice/short-answer tasks, use the `/admin` [content studio](ADMIN_CONTENT.md). Published authored lessons are registered dynamically and do not require editing the static completion registry.
+
+FortiGate policy exercises can now be authored visually in `/admin`: choose the policy simulator lesson type, define starter objects, test packets/outcomes, and reference policies, then test and publish. See [builder instructions](AUTOSAVE_AND_EXERCISE_BUILDER.md). Other new simulator capabilities still need engine/UI implementation.

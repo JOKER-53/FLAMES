@@ -2,7 +2,7 @@ import { Router, type RequestHandler } from "express";
 import { PlatformStore } from "./store";
 import { hashPassword, verifyPassword, requestUser, sessionToken, startSession, clearSession } from "./auth";
 
-export function platformRouter(store: PlatformStore) {
+export function platformRouter(store: PlatformStore, visibleStudents: (ownerId: string) => string[] = () => []) {
   const router = Router();
   const attempts = new Map<string, { count: number; until: number }>();
   const limit: RequestHandler = (req, res, next) => {
@@ -70,7 +70,7 @@ export function platformRouter(store: PlatformStore) {
     const user = requestUser(req, store);
     if (!user) { res.status(401).json({ error: "Sign in to view your classroom." }); return; }
     if (user.role !== "instructor") { res.status(403).json({ error: "Instructor access required." }); return; }
-    res.json({ students: store.roster(), provenance: "Student-reported completion; not an exam certification." });
+    res.json({ students: store.roster().filter(student => visibleStudents(user.id).includes(student.id)), provenance: "Student-reported completion; not an exam certification." });
   });
   router.use("/progress/:platform", (req, res, next) => {
     if (!["fortigate", "paloalto"].includes(req.params.platform)) { res.status(400).json({ error: "Unknown platform." }); return; }

@@ -41,7 +41,7 @@ The editor checks revisions so saving an old browser tab cannot silently overwri
 
 ## Supported content and boundaries
 
-The studio adds instructional lessons with multiple-choice/short-answer tasks, including reading-only lessons. Existing built-in firewall configuration exercises remain available. Adding a new packet-grading capability or a new simulator console still requires engine/UI code; the text/task editor does not invent those behaviors.
+The studio adds instructional lessons with multiple-choice/short-answer tasks and visual FortiGate policy simulator exercises. Choose the lesson type before editing its content. Policy exercises include starter objects, traffic checks, and a reference solution that must pass before publication. See [the builder guide](AUTOSAVE_AND_EXERCISE_BUILDER.md). Existing built-in exercises remain available; additional simulator families still require dedicated builder support.
 
 Only published metadata is exposed through the public catalog. Student lesson responses omit correct indices and accepted answers. Student-provided HTML and scripts are never executed. Server endpoints enforce editing roles, field limits, ID uniqueness, and publication validation.
 
@@ -64,3 +64,7 @@ FLAMES_CATALOG_URL=http://110.172.151.108:5174/api/content/catalog
 Use an address reachable from the Academy backend; it may differ from the public iframe origin. This endpoint returns published metadata without answer keys and requires no user credential. The adapter fetches only the fixed operator-configured URL, adds published custom lesson IDs to its validation registry, and includes them in course totals. Unpublished/unknown IDs are rejected. A configured catalog outage returns a visible error rather than silently dropping custom progress.
 
 Without `FLAMES_CATALOG_URL`, the parent adapter recognizes built-in lessons only. See [Academy setup](PARENT_LMS_INTEGRATION_GUIDE.md) for auth, API routing, and iframe installation.
+
+## Content transfer and instructor recovery
+
+Use the studio import/export panel to preview a version 1 module file, then import it as a private draft. Exports contain answer keys and saved draft content; every import receives new IDs. See [content transfer](CLASSROOM_AND_CONTENT_TRANSFER.md). Run `npm run admin:create -- --reset-password` in an operator terminal for existing instructor recovery/session revocation. Production rejects the checking-only password; see [operations](OPERATIONS_RUNBOOK.md).

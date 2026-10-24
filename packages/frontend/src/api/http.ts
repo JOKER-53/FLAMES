@@ -7,7 +7,7 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
   const sameOrigin = typeof window === "undefined" ? target.startsWith("/") : new URL(target, window.location.origin).origin === window.location.origin;
   if (authorization && sameOrigin) headers.set("Authorization", authorization);
   const response = await fetch(input, { credentials: "same-origin", ...init, headers, signal: init.signal ?? AbortSignal.timeout(25_000) });
-  if (response.status === 401 && sameOrigin) expireAcademySession();
+  if (response.status === 401 && sameOrigin && authorization && academyAuthorization() === authorization) expireAcademySession();
   return response;
 }
 

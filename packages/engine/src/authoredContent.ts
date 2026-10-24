@@ -1,3 +1,15 @@
+import type { AddressObject, ServiceObject, FirewallPolicy, TestPacket, ExpectedOutcome, WebFilterProfile } from "./types";
+
+export interface PolicyExercise {
+  schemaVersion: 1;
+  starterAddresses: AddressObject[];
+  starterServices: ServiceObject[];
+  starterWebFilterProfiles: WebFilterProfile[];
+  starterPolicies: FirewallPolicy[];
+  testPackets: TestPacket[];
+  expectedOutcomes: ExpectedOutcome[];
+  referencePolicies: FirewallPolicy[];
+}
 export type ContentVendor = "fortigate" | "paloalto";
 export type ContentLevel = "Foundation" | "Intermediate" | "Advanced";
 export interface AuthoredTask {
@@ -9,6 +21,9 @@ export interface AuthoredTask {
   acceptedAnswers: string[];
 }
 export interface AuthoredLesson {
+  kind?: "reading" | "policy";
+  scenarioVersion?: string;
+  policyExercise?: PolicyExercise;
   id: string;
   title: string;
   summary: string;
@@ -41,11 +56,11 @@ export interface ContentSummary {
   hasUnpublishedChanges: boolean;
 }
 export type PublicTask = Pick<AuthoredTask, "id" | "type" | "prompt" | "choices">;
-export type PublicLesson = Omit<AuthoredLesson, "tasks"> & { vendor: ContentVendor; moduleId: string; tasks: PublicTask[] };
+export type PublicLesson = Omit<AuthoredLesson, "tasks" | "policyExercise"> & { vendor: ContentVendor; moduleId: string; tasks: PublicTask[] };
 export interface CatalogModule {
   id: string;
   vendor: ContentVendor;
   title: string;
   summary: string;
-  lessons: Omit<AuthoredLesson, "body" | "tasks">[];
+  lessons: Omit<AuthoredLesson, "body" | "tasks" | "policyExercise">[];
 }

@@ -24,7 +24,7 @@ FortiGate policy/interface/port submissions are graded by API endpoints. Palo Al
 
 The AI tutor is optional. Requests use a 15-second timeout, and grading reports remain usable on provider failure. Generated questions are validated, kept in a capped 15-minute store, and consumed once. Restarting the API invalidates pending questions. The question store is in-memory and unsuitable for an uncoordinated multi-replica deployment.
 
-Knowledge checks and ordinary submissions both contribute student-reported completion. Instructor counts are not tamper-proof grades. Configuration drafts are ephemeral. Some tools still evaluate locally. Browser bundles include exercise definitions; API answer stripping is not a claim of browser answer-key secrecy.
+Knowledge checks and ordinary submissions both contribute student-reported completion. Instructor counts are not tamper-proof grades. Applied simulator drafts are versioned and stored separately from completion: guests use local storage, standalone accounts use SQLite, and Academy accounts use parent MySQL. Some tools still evaluate locally. Browser bundles include exercise definitions; API answer stripping is not a claim of browser answer-key secrecy.
 
 ## UI and hardware
 
@@ -47,3 +47,11 @@ The React UI uses light/dark CSS tokens initialized before render by `public/the
 ## Authored content
 
 The API `content/` module maintains a separate SQLite content database with draft and published JSON snapshots, revision checks, and server-side task grading. Published catalog metadata is public; lesson answer keys remain on the server. `CourseCatalogProvider` merges published modules with the built-in curriculum so existing shells, navigation, and progress use the combined lesson list. Built-in engine graders remain unchanged. Academy can consume the public catalog from its configured `FLAMES_CATALOG_URL` to validate custom IDs and compute totals.
+
+## Simulator drafts and policy authoring
+
+Engine `drafts.ts` defines simulator kinds and snapshot validation. API `drafts/` enforces identity, expected-owner checks, scenario versions, and compare-and-swap writes. Reset writes a tombstone instead of deleting its revision. Frontend `drafts/` provides shared hydration, debounced saving, status/retry/reset, and tab/device conflict handling. The Academy adapter includes a generated validator contract and a separate parent simulator-draft table.
+
+Visual policy lessons add a versioned exercise definition to authored content. Publication validates networking fields and references and grades the reference solution. Public catalog/lesson/scenario serializers whitelist safe fields; expected outcomes and reference policies stay private. Existing student scenario/grading routes resolve both built-in and published policy lessons.
+
+Classroom ownership, membership references and assignment snapshots are additional teaching metadata in `content.sqlite`; the classroom router checks ownership before reading student progress. Standalone progress uses the account store, while Academy reports use authenticated parent progress APIs and the adapter admin endpoint. Module transfer reuses content validation but always mints new IDs and imports only drafts. Shared deterministic learning hints are in `engine/src/learningHints.ts`; tutor generation uses vetted concepts and validates output before returning a labelled AI response. The network dialog uses theme-aware SVG packet paths.

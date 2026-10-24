@@ -28,3 +28,7 @@ build/
 *.sqlite-wal
 docs/.~lock.*#
 !.env.academy.example
+
+# Private operational artifacts
+.backups/
+.release/

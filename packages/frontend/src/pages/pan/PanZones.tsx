@@ -1,3 +1,5 @@
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
 import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
@@ -22,8 +24,9 @@ export function PanZones({ session }: { session: PanSession }) {
   const location = useLocation();
   const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const persisted = useSimulatorDraft<Zone[]>("paloalto", scenario.id, "pan-zones", []);
+  const zones = persisted.value, setZones = persisted.setValue;
+
   const [adding, setAdding] = useState(false);
   const [nz, setNz] = useState<Partial<Zone>>({ name:"", type:"layer3", profile:"none", interfaces:[], logForwarding:false });
   const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
@@ -35,12 +38,12 @@ export function PanZones({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setSceIdx(index);
   }, [location.key]);
-  useEffect(() => { setZones([]); setResults(null); }, [scenario.id]);
+  useEffect(() => { setResults(null); }, [scenario.id, zones, setResults]);
 
   function addZone() {
     if (!nz.name) return;
-    setZones(z=>[...z,{ id:nextId, name:nz.name!, type:nz.type!, profile:nz.profile!, interfaces:nz.interfaces??[], logForwarding:nz.logForwarding??false }]);
-    setNextId(n=>n+1); setAdding(false); setResults(null);
+    setZones(z=>[...z,{ id:Math.max(0, ...zones.map(item => item.id)) + 1, name:nz.name!, type:nz.type!, profile:nz.profile!, interfaces:nz.interfaces??[], logForwarding:nz.logForwarding??false }]);
+     setAdding(false); setResults(null);
     setNz({ name:"", type:"layer3", profile:"none", interfaces:[], logForwarding:false });
   }
   function delZone(id:number){ setZones(z=>z.filter(x=>x.id!==id)); setResults(null); }
@@ -55,6 +58,7 @@ export function PanZones({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.desc} hint={scenario.hint}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
@@ -167,6 +171,7 @@ export function PanZones({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

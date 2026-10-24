@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
+import { contentId } from "../../utils/id";
+import { useEffect, useState } from "react";
 import { useScenarioSession } from "../../hooks/useScenarioSession";
 import { StaticRoute, evaluateRoutingConfiguration, staticRoutingScenario, type RoutingEvaluationResult } from "@fortisim/engine";
 import { LessonFrame } from "../../components/shell/LessonFrame";
@@ -6,7 +9,8 @@ import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts
 import { Icon } from "../../components/ui/Icon";
 
 export function RoutingPage({ session }: { session: ReturnType<typeof useScenarioSession> }) {
-  const [routes, setRoutes] = useState<StaticRoute[]>([]);
+  const persisted = useSimulatorDraft<StaticRoute[]>("fortigate", staticRoutingScenario.id, "routing", []);
+  const routes = persisted.value, setRoutes = persisted.setValue;
   const [newDest, setNewDest] = useState("");
   const [newGw, setNewGw] = useState("");
   const [newIface, setNewIface] = useState("port1");
@@ -15,6 +19,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
   const [error, setError] = useState<string | null>(null);
   
   const scenarioId = staticRoutingScenario.id;
+  useEffect(() => { setResults(null); }, [routes]);
 
   function addRoute() {
     const ipv4 = (value: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(value) && value.split(".").every(octet => Number(octet) <= 255);
@@ -24,7 +29,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
       setError("Enter an IPv4 destination with a /0–/32 prefix and a valid gateway."); return;
     }
     if (!Number.isInteger(distance) || distance < 1 || distance > 255) { setError("Administrative distance must be a whole number from 1 to 255."); return; }
-    setRoutes(prev => [...prev, { id: crypto.randomUUID(), destination: newDest.trim(), gateway: newGw.trim(), interfaceName: newIface, distance }]);
+    setRoutes(prev => [...prev, { id: contentId(), destination: newDest.trim(), gateway: newGw.trim(), interfaceName: newIface, distance }]);
     setResults(null); setError(null);
     setNewDest(""); setNewGw("");
   }
@@ -37,6 +42,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
 
   return (
     <LessonFrame title={staticRoutingScenario.title} brief={staticRoutingScenario.description}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="space-y-6">
         <ConsoleFrame path={["Network", "Static Routes"]}>
           <div className="overflow-x-auto">
@@ -77,6 +83,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
 
         <CheckYourWork onSubmit={grade} result={results && { passed: results.success, checks: [{ label: results.message, passed: results.success }] }} />
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

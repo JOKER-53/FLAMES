@@ -6,7 +6,7 @@
 2. Open the course overview at `/fortigate` or `/paloalto`.
 3. Choose a module, then a lesson. Curriculum metadata defines lesson order, prerequisites, duration, and final assessments. FortiGate lesson URLs select exercises with `scenario` (plus `track` for interfaces/ports); Palo Alto URLs use `task`.
 4. Read the scenario, configure the simulated device, and check the work. Available knowledge checks provide an additional practice path. Optional tutoring returns AI guidance or labelled offline hints when no provider is available.
-5. Completion updates the course outline and module navigation. Unfinished configuration drafts remain in memory and are not saved across reloads.
+5. Completion updates the course outline and module navigation. Applied simulator configurations autosave per lesson and identity, with saved status, retry, and version/conflict recovery.
 
 Guests can practice by default. `/account` provides registration and sign-in; signed-in users synchronize completion through the API. `AUTH_REQUIRED=true` redirects anonymous training users to sign-in and protects training API routes. `ALLOW_REGISTRATION=false` disables registration. `/classroom` shows all registered students to instructors; this is a shared classroom rather than separate institutional tenants.
 
@@ -51,3 +51,5 @@ Every shared header provides a light/dark toggle. A first visit uses the system 
 ## Authored modules
 
 `/admin` lets authorized instructors/Academy admins create draft modules, lessons, and multiple-choice or short-answer tasks. Publishing adds them to the vendor course outline. Student routes are `/fortigate/lessons/:lessonId` and `/paloalto/lessons/:lessonId`; grading occurs on the API, and completion follows the existing progress flow. Reading-only lessons can be marked as read. Drafts and answer keys are never exposed through the published catalog. See [administration](ADMIN_CONTENT.md).
+
+See [autosave and visual policy authoring](AUTOSAVE_AND_EXERCISE_BUILDER.md) for guest/account/Academy storage, reset behavior, and custom exercise publishing.

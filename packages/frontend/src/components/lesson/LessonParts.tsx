@@ -1,3 +1,5 @@
+import { StagedHints } from "./StagedHints";
+import { useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { Icon } from "../ui/Icon";
 import { TutorSourceTag, type TutorSource } from "../TutorSourceTag";
@@ -39,6 +41,8 @@ interface CheckYourWorkProps {
 }
 
 export function CheckYourWork({ onSubmit, grading, error, result, tutor, note }: CheckYourWorkProps) {
+  const location = useLocation();
+  const failures = result?.checks.filter(check => !check.passed).map(check => typeof check.label === "string" ? check.label : "Configuration check") ?? [];
   const passedCount = result?.checks.filter(c => c.passed).length ?? 0;
   const total = result?.checks.length ?? 0;
   return (
@@ -82,6 +86,7 @@ export function CheckYourWork({ onSubmit, grading, error, result, tutor, note }:
         </div>
       )}
 
+      {result && !result.passed && <StagedHints key={location.pathname + location.search + JSON.stringify(result.checks)} topic={location.pathname} failures={failures} />}
       {tutor && (tutor.loading || tutor.text) && (
         <div className="border-t border-line px-5 py-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1.5">

@@ -1,0 +1,23 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const {tutorHint,safeTutorText}=require('../dist/services/tutor');
+const {sendLLMRequest}=require('../dist/services/llmClient');
+test('provider success is labelled AI; retired model, timeout and empty answers are labelled guidance',async()=>{
+ const env={...process.env};const originalFetch=global.fetch;
+ try{
+  for(const key of ['OPENAI_API_KEY','OPENAI_BASE_URL','OPENAI_MODEL','LLM_API_KEY','LLM_BASE_URL','LLM_MODEL'])delete process.env[key];
+  Object.assign(process.env,{NVIDIA_NIM_API_KEY:'test-only',NVIDIA_NIM_BASE_URL:'https://integrate.api.nvidia.com/v1',NVIDIA_NIM_MODEL:'test-supported-model'});
+  let payload;
+  global.fetch=async(_url,init)=>{payload=JSON.parse(init.body);return new Response(JSON.stringify({choices:[{message:{content:'Check the packet direction and the first matching policy. A broad rule can shadow a more specific rule.'}}]}),{status:200});};
+  assert.equal(safeTutorText('Set the action to ACCEPT and service HTTPS.'),false);
+  assert.equal(safeTutorText('Use address 10.0.2.10 and port 443.'),false);
+  assert.equal(safeTutorText('Inspect the first matching policy and compare its scope with the requirement.'),true);
+  const live=await tutorHint('fortigate-policy','system','No policy matched',['Rule order']);assert.equal(live.source,'ai');assert.equal(payload.chat_template_kwargs.enable_thinking,false);
+  global.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:'Set the action to ACCEPT and service to HTTPS.'}}]}));
+  assert.equal((await tutorHint('fortigate-policy','system','raw prompt with answers',['Rule order'])).source,'guide');
+  for(const fake of [async()=>new Response('Retired model',{status:410}),async()=>{throw new DOMException('timeout','TimeoutError');},async()=>new Response(JSON.stringify({choices:[{message:{content:'<think>private reasoning</think>'}}]}))]){
+   global.fetch=fake;const hint=await tutorHint('pan-nat','system','Translation type',['Translation type']);assert.equal(hint.source,'guide');assert.match(hint.text,/NAT/);assert.doesNotMatch(hint.text,/private reasoning/);
+  }
+  global.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:'<think>hidden</think>Answer only.'}}]}));assert.equal(await sendLLMRequest({messages:[]}), 'Answer only.');
+ }finally{global.fetch=originalFetch;process.env=env;}
+});

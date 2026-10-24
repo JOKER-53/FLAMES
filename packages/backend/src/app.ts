@@ -1,10 +1,16 @@
+import { ClassroomStore } from "./classroom/store";
+import { classroomRouter } from "./classroom/routes";
+import { draftsRouter } from "./drafts/routes";
+import { DraftError } from "./drafts/errors";
+import { builtinDraftSpec } from "@fortisim/engine";
+import { getScenarioById } from "./scenarios/registry";
 import { ContentStore, ContentError } from "./content/store";
 import { adminContentRouter, studentContentRouter } from "./content/routes";
 import { integrationConfig, academyAccountRouter, academyRequest, AcademyError, bearer } from "./integration/academy";
 import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
-import { scenariosRouter } from "./routes/scenarios";
-import { submissionsRouter } from "./routes/submissions";
+import { createScenariosRouter } from "./routes/scenarios";
+import { createSubmissionsRouter } from "./routes/submissions";
 import { interfaceSubmissionsRouter } from "./routes/interfaceSubmissions";
 import { portSubmissionsRouter } from "./routes/portSubmissions";
 import { knowledgeCheckRouter } from "./routes/knowledgeCheck";
@@ -16,6 +22,7 @@ import { PlatformStore } from "./platform/store";
 export function createApp(store: PlatformStore, content = new ContentStore(":memory:")) {
   const app = express();
   const integration = integrationConfig();
+  const groups = new ClassroomStore(content.db, integration.mode === "academy" ? `academy:${integration.parentOrigin}` : "standalone");
   store.setCompletionResolver((platform, id) => content.isPublishedLesson(platform, id));
   app.disable("x-powered-by");
   if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1);
@@ -63,23 +70,29 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
     }
     next();
   });
-  app.use("/api/account", integration.mode === "academy" ? academyAccountRouter(integration, (platform, id) => store.isCompletionTask(platform, id)) : platformRouter(store));
+  app.use("/api/account", integration.mode === "academy" ? academyAccountRouter(integration, (platform, id) => store.isCompletionTask(platform, id)) : platformRouter(store, ownerId => groups.groups({ id: ownerId, email: "", name: "", role: "instructor" }).flatMap(group => group.members.map(member => member.id))));
   app.use("/api", (req, res, next) => {
     if (integration.mode !== "academy" && process.env.AUTH_REQUIRED === "true" && !requestUser(req, store)) {
       res.status(401).json({ error: "Sign in to access the training platform." }); return;
     }
     next();
   });
+  app.use("/api/classroom", classroomRouter(groups, store, content, integration.mode === "academy"));
+  app.use("/api/drafts", draftsRouter(store, integration.mode === "academy", (platform, id) => {
+    const policy = platform === "fortigate" ? content.policyExercise(id) : null;
+    return policy ? { kind: "policy", scenarioVersion: policy.version } : builtinDraftSpec(platform, id);
+  }));
   app.use("/api/admin", adminContentRouter(content, store, integration.mode === "academy"));
   app.use("/api/content", studentContentRouter(content));
-  app.use("/api/scenarios", scenariosRouter);
-  app.use("/api/submissions", submissionsRouter);
+  app.use("/api/scenarios", createScenariosRouter(content));
+  app.use("/api/submissions", createSubmissionsRouter(id => content.policyExercise(id)?.scenario ?? getScenarioById(id)));
   app.use("/api/interface-submissions", interfaceSubmissionsRouter);
   app.use("/api/port-submissions", portSubmissionsRouter);
   app.use("/api/knowledge-check", knowledgeCheckRouter);
   app.use("/api/pan", panRouter);
   app.use((_req, res) => res.status(404).json({ error: "API route not found." }));
   const errors: ErrorRequestHandler = (error, _req, res, _next) => {
+    if (error instanceof DraftError) { res.status(error.status).json({ error: error.message, code: error.code }); return; }
     if (error instanceof ContentError) { res.status(error.status).json({ error: error.message }); return; }
     if (error instanceof AcademyError) { res.status(error.status).json({ error: error.message }); return; }
     if (error.type === "entity.too.large") { res.status(413).json({ error: "Request is too large." }); return; }

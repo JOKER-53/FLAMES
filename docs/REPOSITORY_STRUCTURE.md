@@ -59,3 +59,7 @@ The API `src/integration/` and frontend `src/integration/` implement parent-mana
 The product name is **FLAMES**. Existing `@fortisim/*` workspace names, database/session keys, and `FORTISIM_*` integration identifiers remain stable for compatibility. Use FLAMES for visible labels and documentation.
 
 Content authoring lives in backend `src/content/`, frontend `pages/admin/`, and `course/CourseCatalog.tsx`. Shared authored-content interfaces are in engine `src/authoredContent.ts`. The interactive local administrator setup is `scripts/create-admin.cjs`.
+
+Simulator autosave contracts are in engine `src/drafts.ts`, persistence APIs in backend `src/drafts/`, and shared client state/status in frontend `src/drafts/`. `PolicyExerciseEditor.tsx` provides visual policy authoring; backend `content/policyExercise.ts` validates and tests it. `scripts/sync-academy-contract.mjs` generates the companion Academy validator.
+
+Additional feature locations: `packages/backend/src/classroom/` contains scoped group/assignment persistence, module resolution and authenticated routes; `packages/engine/src/learningHints.ts` supplies deterministic concept guidance; `packages/frontend/src/components/lesson/StagedHints.tsx` renders hint stages. Content import/export uses the existing `content/store.ts` and admin routes with `pages/admin/ContentTransfer.tsx`. Operational commands are in `scripts/data-backup.cjs` and `scripts/create-admin.cjs`; private snapshots belong outside Git (the `.backups/` directory is ignored).

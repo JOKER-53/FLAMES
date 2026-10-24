@@ -1,3 +1,4 @@
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import type { FirewallPolicy, TestPacket, PolicyTraceEntry, InterfaceZone, WebFilterProfile } from "@fortisim/engine";
@@ -169,6 +170,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
 
   return (
     <LessonFrame title={scenario.title.replace(/^\W+\s*/, "")} brief={scenario.description}>
+      <DraftWorkspace draft={session.draft}>
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
       <div className="min-w-0 space-y-6">
         <ConsoleFrame path={["Policy & Objects", "Firewall Policy"]}>
@@ -348,7 +350,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       <aside className="space-y-4 min-w-0">
         <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} />
-        <HardQuestionCard taskId={scenarioId} session={session} />
+        {!scenarioId.startsWith("custom-") && <HardQuestionCard taskId={scenarioId} session={session} />}
       </aside>
 
       {showSim && (
@@ -359,6 +361,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
         />
       )}
     </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

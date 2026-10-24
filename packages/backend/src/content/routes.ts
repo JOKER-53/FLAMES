@@ -1,3 +1,5 @@
+import { validatePolicyExercise, testPolicyExercise } from "./policyExercise";
+import { ContentError } from "./store";
 import { Router } from "express";
 import { requestUser } from "../platform/auth";
 import type { PlatformStore } from "../platform/store";
@@ -10,6 +12,19 @@ export function adminContentRouter(content: ContentStore, accounts: PlatformStor
     if (!user) { res.status(401).json({ error: "Sign in with an instructor account to manage content." }); return; }
     if (academy ? !user.canManageContent : user.role !== "instructor") { res.status(403).json({ error: "Content administrator access required." }); return; }
     next();
+  });
+  router.post("/validate-policy", (req, res, next) => {
+    try { const exercise = validatePolicyExercise(req.body?.exercise, true, false); res.json(testPolicyExercise(exercise)); }
+    catch (error) { next(new ContentError(400, error instanceof Error ? error.message : "Invalid exercise.")); }
+  });
+  router.post("/imports/preview", (req, res, next) => {
+    try { res.json(content.previewImport(req.body)); } catch (error) { next(error); }
+  });
+  router.post("/imports", (req, res, next) => {
+    try { res.status(201).json(content.importModule(req.body)); } catch (error) { next(error); }
+  });
+  router.get("/modules/:id/export", (req, res, next) => {
+    try { res.setHeader("Content-Disposition", 'attachment; filename="flames-module.json"'); res.json(content.exportModule(req.params.id)); } catch (error) { next(error); }
   });
   router.get("/modules", (_req, res) => res.json({ modules: content.list() }));
   router.post("/modules", (req, res, next) => {

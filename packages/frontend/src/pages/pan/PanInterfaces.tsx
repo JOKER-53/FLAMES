@@ -1,3 +1,5 @@
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { gradePanInterfaces } from "../../course/panInterfaceGrader";
 import { type TutorSource } from "../../components/TutorSourceTag";
 import { LessonFrame } from "../../components/shell/LessonFrame";
@@ -41,7 +43,8 @@ const ZONE_COLOR: Record<string,string> = {
 const ZONES: IfaceZone[] = ["Trust","Untrust","DMZ","Management","HA","—"];
 
 export function PanInterfaces({ session }: { session: PanSession }) {
-  const [ifaces, setIfaces] = useState<Interface[]>(DEFAULT_IFACES);
+  const persisted = useSimulatorDraft<Interface[]>("paloalto", "pan-iface-01", "pan-interfaces", DEFAULT_IFACES);
+  const ifaces = persisted.value, setIfaces = persisted.setValue;
   const [editing, setEditing] = useState<string|null>(null);
   const [editVal, setEditVal] = useState<Partial<Interface>>({});
   
@@ -101,6 +104,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
       brief={<>Configure the PA-220 for a small branch. Make <code>ethernet1/1</code> a Layer 3 interface in <b>Untrust</b> with <code>203.0.113.1/30</code>, and <code>ethernet1/2</code> a Layer 3 interface in <b>Trust</b> with <code>10.0.0.1/24</code>. Give the out-of-band <code>MGT</code> port <code>192.168.1.1/24</code>.</>}
       hint="The MGT port is separate from the data plane, so think about whether it should belong to a security zone at all."
     >
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame path={["Network", "Interfaces", "Ethernet"]}>
@@ -173,6 +177,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

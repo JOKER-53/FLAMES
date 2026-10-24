@@ -1,3 +1,4 @@
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 // ============================================================================
 // Service object manager. Visual layout tightened to match Addresses/
 // Firewall Policy: toolbar above the table (Create New / Edit / Delete),
@@ -109,6 +110,7 @@ export function ServicesPage({ session }: ServicesPageProps) {
   })).filter((g) => g.items.length > 0);
 
   return (
+    <DraftWorkspace draft={session.draft}>
     <div className="max-w-3xl">
       <h1 className="text-lg font-semibold text-forti-dark mb-1">Services</h1>
       <p className="text-muted text-[12.5px] mb-4">
@@ -267,5 +269,6 @@ export function ServicesPage({ session }: ServicesPageProps) {
         </div>
       </div>
     </div>
+    </DraftWorkspace>
   );
 }

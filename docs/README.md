@@ -5,6 +5,8 @@ Start with the repository [README](../README.md) for installation and commands. 
 | Guide | Purpose |
 | --- | --- |
 | [Admin verification](ADMIN_VERIFICATION_2026-10-23.md) | Authoring implementation and test record |
+| [Autosave/builder verification](AUTOSAVE_BUILDER_VERIFICATION_2026-10-23.md) | Automated and real local browser acceptance results |
+| [Autosave and exercise builder](AUTOSAVE_AND_EXERCISE_BUILDER.md) | Configuration resume, conflict handling, and visual FortiGate policy authoring |
 | [Content administration](ADMIN_CONTENT.md) | Set up your administrator and create/publish modules, lessons, and tasks |
 | [Application flow](APPLICATION_FLOW.md) | Current routes, student journey, grading, hardware, and progress |
 | [Repository structure](REPOSITORY_STRUCTURE.md) | File ownership and where new code belongs |
@@ -20,3 +22,6 @@ Start with the repository [README](../README.md) for installation and commands. 
 | [Release checklist](RELEASE_CHECKLIST.md) | Acceptance checks before release |
 
 [Archive](archive/README.md) contains dated reports, old planning notes, and retired prototypes. Those files are historical records rather than instructions for the current app.
+
+- [Operations and recovery](OPERATIONS_RUNBOOK.md) — verified backups, isolated restore, password recovery and release/rollback procedure.
+- [Classrooms, content transfer and hints](CLASSROOM_AND_CONTENT_TRANSFER.md) — ownership boundaries, assignment states, import/export format, targeted guidance and network view.

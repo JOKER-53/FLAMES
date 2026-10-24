@@ -54,6 +54,7 @@ export async function sendLLMRequest(options: LLMRequestOptions): Promise<string
       messages: options.messages,
       max_tokens: options.maxTokens ?? 400,
       temperature: options.temperature ?? 0.5,
+      ...(baseUrl.includes("integrate.api.nvidia.com") ? { chat_template_kwargs: { enable_thinking: false } } : {}),
     }),
     signal: AbortSignal.timeout(15_000),
   });

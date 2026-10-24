@@ -5,10 +5,24 @@ const express = require('express');
 let server, catalogServer, base, LESSONS;
 let catalogModules = []; let catalogAvailable = true;
 const rows = new Map();
+const drafts = new Map();
 before(async () => {
   const { createFortisimRouter } = await import('../../../integrations/academy/fortisim.routes.mjs');
   ({ LESSONS } = await import('../../../integrations/academy/lesson-manifest.mjs'));
   const pool = { query: async (sql, values) => {
+    if (sql.startsWith('SELECT user_id,platform,task_id')) return [[...values.flatMap(id => ['fortigate','paloalto'].flatMap(platform => [...(rows.get(`${id}:${platform}`) || [])].map(task_id => ({user_id:id,platform,task_id}))))]];
+    if (sql.startsWith('SELECT * FROM fortisim_simulator_drafts')) return [[drafts.get(values.slice(0, 3).join(':'))].filter(Boolean)];
+    if (sql.startsWith('INSERT IGNORE INTO fortisim_simulator_drafts')) {
+      const key = values.slice(0, 3).join(':');
+      if (!drafts.has(key)) drafts.set(key, { schema_version: 1, scenario_version: values[3], revision: 0, config_json: null, updated_at: values[4] });
+      return [{}];
+    }
+    if (sql.startsWith('UPDATE fortisim_simulator_drafts')) {
+      const key = values.slice(3, 6).join(':'); const row = drafts.get(key);
+      if (!row || row.revision !== values[6]) return [{ affectedRows: 0 }];
+      drafts.set(key, { schema_version: 1, scenario_version: values[0], revision: row.revision + 1, config_json: values[1], updated_at: values[2] });
+      return [{ affectedRows: 1 }];
+    }
     if (sql.startsWith('SELECT')) {
       const key = `${values[0]}:${values[1]}`;
       return [[...(rows.get(key) || [])].sort().map(task_id => ({ task_id }))];
@@ -23,8 +37,8 @@ before(async () => {
   catalogServer = catalog.listen(0, '127.0.0.1'); await once(catalogServer, 'listening');
   const app = express(); app.use(express.json());
   app.use('/api/integrations/fortisim', createFortisimRouter({ Router: express.Router, pool, catalogUrl: `http://127.0.0.1:${catalogServer.address().port}/catalog`, authenticate: (req, res, next) => {
-    if (!['Bearer alice', 'Bearer bob'].includes(req.headers.authorization)) return res.status(401).json({ message: 'Login required' });
-    req.user = { id: req.headers.authorization === 'Bearer alice' ? 1 : 2 }; next();
+    if (!['Bearer alice', 'Bearer bob', 'Bearer admin'].includes(req.headers.authorization)) return res.status(401).json({ message: 'Login required' });
+    req.user = { id: req.headers.authorization === 'Bearer alice' ? 1 : req.headers.authorization === 'Bearer admin' ? 3 : 2, role: req.headers.authorization === 'Bearer admin' ? 'admin' : 'student' }; next();
   } }));
   server = app.listen(0, '127.0.0.1'); await once(server, 'listening'); base = `http://127.0.0.1:${server.address().port}/api/integrations/fortisim`;
 });
@@ -65,4 +79,55 @@ test('Academy fails visibly when the configured custom catalog is unavailable', 
   catalogAvailable = false;
   try { assert.equal((await call('/summary', 'alice')).status, 503); }
   finally { catalogAvailable = true; }
+});
+
+async function draftCall(user, data) {
+  const response = await fetch(base + '/drafts/fortigate/routing-static-01', { headers: { Authorization: `Bearer ${user}`, 'Content-Type': 'application/json' }, ...(data === undefined ? {} : { method: 'POST', body: JSON.stringify(data) }) });
+  return { status: response.status, body: await response.json() };
+}
+test('Academy owns simulator drafts, isolates users, and enforces revisioned resets', async () => {
+  const data = { ownerId: '1', schemaVersion: 1, scenarioVersion: '1', kind: 'routing', revision: 0, config: [] };
+  assert.equal((await draftCall('alice')).body.draft, null);
+  assert.equal((await draftCall('alice', data)).body.draft.revision, 1);
+  assert.equal((await draftCall('bob')).body.draft, null);
+  assert.equal((await draftCall('bob', data)).status, 403);
+  assert.equal((await draftCall('alice', data)).status, 409);
+  assert.equal((await draftCall('alice', { ...data, revision: 1, config: null })).body.draft.revision, 2);
+  assert.equal((await draftCall('alice', { ...data, revision: 1 })).status, 409);
+  assert.equal((await draftCall('alice', { ...data, revision: 2, config: [null] })).status, 400);
+});
+test('the generated Academy simulator contract matches engine kinds and configuration checks', async () => {
+  const academy = await import('../../../integrations/academy/simulator-contract.mjs');
+  const engine = require('../../engine/dist');
+  for (const [platform, ids] of Object.entries(LESSONS)) for (const id of ids) {
+    assert.deepEqual(academy.builtinDraftSpec(platform, id), engine.builtinDraftSpec(platform, id));
+  }
+  for (const kind of ['policy', 'interfaces', 'ports', 'routing', 'pan-security', 'pan-zones', 'pan-nat', 'pan-interfaces', 'pan-ports']) for (const value of [[], [null], {}, null, { addresses: [], services: [], policies: [], webFilterProfiles: [] }]) assert.equal(academy.isSimulatorConfiguration(kind, value), engine.isSimulatorConfiguration(kind, value));
+});
+test('Academy version-checks custom policy drafts against the published catalog', async () => {
+  const id = 'custom-00000000-0000-0000-0000-000000000002';
+  catalogModules = [{ vendor: 'fortigate', lessons: [{ id, kind: 'policy', scenarioVersion: 'published-v2' }] }];
+  const send = async data => {
+    const response = await fetch(base + `/drafts/fortigate/${id}`, { method: 'POST', headers: { Authorization: 'Bearer alice', 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    return { status: response.status, body: await response.json() };
+  };
+  const data = { ownerId: '1', schemaVersion: 1, scenarioVersion: 'published-v2', kind: 'policy', revision: 0, config: { addresses: [], services: [], policies: [], webFilterProfiles: [] } };
+  try {
+    assert.equal((await send(data)).status, 200);
+    catalogModules[0].lessons[0].scenarioVersion = 'published-v3';
+    assert.equal((await send({ ...data, revision: 1 })).status, 400);
+  } finally { catalogModules = []; }
+});
+
+test('Academy classroom progress is admin-only, validated and isolated to requested IDs', async () => {
+  const send = async (user, userIds) => {
+    const response=await fetch(base+'/classroom/progress',{method:'POST',headers:{Authorization:`Bearer ${user}`,'Content-Type':'application/json'},body:JSON.stringify({userIds})});return {status:response.status,body:await response.json()};
+  };
+  assert.equal((await send('alice',['1'])).status,403);
+  assert.equal((await send('admin',['1 OR 1=1'])).status,400);
+  assert.equal((await send('admin',Array(501).fill('1'))).status,400);
+  const result=await send('admin',['1','2']);assert.equal(result.status,200);
+  assert.deepEqual(result.body.progress['1'].fortigate,['web-server-access-01']);
+  assert.deepEqual(result.body.progress['2'].fortigate,[]);
+  assert.deepEqual(Object.keys((await send('admin',['2'])).body.progress),['2']);
 });

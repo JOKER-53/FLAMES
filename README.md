@@ -35,12 +35,14 @@ Choose a vendor at `/`, open its course overview, select a module, then work thr
 - **FortiGate:** firewall policies, interfaces, port assignment, and basic static routing; address/service references; a 60F hardware explorer and cable practice.
 - **Palo Alto:** security policies, zones, NAT, interfaces and ports; App-ID reference; a PA-220 hardware explorer and cable practice.
 - **Hardware:** full-width in-page viewers with tall canvases, a smaller initial model scale, manual rotation, zoom/reset, component inspection, and cable/socket controls.
-- **Accounts:** optional student sign-in, SQLite-saved completion, account-specific caches, and an instructor roster. Guests retain device-local completion.
-- **Tutoring:** optional AI hints and one-use knowledge questions, with offline fallbacks when the provider is unavailable.
+- **Accounts:** optional student sign-in, SQLite-saved completion, account-specific caches, and instructor-owned classroom groups/assignments. Guests retain device-local completion.
+- **Tutoring:** staged mistake-specific hints, optional AI guidance and one-use knowledge questions, with labelled offline fallbacks when the provider is unavailable.
+- **Classrooms:** invitation-based groups, module assignments/deadlines, completion states, scoped instructor reports and CSV export.
+- **Content transfer:** administrator-only versioned module export/import preview; imports receive new IDs and remain private drafts.
 
 To create the first instructor, set `INSTRUCTOR_EMAIL` and a unique 12–128 character `INSTRUCTOR_PASSWORD` in the backend environment before starting. Bootstrap never changes an existing password or promotes a student. Remove both settings after account creation. `AUTH_REQUIRED=true` requires training sign-in; `ALLOW_REGISTRATION=false` disables self-registration.
 
-Configuration drafts are not persisted. Completion is student-reported practice progress rather than a certified exam score. Browser bundles contain exercise definitions; answer stripping in the scenario API is not an answer-key secrecy guarantee. PAN behavior is intentionally simplified; see [architecture](docs/ARCHITECTURE.md).
+Applied simulator configurations now autosave; see the autosave guide below. Completion is student-reported practice progress rather than a certified exam score. Browser bundles contain exercise definitions; answer stripping in the scenario API is not an answer-key secrecy guarantee. PAN behavior is intentionally simplified; see [architecture](docs/ARCHITECTURE.md).
 
 ## Repository layout
 
@@ -56,6 +58,12 @@ Configuration drafts are not persisted. Completion is student-reported practice 
 | `docs` | Current documentation and a separate historical archive |
 
 Use the single root `package-lock.json` for workspace dependencies. See [file placement rules](docs/REPOSITORY_STRUCTURE.md).
+
+## Simulator autosave and exercise authoring
+
+Applied configurations now autosave across all existing simulator exercise families. Guests resume on the same device; signed-in accounts resume through the server; Academy mode keeps drafts in the parent database. Save status, retry, reset, scenario versions, and stale-tab conflicts are handled explicitly.
+
+The admin studio also creates visual FortiGate policy exercises with starter objects, packets, expected outcomes, and a validated reference solution. Published exercises open in the normal firewall console. See [autosave and builder setup](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md), including the Academy schema/adapter upgrade.
 
 ## Content administration
 
@@ -78,3 +86,5 @@ This builds the engine/API, runs tests in all three packages, type-checks the fr
 For development containers, copy the backend example environment file and run `docker compose up --build`. For production use the [deployment guide](docs/DEPLOYMENT.md), including HTTPS, persistent storage, backups, and recovery planning. The repository's Vercel configuration is not a substitute for durable SQLite hosting.
 
 Start at the [documentation index](docs/README.md). Contributors should read [CONTRIBUTING.md](CONTRIBUTING.md); dated reports and retired prototypes are in [docs/archive](docs/archive/README.md).
+
+Operations and feature guides: [backup, recovery and rollback](docs/OPERATIONS_RUNBOOK.md), [classrooms, content transfer and hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md).

@@ -23,3 +23,6 @@ export * from "./panExercises";
 
 export * from "./completion";
 export * from "./authoredContent";
+export * from "./drafts";
+
+export * from "./learningHints";

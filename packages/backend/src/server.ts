@@ -4,7 +4,7 @@ dotenv.config();
 import { resolve, dirname } from "node:path";
 import { createApp } from "./app";
 import { PlatformStore } from "./platform/store";
-import { hashPassword } from "./platform/auth";
+import { hashPassword, verifyPassword } from "./platform/auth";
 
 async function main() {
   const academy = process.env.PLATFORM_MODE === "academy";
@@ -20,6 +20,11 @@ async function main() {
     if (!existing) store.createUser(email, "Instructor", await hashPassword(password), "instructor");
   } else if (email || password) {
     throw new Error("Set both INSTRUCTOR_EMAIL and INSTRUCTOR_PASSWORD, or neither.");
+  }
+  if (!academy && process.env.NODE_ENV === "production") {
+    for (const hash of store.instructorPasswords()) {
+      if (await verifyPassword("admin123", hash)) throw new Error("The checking-only administrator password must be rotated before production. Run admin:create -- --reset-password in a maintenance terminal.");
+    }
   }
   const server = createApp(store, content).listen(Number(process.env.PORT) || 4000, () => console.log("FLAMES API ready"));
   const shutdown = () => {

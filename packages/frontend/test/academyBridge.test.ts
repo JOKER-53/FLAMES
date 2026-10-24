@@ -48,3 +48,14 @@ it('expires the in-memory credential and informs the parent when its API session
   expect(parent.postMessage).toHaveBeenCalledWith({ type: 'FORTISIM_AUTH_REQUIRED', version: 1 }, 'https://academy.example');
   expect(window.dispatchEvent).toHaveBeenCalled();
 });
+it('a late unauthorized response cannot expire a newly supplied Academy identity', async () => {
+  setup(); acceptAcademyMessage(event(), parent as unknown as Window);
+  let resolve!: (response: Response) => void;
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(done => { resolve = done; })));
+  const pending = apiFetch('/api/scenarios');
+  acceptAcademyMessage(event(config.parentOrigin, parent, 'new-account-token'), parent as unknown as Window);
+  resolve(new Response('{}', { status: 401 }));
+  await pending;
+  expect(academyAuthorization()).toBe('Bearer new-account-token');
+  expect(parent.postMessage).not.toHaveBeenCalled();
+});

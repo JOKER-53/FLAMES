@@ -50,13 +50,13 @@ export function AccountMenu() {
 
 function AccountActions() {
   const { user, integration } = useAccount();
-  if (integration?.mode === "academy") return <div className="flex items-center gap-2">{user?.canManageContent && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}<span className="hidden md:block text-sm text-muted">{user?.name || "Academy lab"}</span><a className="btn-secondary btn-sm" href={integration.parentUrl ?? "/"} target="_top">Back to Academy</a></div>;
+  if (integration?.mode === "academy") return <div className="flex items-center gap-2">{user && <Link to="/classroom" className="btn-ghost btn-sm">{user.role === "instructor" ? "Classroom" : "Assignments"}</Link>}{user?.canManageContent && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}<span className="hidden md:block text-sm text-muted">{user?.name || "Academy lab"}</span><a className="btn-secondary btn-sm" href={integration.parentUrl ?? "/"} target="_top">Back to Academy</a></div>;
   if (!user) return <Link to="/account" className="btn-secondary btn-sm"><span className="sm:hidden">Sign in</span><span className="hidden sm:inline">Sign in to save progress</span></Link>;
   const initials = user.name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="flex items-center gap-2">
       {user.role === "instructor" && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}
-      {user.role === "instructor" && <Link to="/classroom" aria-label="Classroom" className="btn-ghost btn-sm"><Icon name="users" size={15} /><span className="hidden sm:inline">Classroom</span></Link>}
+      <Link to="/classroom" aria-label={user.role === "instructor" ? "Classroom" : "Assignments"} className="btn-ghost btn-sm"><Icon name="users" size={15} /><span className="hidden sm:inline">{user.role === "instructor" ? "Classroom" : "Assignments"}</span></Link>
       <Link to="/account" className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-sunken" title={`Signed in as ${user.email}`}>
         <span className="grid place-items-center w-7 h-7 rounded-full bg-sunken text-2xs font-semibold text-ink">{initials}</span>
         <span className="hidden md:block text-sm font-medium text-ink max-w-[140px] truncate">{user.name}</span>

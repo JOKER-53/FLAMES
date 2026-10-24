@@ -29,8 +29,8 @@ export async function academyRequest(req: Request, path: string, data?: unknown)
       ...(data === undefined ? {} : { method: "POST", body: JSON.stringify(data) }),
       redirect: "error", signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) throw new AcademyError(response.status === 401 || response.status === 403 ? response.status : 502,
-      response.status === 401 ? "Academy session expired. Sign in again in Academy." : "Academy could not complete the request.");
+    if (!response.ok) throw new AcademyError([400, 401, 403, 404, 409].includes(response.status) ? response.status : 502,
+      response.status === 401 ? "Academy session expired. Sign in again in Academy." : response.status === 409 ? "Another device saved this draft. Reload the saved version." : "Academy could not complete the request.");
     return await response.json();
   } catch (error) {
     if (error instanceof AcademyError) throw error;
