@@ -128,18 +128,20 @@ export function ModulePage({ course, completed }: { course: Course; completed: S
 
   return (
     <>
-      <PageHeader
-        eyebrow={`Module ${index + 1} of ${course.modules.length}`}
-        title={module.title}
-        description={module.summary}
-        actions={firstOpen && <Link to={firstOpen.route} className="btn-primary">{mp.completed ? "Continue" : "Start module"}<Icon name="arrowRight" size={16} /></Link>}
-      />
-      <div className="card p-4 mb-6 flex items-center gap-4">
-        <ProgressBar value={mp.pct} label={`${module.title} progress`} />
+      <header className="mb-7 flex flex-wrap items-center justify-between gap-5">
+        <div className="min-w-0">
+          <p className="text-xs text-muted mb-2">Module {index + 1} of {course.modules.length}</p>
+          <h1 className="text-2xl sm:text-[28px] font-semibold leading-tight tracking-tight">{module.title}</h1>
+          <p className="mt-3 max-w-[80ch] text-sm text-muted leading-relaxed">{module.summary}</p>
+        </div>
+        {firstOpen && <Link to={firstOpen.route} className="btn-primary shrink-0">{mp.completed ? "Continue" : "Start module"}<Icon name="arrowRight" size={16} /></Link>}
+      </header>
+      <div className="card p-5 mb-7 flex flex-wrap sm:flex-nowrap items-center gap-4">
+        <ProgressBar value={mp.pct} label={`${module.title} progress`} className="flex-1 min-w-[100px]" />
         <span className="text-sm text-muted shrink-0 tabular-nums">{mp.completed} of {mp.total} complete</span>
       </div>
 
-      <ol className="card divide-y divide-line">
+      <ol className="space-y-3" aria-label="Module lessons">
         {module.lessons.map((lesson, i) => {
           const status = lessonStatus(module, lesson, completed);
           const locked = status === "locked";
@@ -152,7 +154,7 @@ export function ModulePage({ course, completed }: { course: Course; completed: S
                   <span className={`font-medium ${locked ? "text-muted" : "text-ink group-hover:text-accent"}`}>{lesson.title}</span>
                   {lesson.final && <span className="badge bg-sunken text-body">Assessment</span>}
                 </div>
-                <p className="text-sm text-muted mt-0.5">{locked ? "Complete the other lessons in this module to unlock." : lesson.summary}</p>
+                <p className="text-sm text-muted mt-1.5 leading-relaxed">{locked ? "Complete the other lessons in this module to unlock." : lesson.summary}</p>
               </div>
               <div className="hidden md:flex items-center gap-3 text-sm text-muted shrink-0">
                 <LevelBadge level={lesson.level} />
@@ -164,10 +166,10 @@ export function ModulePage({ course, completed }: { course: Course; completed: S
             </>
           );
           return (
-            <li key={lesson.id}>
+            <li key={lesson.id} className="card overflow-hidden">
               {locked
-                ? <div className="flex items-center gap-4 px-5 py-4 opacity-80">{body}</div>
-                : <Link to={lesson.route} className="group flex items-center gap-4 px-5 py-4 hover:bg-sunken/60">{body}</Link>}
+                ? <div className="flex items-start sm:items-center gap-3 sm:gap-5 px-4 sm:px-6 py-5 opacity-80">{body}</div>
+                : <Link to={lesson.route} className="group flex items-start sm:items-center gap-3 sm:gap-5 px-4 sm:px-6 py-5 hover:bg-sunken/60">{body}</Link>}
             </li>
           );
         })}

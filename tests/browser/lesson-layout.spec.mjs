@@ -19,3 +19,21 @@ test('lesson introduction keeps a readable brief and wraps metadata across theme
   if(vendor==='paloalto'){await page.setViewportSize({width:1440,height:1000});await page.getByRole('button',{name:'Show a hint',exact:true}).click();await expect(page.getByRole('button',{name:'Hide hint',exact:true})).toBeVisible();}
  }
 });
+
+test('course and module pages use the available width with spacious lesson rows',async({page})=>{
+ for(const [base,module,title] of [['/fortigate','policy','Firewall Policy'],['/paloalto','security','Security Policy']]){
+  for(const route of [base,`${base}/modules/${module}`]){
+   await page.setViewportSize({width:1920,height:1080});await page.goto(route);
+   const main=page.getByRole('main');const bounds=await main.boundingBox();const content=await main.locator(':scope > div').boundingBox();
+   expect(content.width).toBeGreaterThan(bounds.width-60);
+   if(route.includes('/modules/')){
+    await expect(page.getByRole('heading',{level:1})).toHaveText(title);
+    const rows=page.getByRole('list',{name:'Module lessons',exact:true}).locator(':scope > li');await expect(rows.first()).toBeVisible();
+    await page.screenshot({path:test.info().outputPath(`${module}-desktop.png`)});
+    await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();await page.screenshot({path:test.info().outputPath(`${module}-dark.png`)});await page.getByRole('button',{name:'Switch to light mode',exact:true}).click();
+   }
+   await page.setViewportSize({width:390,height:844});
+   expect(await main.evaluate(node=>node.scrollWidth<=node.clientWidth+1)).toBe(true);
+  }
+ }
+});

@@ -202,7 +202,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
         <main className="flex-1 overflow-y-auto">
           <div className={location.pathname === `${course.base}/hardware`
             ? "mx-auto w-full px-4 lg:px-6 py-4"
-            : current ? "mx-auto w-full max-w-[1440px] px-4 lg:px-6 py-5 lg:py-6" : "mx-auto w-full max-w-[1280px] px-4 lg:px-8 py-6 lg:py-8"}>{children}</div>
+            : current ? "mx-auto w-full max-w-[1440px] px-4 lg:px-6 py-5 lg:py-6" : "w-full px-4 lg:px-6 py-6 lg:py-8"}>{children}</div>
         </main>
       </div>
     </div>

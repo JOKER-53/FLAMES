@@ -319,3 +319,9 @@ Replaced the unbounded endpoint row with a wrapping two-column layout inside the
 Replaced the stacked, bordered title/scenario header with a plain lesson heading, one metadata row, and a separate scenario block with a restrained vendor accent. Removed repeated module context already available in the breadcrumb and constrained paragraph reading width. Scenario hints and completion metadata remain available. Shared section actions now wrap instead of squeezing text and overflowing on narrow screens.
 
 Verified frontend production build and two browser workflows covering both vendors, light/dark themes, desktop/mobile layout, hint expansion and policy editing/tracing. Reviewed generated desktop and mobile screenshots.
+
+## 41. Wider course and module pages
+
+Removed the 1280px cap from course overview and module-list pages so they use the content area beside the navigation. Refined module headings to match the lesson hierarchy and separated lesson rows with more padding and vertical space. Progress, Start/Review links and assessment locks retain their existing behavior.
+
+Verified production build, course/module content width on 1920px screens, mobile containment, both vendors, and the shared lesson-header workflow. Reviewed desktop light/dark screenshots.
