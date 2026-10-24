@@ -236,3 +236,7 @@ A generation guard now prevents a slower initial catalog request from overwritin
 ## 22. Draft row identity validation — 2026-10-24
 
 Saved simulator configurations now reject duplicate/empty row identities (including interface names and physical port IDs) before restoration. Duplicate IDs previously could make editing/deleting one row affect several rows or produce duplicate React keys. Optional filter references must also have the expected string shape, and unknown simulator kinds explicitly fail validation. The Academy contract was regenerated. The 42-test engine suite passed.
+
+## 23. Unknown knowledge task lookup — 2026-10-24
+
+Knowledge-check metadata and fallback lookups now require own properties. Prototype names such as `constructor`, `toString` and `__proto__` previously reached the generation/error path instead of being rejected as unknown tasks. Both vendor endpoints return 404 before generation. A focused route regression covers unknown and prototype-named IDs.

@@ -85,7 +85,7 @@ export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> =
 
 export const getKnowledgeCheck = async (req: Request, res: Response) => {
   const { taskId } = req.params;
-  const meta = TASK_CONCEPTS[taskId];
+  const meta = Object.prototype.hasOwnProperty.call(TASK_CONCEPTS, taskId) ? TASK_CONCEPTS[taskId] : undefined;
 
   if (!meta) {
     res.status(404).json({ error: `No concept mapping for task: ${taskId}` });

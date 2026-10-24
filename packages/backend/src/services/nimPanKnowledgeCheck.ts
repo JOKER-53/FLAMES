@@ -203,7 +203,7 @@ const PAN_STATIC_FALLBACKS: Record<string, GeneratedQuestion> = {
 };
 
 export async function generatePanKnowledgeCheck(taskId: string): Promise<GeneratedQuestion> {
-  const meta = TASK_CONCEPTS[taskId];
+  const meta = Object.prototype.hasOwnProperty.call(TASK_CONCEPTS, taskId) ? TASK_CONCEPTS[taskId] : undefined;
   if (!meta) throw new Error(`No concept mapping for PAN task: ${taskId}`);
 
   const userContent = `Task: ${meta.title}\nConcept to test: ${meta.concept}\n\nGenerate a hard multiple-choice question. Wrong answers should be plausible misconceptions a student might actually hold.`;

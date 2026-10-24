@@ -92,3 +92,10 @@ test("knowledge-check responses say where the question came from", async () => {
   assert.equal(body.source, "bank");
   assert.equal("correctIndex" in body, false);
 });
+
+test("unknown and prototype-named knowledge tasks return 404 without generation", async () => {
+ for(const id of ['constructor','__proto__','toString','unknown-task'])for(const prefix of ['/api/knowledge-check/','/api/pan/knowledge-check/']){
+  const response=await fetch(base+prefix+id);assert.equal(response.status,404);
+ }
+ const {getStaticFallbackQuestion}=require('../dist/services/llmClient');assert.equal(getStaticFallbackQuestion('constructor'),null);
+});

@@ -61,7 +61,7 @@ export async function sendLLMRequest(options: LLMRequestOptions): Promise<string
  * Helper to get a curated fallback question from engine's HARD_QUESTIONS
  */
 export function getStaticFallbackQuestion(taskId: string): { question: string; choices: string[]; correctIndex: number } | null {
-  const fallback = HARD_QUESTIONS[taskId];
+  const fallback = Object.prototype.hasOwnProperty.call(HARD_QUESTIONS, taskId) ? HARD_QUESTIONS[taskId] : undefined;
   if (!fallback) return null;
   return {
     question: fallback.question,
