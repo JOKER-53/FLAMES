@@ -200,3 +200,7 @@ Patched the Express body-parser dependency and Vitest packages, upgraded React R
 ## 13. AI question fallback fix — 2026-10-24
 
 Both vendors now validate question text, answer bounds, choice types/uniqueness and length inside the generation fallback boundary. Previously a malformed successful provider response could escape generation and fail at answer hiding, producing an error instead of a bank question. Shared validation keeps the public endpoint and generator consistent. Regression fixtures cover out-of-range answer indexes, duplicate/null choices and empty/oversized questions; the two focused recovery tests passed.
+
+## 14. Content consistency fix — 2026-10-24
+
+Content mutations now begin an immediate SQLite transaction before reading revisions, identity collisions or module limits. This prevents separate processes from passing stale checks before writing. The public catalog checks SQLite's data version so another connection's publication/unpublication is visible without a restart. Two focused multi-connection regressions passed, including stale save/publish/unpublish/delete rejection and private-draft visibility.

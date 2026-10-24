@@ -63,6 +63,7 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
 export class ContentStore {
   readonly db: any;
   private cachedCatalog: CatalogModule[] | null = null;
+  private catalogVersion = -1;
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
@@ -73,6 +74,11 @@ export class ContentStore {
       );`);
   }
   close() { this.db.close(); }
+  private write<T>(operation: () => T): T {
+    this.db.exec("BEGIN IMMEDIATE");
+    try { const result = operation(); this.db.exec("COMMIT"); return result; }
+    catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
   get(id: string): ContentDraft {
     const row = this.db.prepare("SELECT * FROM content_modules WHERE id=?").get(id);
     if (!row) throw new ContentError(404, "Module not found.");
@@ -85,10 +91,12 @@ export class ContentStore {
     });
   }
   create(vendor: unknown, title: unknown): ContentDraft {
+    return this.write(() => {
     requireValue(this.list().length < 100, "Content library limit reached (100 modules).");
     const module = validateModule({ id: `module-${randomUUID()}`, vendor, title, summary: "", lessons: [] });
     this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id, JSON.stringify(module), Date.now());
     return this.get(module.id);
+      });
   }
   exportModule(id: string) {
     return { format: "flames-module", schemaVersion: 1, exportedAt: new Date().toISOString(), assets: "none", module: this.get(id).module };
@@ -102,10 +110,12 @@ export class ContentStore {
     return { module: remapped, lessonCount: module.lessons.length, taskCount: module.lessons.reduce((sum, lesson) => sum + lesson.tasks.length, 0), warning: "Imports are private drafts with new IDs. No progress, uploads, or external assets are imported." };
   }
   importModule(value: unknown): ContentDraft {
+    return this.write(() => {
     requireValue(this.list().length < 100, "Content library limit reached (100 modules).");
     const { module } = this.previewImport(value);
     this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id, JSON.stringify(module), Date.now());
     return this.get(module.id);
+      });
   }
   private revision(id: string, revision: unknown) {
     requireValue(Number.isInteger(revision), "A content revision is required.");
@@ -114,6 +124,7 @@ export class ContentStore {
     return current;
   }
   save(id: string, value: unknown, revision: unknown): ContentDraft {
+    return this.write(() => {
     const current = this.revision(id, revision);
     const module = validateModule(value);
     requireValue(module.id === id && module.vendor === current.module.vendor, "Module identity and vendor cannot change.");
@@ -127,26 +138,35 @@ export class ContentStore {
     requireValue(module.lessons.every(lesson => !otherIds.has(lesson.id)), "A lesson ID already belongs to another module.");
     this.db.prepare("UPDATE content_modules SET draft_json=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(JSON.stringify(module), Date.now(), id, revision);
     return this.get(id);
+      });
   }
   publish(id: string, revision: unknown): ContentDraft {
+    return this.write(() => {
     const current = this.revision(id, revision);
     validateModule(current.module, true);
     const now = Date.now();
     this.db.prepare("UPDATE content_modules SET published_json=draft_json,published_at=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(now, now, id, revision);
     this.cachedCatalog = null; return this.get(id);
+      });
   }
   unpublish(id: string, revision: unknown): ContentDraft {
+    return this.write(() => {
     this.revision(id, revision);
     this.db.prepare("UPDATE content_modules SET published_json=NULL,published_at=NULL,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(Date.now(), id, revision);
     this.cachedCatalog = null; return this.get(id);
+      });
   }
   delete(id: string, revision: unknown) {
+    return this.write(() => {
     const current = this.revision(id, revision);
     if (current.publishedAt) throw new ContentError(409, "Unpublish the module before deleting it.");
     this.db.prepare("DELETE FROM content_modules WHERE id=? AND revision=?").run(id, revision); this.cachedCatalog = null;
+      });
   }
   catalog(): CatalogModule[] {
-    if (this.cachedCatalog) return this.cachedCatalog;
+    const version = Number(this.db.prepare("PRAGMA data_version").get().data_version);
+    if (this.cachedCatalog && this.catalogVersion === version) return this.cachedCatalog;
+    this.catalogVersion = version;
     const rows = this.db.prepare("SELECT published_json FROM content_modules WHERE published_json IS NOT NULL ORDER BY published_at,id").all();
     this.cachedCatalog = rows.map((row: { published_json: string }) => {
       const module = JSON.parse(row.published_json) as AuthoredModule;
