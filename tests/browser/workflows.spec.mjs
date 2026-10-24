@@ -72,3 +72,10 @@ test('teachers publish five configuration families and students solve/resume the
   await student.getByLabel(`Configuration row 1 ${item.wrong[0]}`,{exact:true}).fill(item.wrong[1]);await student.getByRole('button',{name:'Check my work',exact:true}).click();await expect(student.getByText('Not quite yet',{exact:true})).toBeVisible();
  }}finally{await context.close();}
 });
+
+test('account progress recovers from an empty proxy response with a retry',async({page})=>{
+ await page.request.post('/api/account/login',{data:{email:'teacher@example.invalid',password:'BrowserFixture42!'}});
+ let outage=true;await page.route('**/api/account/progress/*',route=>outage?route.fulfill({status:500,contentType:'text/plain',body:''}):route.continue());
+ await page.goto('/account');await expect(page.getByText('The server is temporarily unavailable. Please try again.',{exact:false})).toBeVisible();await expect(page.getByText(/JSON.parse|Unexpected end/)).toHaveCount(0);
+ outage=false;await page.getByRole('button',{name:'Retry',exact:true}).click();await expect(page.getByRole('alert')).toHaveCount(0);await expect(page.getByRole('progressbar')).toHaveCount(2);
+});

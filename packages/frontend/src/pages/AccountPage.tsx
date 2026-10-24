@@ -14,13 +14,15 @@ export function AccountPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<Record<Vendor, number> | null>(null);
+  const [progressRetry, setProgressRetry] = useState(0);
   useEffect(() => {
     let cancelled = false;
+    setError(null); setProgress(null);
     if (user) Promise.all(["fortigate", "paloalto"].map(platform => accountRequest<{ completed: string[] }>(`progress/${platform}`)))
       .then(([fortigate, paloalto]) => { if (!cancelled) setProgress({ fortigate: fortigate.completed.length, paloalto: paloalto.completed.length }); })
       .catch(error => { if (!cancelled) setError(error.message); });
     return () => { cancelled = true; };
-  }, [user]);
+  }, [user, progressRetry]);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setBusy(true); setError(null);
     const form = new FormData(event.currentTarget);
@@ -40,7 +42,7 @@ export function AccountPage() {
         <p className="mt-1.5 text-muted">{user ? `Signed in as ${user.email}` : "Save lesson progress across devices and pick up where you left off."}</p>
 
         {loading && <p className="mt-6 text-muted" role="status">Checking your session…</p>}
-        {(error || serviceError) && <Callout tone="danger" className="mt-6">{error || serviceError}</Callout>}
+        {(error || serviceError) && <Callout tone="danger" className="mt-6">{error || serviceError} <button type="button" className="link ml-2" onClick={() => { setError(null); if (serviceError) window.location.reload(); else setProgressRetry(value => value + 1); }}>Retry</button></Callout>}
 
         {user ? (
           <div className="card mt-6 p-6">

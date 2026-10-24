@@ -272,3 +272,7 @@ Added visual builders and student consoles for FortiGate interfaces/static routi
 ## 31. Recover development API after shared-engine changes — 2026-10-24
 
 The Docker API had stopped compiling after new engine exports were added while its shared declarations remained stale. Rebuilt the engine and restored the real port-5173 settings endpoint. Development now watches engine/backend sources, builds both before swapping API processes, keeps the previous API available if compilation fails, and retries after a source fix. Compose mounts the supervisor directly so an existing development image uses it. A supervisor integration test covers rebuild, failed-build availability, recovery and queued edits. Real FortiGate/Palo Alto overview pages and settings endpoint were verified after restart.
+
+## 32. Readable account recovery after proxy failures — 2026-10-24
+
+Empty/non-JSON proxy errors are normalized to readable API errors; account JSON decoding also handles malformed successful responses without exposing parser diagnostics. Account progress has a Retry action and clears stale errors after a successful reload. Three HTTP regressions and a browser outage/retry workflow passed. The real port-5173 checking account displayed both course progress bars without an alert; its temporary verification session was logged out.
