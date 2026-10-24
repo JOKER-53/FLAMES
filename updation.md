@@ -228,3 +228,7 @@ Outbound source and inbound destination NAT checks now evaluate the first matchi
 ## 20. AI provider credential isolation — 2026-10-24
 
 The LLM client now selects credentials, URL and model from one provider namespace rather than mixing OPENAI/LLM/NVIDIA values. Mixed environment settings previously could send one provider's key to another configured endpoint. Provider redirects are rejected, malformed credential-bearing URLs are rejected, and echoed keys are redacted from bounded error text. Three focused recovery tests passed, including namespace selection and key redaction. The environment example documents precedence.
+
+## 21. Catalog refresh ordering — 2026-10-24
+
+A generation guard now prevents a slower initial catalog request from overwriting a newer publication refresh, or setting errors/loading state after a newer request or unmount. An intercepted browser regression holds the initial response, publishes a module, then releases the stale response and verifies the new module remains in the course. The browser workflow suite passed.

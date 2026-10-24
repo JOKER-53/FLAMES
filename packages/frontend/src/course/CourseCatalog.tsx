@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { isCompletionTask, type CatalogModule } from "@fortisim/engine";
 import { apiFetch } from "../api/http";
 import { COURSES, type Course, type Vendor } from "./curriculum";
@@ -24,17 +24,20 @@ export function CourseCatalogProvider({ children }: { children: ReactNode }) {
   const [modules, setModules] = useState<CatalogModule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const generation = useRef(0);
   const refresh = useCallback(async () => {
+    const current = ++generation.current;
     try {
       const response = await apiFetch("/api/content/catalog");
       if (!response.ok) throw new Error("Custom lesson library could not be loaded.");
       const data = await response.json();
       if (!Array.isArray(data.modules)) throw new Error("Invalid lesson library response.");
+      if (current !== generation.current) return;
       setModules(data.modules); setError(null);
-    } catch (error) { setError(error instanceof Error ? error.message : "Lesson library unavailable."); }
-    finally { setLoading(false); }
+    } catch (error) { if (current !== generation.current) return; setError(error instanceof Error ? error.message : "Lesson library unavailable."); }
+    finally { if (current === generation.current) setLoading(false); }
   }, []);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refresh(); return () => { generation.current++; }; }, [refresh]);
   const courses = useMemo(() => mergeCatalog(modules), [modules]);
   const validTask = useCallback((vendor: Vendor, id: unknown): id is string => typeof id === "string" &&
     courses[vendor].modules.some(module => module.lessons.some(lesson => lesson.id === id)), [courses]);
