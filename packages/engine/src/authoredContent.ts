@@ -1,3 +1,4 @@
+import type { ConfigurationExercise, ConfigurationFamily } from "./configurationExercises";
 import type { AddressObject, ServiceObject, FirewallPolicy, TestPacket, ExpectedOutcome, WebFilterProfile } from "./types";
 
 export interface PolicyExercise {
@@ -21,7 +22,9 @@ export interface AuthoredTask {
   acceptedAnswers: string[];
 }
 export interface AuthoredLesson {
-  kind?: "reading" | "policy";
+  kind?: "reading" | "policy" | "configuration";
+  configurationExercise?: ConfigurationExercise;
+  simulatorFamily?: ConfigurationFamily;
   scenarioVersion?: string;
   policyExercise?: PolicyExercise;
   id: string;
@@ -56,11 +59,11 @@ export interface ContentSummary {
   hasUnpublishedChanges: boolean;
 }
 export type PublicTask = Pick<AuthoredTask, "id" | "type" | "prompt" | "choices">;
-export type PublicLesson = Omit<AuthoredLesson, "tasks" | "policyExercise"> & { vendor: ContentVendor; moduleId: string; tasks: PublicTask[] };
+export type PublicLesson = Omit<AuthoredLesson, "tasks" | "policyExercise" | "configurationExercise"> & { vendor: ContentVendor; moduleId: string; tasks: PublicTask[] };
 export interface CatalogModule {
   id: string;
   vendor: ContentVendor;
   title: string;
   summary: string;
-  lessons: Omit<AuthoredLesson, "body" | "tasks" | "policyExercise">[];
+  lessons: Omit<AuthoredLesson, "body" | "tasks" | "policyExercise" | "configurationExercise">[];
 }

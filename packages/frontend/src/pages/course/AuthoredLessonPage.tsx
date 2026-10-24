@@ -1,3 +1,4 @@
+import { AuthoredConfigurationLesson } from "./AuthoredConfigurationLesson";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
 import type { PublicLesson } from "@fortisim/engine";
@@ -39,6 +40,7 @@ export function AuthoredLessonPage({ complete }: { complete: (id: string) => voi
   }
   if (lesson?.kind === "policy") return <Navigate to={`/fortigate/policy/firewall-policy?scenario=${lesson.id}`} replace />;
   if (lesson && lesson.vendor !== course.vendor) return <Navigate to={`/${lesson.vendor}/lessons/${lesson.id}`} replace />;
+  if (lesson?.kind === "configuration") return <AuthoredConfigurationLesson lesson={lesson} instructions={<LessonInstructions body={lesson.body}/>} complete={complete}/>;
   return <LessonFrame title={lesson?.title ?? "Lesson"} brief={lesson?.summary || "Read the instructions, then complete the lesson tasks."}>
     {error && <Callout tone="danger" className="mb-5">{error}</Callout>}
     {!lesson ? !error && <p role="status" className="text-muted">Loading lesson…</p> : <div className="space-y-6">

@@ -27,3 +27,5 @@ Start with the repository [README](../README.md) for installation and commands. 
 - [Classrooms, content transfer and hints](CLASSROOM_AND_CONTENT_TRANSFER.md) — ownership boundaries, assignment states, import/export format, targeted guidance and network view.
 - [Code audit 2026-10-24](CODE_AUDIT_2026-10-24.md) — reproduced bugs, separate fix commits, regression/build evidence and deployment limits.
 - [Browser regression checks](BROWSER_TESTING.md) — isolated Playwright workflows used locally and in CI.
+
+Expanded authoring: [configuration exercise builder](CONFIGURATION_EXERCISE_BUILDER.md) — FortiGate interfaces/routing and Palo Alto security/NAT/zones.

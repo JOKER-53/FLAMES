@@ -140,3 +140,11 @@ test('Academy retains archived custom lesson credit for assignment reports while
  const response=await fetch(base+'/classroom/progress',{method:'POST',headers:{Authorization:'Bearer admin','Content-Type':'application/json'},body:JSON.stringify({userIds:['1']})});
  assert.equal((await response.json()).progress['1'].fortigate.includes(id),true);
 });
+
+test('Academy drafts recognize published configuration families for both vendors',async()=>{
+ const cases=[['fortigate','interfaces',[{name:'wan1',role:'WAN',ip:'',subnet:'',adminAccess:[]}]],['fortigate','routing',[]],['paloalto','pan-security',[]],['paloalto','pan-nat',[]],['paloalto','pan-zones',[]]];
+ try{for(let i=0;i<cases.length;i++){
+  const [vendor,family,config]=cases[i];const id=`custom-00000000-0000-0000-0000-${String(200+i).padStart(12,'0')}`;catalogModules=[{vendor,lessons:[{id,kind:'configuration',simulatorFamily:family,scenarioVersion:'cfg-1'}]}];
+  const response=await fetch(base+`/drafts/${vendor}/${id}`,{method:'POST',headers:{Authorization:'Bearer alice','Content-Type':'application/json'},body:JSON.stringify({ownerId:'1',schemaVersion:1,scenarioVersion:'cfg-1',revision:0,kind:family,config})});assert.equal(response.status,200);assert.deepEqual((await response.json()).draft.config,config);
+ }}finally{catalogModules=[];}
+});

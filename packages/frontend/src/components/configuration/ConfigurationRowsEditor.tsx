@@ -1,0 +1,24 @@
+import { CONFIGURATION_FAMILIES, type ConfigurationFamily, type ConfigurationRow, type ConfigurationValue } from "@fortisim/engine";
+import { contentId } from "../../utils/id";
+import { Icon } from "../ui/Icon";
+export function blankConfigurationRow(family:ConfigurationFamily, rows:ConfigurationRow[]):ConfigurationRow {
+ const info=CONFIGURATION_FAMILIES[family];const row:ConfigurationRow={};
+ if(family!=="interfaces")row.id=family.startsWith("pan-")?Math.max(0,...rows.map(row=>Number(row.id)||0))+1:contentId();
+ for(const field of info.fields)row[field.key]=field.type==="boolean"?false:field.type==="number"?10:field.type==="list"?[]:field.type==="select"?field.options![0]:"";
+ if(info.key==="name")row.name=`${family==="interfaces"?"port":"Zone"}${rows.length+1}`;
+ if(family==="pan-security"||family==="pan-nat")Object.assign(row,{name:`Rule ${row.id}`,srcZone:"Trust",dstZone:"Untrust"});
+ return row;
+}
+export function ConfigurationInput({label,value,type,options,change}:{label:string;value:ConfigurationValue|undefined;type:"text"|"number"|"boolean"|"list"|"select";options?:string[];change:(value:ConfigurationValue)=>void}) {
+ if(type==="boolean")return <input aria-label={label} type="checkbox" checked={!!value} onChange={event=>change(event.target.checked)}/>;
+ if(type==="select")return <select aria-label={label} className="input min-w-[120px]" value={String(value??"")} onChange={event=>change(event.target.value)}>{options?.map(option=><option key={option}>{option}</option>)}</select>;
+ if(type==="list")return <input aria-label={label} className="input min-w-[180px]" placeholder="Comma-separated values" value={Array.isArray(value)?value.join(", "):""} onChange={event=>change(event.target.value.split(",").map(item=>item.trim()))} onBlur={()=>{if(Array.isArray(value))change(value.filter(Boolean));}}/>;
+ return <input aria-label={label} className={`input ${type==="number"?"min-w-[90px]":"min-w-[150px]"}`} type={type==="number"?"number":"text"} value={typeof value==="string"||typeof value==="number"?value:""} onChange={event=>change(type==="number"?Number(event.target.value):event.target.value)}/>;
+}
+export function ConfigurationRowsEditor({family,rows,change,label="Configuration"}:{family:ConfigurationFamily;rows:ConfigurationRow[];change:(rows:ConfigurationRow[])=>void;label?:string}){
+ const info=CONFIGURATION_FAMILIES[family];
+ const update=(index:number,key:string,value:ConfigurationValue)=>change(rows.map((row,i)=>i===index?{...row,[key]:value}:row));
+ function move(index:number,direction:number){const next=[...rows];[next[index],next[index+direction]]=[next[index+direction],next[index]];change(next);}
+ return <section aria-label={label} className="min-w-0"><div className="flex flex-wrap justify-between items-center gap-3 px-4 py-3 border-b border-line"><h3 className="text-sm font-semibold">{label} <span className="font-normal text-muted">· {rows.length} rows</span></h3><button type="button" className="btn-secondary btn-sm" disabled={rows.length>=100} onClick={()=>change([...rows,blankConfigurationRow(family,rows)])}><Icon name="plus" size={14}/>Add row</button></div>
+  <div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead className="bg-sunken text-muted"><tr><th className="px-3 py-2">#</th>{info.fields.map(field=><th key={field.key} className="px-3 py-2 font-medium">{field.label}</th>)}<th className="px-3 py-2">Actions</th></tr></thead><tbody>{rows.map((row,index)=><tr key={family==="interfaces"?index:String(row.id)} className="border-t border-line"><td className="px-3 py-2 text-muted">{index+1}</td>{info.fields.map(field=><td key={field.key} className="px-3 py-2"><ConfigurationInput label={`${label} row ${index+1} ${field.label}`} value={row[field.key]} type={field.type} options={field.options} change={value=>update(index,field.key,value)}/></td>)}<td className="px-3 py-2"><div className="flex gap-1"><button type="button" className="btn-ghost btn-sm px-2" disabled={index===0} aria-label={`Move ${label} row ${index+1} up`} onClick={()=>move(index,-1)}><Icon name="chevronUp" size={14}/></button><button type="button" className="btn-ghost btn-sm px-2" disabled={index===rows.length-1} aria-label={`Move ${label} row ${index+1} down`} onClick={()=>move(index,1)}><Icon name="chevronDown" size={14}/></button><button type="button" className="btn-ghost btn-sm px-2 text-danger" aria-label={`Remove ${label} row ${index+1}`} onClick={()=>change(rows.filter((_,i)=>i!==index))}><Icon name="trash" size={14}/></button></div></td></tr>)}</tbody></table>{!rows.length&&<p className="p-5 text-sm text-muted">No rows yet. Add a row to start configuring.</p>}</div></section>;
+}

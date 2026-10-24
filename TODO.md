@@ -119,7 +119,7 @@ Delivered feature guidance: [classrooms, content transfer and hints](docs/CLASSR
 
 ## Later improvements
 
-- [ ] Extend the visual exercise builder to additional FortiGate and Palo Alto simulator families.
+- [x] Extend the visual exercise builder to FortiGate interfaces/static routing and Palo Alto security/NAT/zones (versioned private definitions, visual forms, server grading and native autosave).
 
 - [ ] Expand content-studio editing tools after teacher feedback: search, duplication, richer safe formatting, and clearer change history.
 - [x] Add browser interaction regressions to CI for authoring, accounts, themes, and progress; retain meaningful WebGL/manual acceptance (five isolated Playwright workflows, including catalog races and sync outages).

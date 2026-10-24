@@ -26,3 +26,5 @@ export * from "./authoredContent";
 export * from "./drafts";
 
 export * from "./learningHints";
+
+export * from "./configurationExercises";

@@ -38,9 +38,10 @@ interface CheckYourWorkProps {
   tutor?: { text: string | null; source?: TutorSource | null; loading?: boolean };
   /** Extra explanation under the heading. */
   note?: ReactNode;
+  hintTopic?: string;
 }
 
-export function CheckYourWork({ onSubmit, grading, error, result, tutor, note }: CheckYourWorkProps) {
+export function CheckYourWork({ onSubmit, grading, error, result, tutor, note, hintTopic }: CheckYourWorkProps) {
   const location = useLocation();
   const failures = result?.checks.filter(check => !check.passed).map(check => typeof check.label === "string" ? check.label : "Configuration check") ?? [];
   const passedCount = result?.checks.filter(c => c.passed).length ?? 0;
@@ -86,7 +87,7 @@ export function CheckYourWork({ onSubmit, grading, error, result, tutor, note }:
         </div>
       )}
 
-      {result && !result.passed && <StagedHints key={location.pathname + location.search + JSON.stringify(result.checks)} topic={location.pathname} failures={failures} />}
+      {result && !result.passed && <StagedHints key={location.pathname + location.search + JSON.stringify(result.checks)} topic={hintTopic ?? location.pathname} failures={failures} />}
       {tutor && (tutor.loading || tutor.text) && (
         <div className="border-t border-line px-5 py-4">
           <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1.5">

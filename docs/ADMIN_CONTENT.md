@@ -68,3 +68,5 @@ Without `FLAMES_CATALOG_URL`, the parent adapter recognizes built-in lessons onl
 ## Content transfer and instructor recovery
 
 Use the studio import/export panel to preview a version 1 module file, then import it as a private draft. Exports contain answer keys and saved draft content; every import receives new IDs. See [content transfer](CLASSROOM_AND_CONTENT_TRANSFER.md). Run `npm run admin:create -- --reset-password` in an operator terminal for existing instructor recovery/session revocation. Production rejects the checking-only password; see [operations](OPERATIONS_RUNBOOK.md).
+
+Expanded authoring: [configuration exercise builder](CONFIGURATION_EXERCISE_BUILDER.md) — FortiGate interfaces/routing and Palo Alto security/NAT/zones.

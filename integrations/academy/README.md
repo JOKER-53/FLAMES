@@ -21,3 +21,5 @@ The additive SQL schema now includes `fortisim_simulator_drafts` for parent-owne
 ## Classroom assignment adapter update
 
 The updated adapter adds admin-only `POST /api/integrations/fortisim/classroom/progress` for validated batches of up to 500 student IDs. Install the updated router before integrated instructor reports are used. FLAMES stores group/assignment teaching metadata and parent ID references in its content database; account identity, completion and simulator drafts remain in Academy. Group ownership is checked by FLAMES before requesting parent results. No Academy UI/schema change for assignments is installed automatically. Back up both systems and preserve parent IDs during restore.
+
+Configuration builder upgrade: published `kind: configuration` lessons expose `simulatorFamily` and `scenarioVersion` in the public catalog. The updated router resolves native draft kinds for FortiGate interfaces/routing and PAN security/NAT/zones. Deploy this router before integrated authoring acceptance; no MySQL schema change is needed beyond the existing simulator-draft table.

@@ -264,3 +264,7 @@ The [code audit report](docs/CODE_AUDIT_2026-10-24.md) records the reproduced fa
 ## 29. Lesson header layout — 2026-10-24
 
 Combined lesson title, metadata and scenario into one compact themed header, changed healthy autosave status to a slim toolbar, and slightly widened lesson workspaces. Warning/retry states remain prominent. The frontend production build and five browser workflows passed; desktop light/dark and mobile screenshots were captured and the mobile page has no horizontal overflow.
+
+## 30. Expanded configuration authoring — 2026-10-24
+
+Added visual builders and student consoles for FortiGate interfaces/static routing and Palo Alto security/NAT/zones. Definitions are versioned and private; validation/reference testing gates publication, expected values stay out of public serializers, grading is bound to the published version, and native account/Academy/guest autosave is reused. Updated module transfer/catalog metadata and the supplied Academy draft adapter. All five author/publish/student solve/resume/wrong-answer browser flows passed; server regressions cover privacy, version/vendor isolation, invalid references and effective policy/route/NAT behavior. See [the builder guide](docs/CONFIGURATION_EXERCISE_BUILDER.md).

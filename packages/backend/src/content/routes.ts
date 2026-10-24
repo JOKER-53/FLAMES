@@ -1,3 +1,4 @@
+import { validateConfigurationExercise, gradeConfigurationExercise } from "@fortisim/engine";
 import { validatePolicyExercise, testPolicyExercise } from "./policyExercise";
 import { ContentError } from "./store";
 import { Router } from "express";
@@ -12,6 +13,10 @@ export function adminContentRouter(content: ContentStore, accounts: PlatformStor
     if (!user) { res.status(401).json({ error: "Sign in with an instructor account to manage content." }); return; }
     if (academy ? !user.canManageContent : user.role !== "instructor") { res.status(403).json({ error: "Content administrator access required." }); return; }
     next();
+  });
+  router.post("/validate-configuration", (req, res, next) => {
+    try { const exercise = validateConfigurationExercise(req.body?.exercise, true, false); res.json(gradeConfigurationExercise(exercise, exercise.referenceConfig)); }
+    catch (error) { next(new ContentError(400, error instanceof Error ? error.message : "Invalid configuration exercise.")); }
   });
   router.post("/validate-policy", (req, res, next) => {
     try { const exercise = validatePolicyExercise(req.body?.exercise, true, false); res.json(testPolicyExercise(exercise)); }
@@ -49,6 +54,12 @@ export function adminContentRouter(content: ContentStore, accounts: PlatformStor
 }
 export function studentContentRouter(content: ContentStore) {
   const router = Router();
+  router.get("/lessons/:id/configuration", (req, res, next) => {
+    try { res.json(content.publicConfigurationExercise(req.params.id)); } catch (error) { next(error); }
+  });
+  router.post("/lessons/:id/configuration/grade", (req, res, next) => {
+    try { res.json(content.gradeConfiguration(req.params.id, req.body?.config, req.body?.version)); } catch (error) { next(error); }
+  });
   router.get("/lessons/:id", (req, res, next) => {
     try { res.json(content.publicLesson(req.params.id)); } catch (error) { next(error); }
   });

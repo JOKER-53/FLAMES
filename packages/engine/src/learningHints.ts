@@ -14,6 +14,9 @@ const hints: Record<string, LearningHint> = {
 export function learningHints(topic: string, failures: readonly string[]): LearningHint[] {
   const selected: string[] = [];
   const add = (key: string) => { if (!selected.includes(key)) selected.push(key); };
+  if (/nat/.test(topic)) add("nat");
+  if (/routing/.test(topic)) add("route");
+  if (/zones/.test(topic)) add("zone");
   for (const raw of failures) {
     const label = raw.toLowerCase();
     if (/log/.test(label)) add("log");

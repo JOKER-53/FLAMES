@@ -1,3 +1,4 @@
+import { CONFIGURATION_FAMILIES, validateConfigurationExercise, gradeConfigurationExercise } from "@fortisim/engine";
 import { validatePolicyExercise, policyScenario } from "./policyExercise";
 import { randomUUID, createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
@@ -24,7 +25,7 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
   const ids = new Set<string>();
   for (const lesson of module.lessons) {
     requireValue(!!lesson && typeof lesson === "object" && identifier(lesson.id, "custom") && !ids.has(lesson.id), "Every lesson needs a unique valid ID."); ids.add(lesson.id);
-    requireValue(lesson.kind === undefined || ["reading", "policy"].includes(lesson.kind), "Invalid lesson kind.");
+    requireValue(lesson.kind === undefined || ["reading", "policy", "configuration"].includes(lesson.kind), "Invalid lesson kind.");
     requireValue(lesson.kind !== "policy" || module.vendor === "fortigate", "Policy simulator lessons belong to FortiGate.");
     requireValue(text(lesson.title, 160) && (!publishing || !!lesson.title.trim()), "Every published lesson needs a title.");
     requireValue(text(lesson.summary, 1000) && text(lesson.body, 30000), "Lesson instructions or summary are too long.");
@@ -32,10 +33,16 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
     requireValue(Number.isInteger(lesson.minutes) && lesson.minutes >= 1 && lesson.minutes <= 240, "Lesson duration must be 1–240 minutes.");
     requireValue(["Foundation", "Intermediate", "Advanced"].includes(lesson.level), "Choose a valid lesson level.");
     requireValue(Array.isArray(lesson.tasks) && lesson.tasks.length <= 20, "A lesson supports up to 20 tasks.");
-    requireValue(lesson.kind !== "policy" || lesson.tasks.length === 0, "Policy exercises use packet checks; add question tasks in a separate reading lesson.");
+    requireValue((lesson.kind !== "policy" && lesson.kind !== "configuration") || lesson.tasks.length === 0, "Policy exercises use packet checks; add question tasks in a separate reading lesson.");
     if (lesson.kind === "policy") {
       try { validatePolicyExercise(lesson.policyExercise, publishing); }
       catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid exercise."); }
+    }
+    if (lesson.kind === "configuration") {
+      try {
+        const exercise = validateConfigurationExercise(lesson.configurationExercise, publishing);
+        requireValue(CONFIGURATION_FAMILIES[exercise.family].vendor === module.vendor, "Exercise family belongs to a different vendor.");
+      } catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid configuration exercise."); }
     }
     for (const task of lesson.tasks) {
       requireValue(!!task && typeof task === "object" && identifier(task.id, "task") && !ids.has(task.id), "Every task needs a unique valid ID."); ids.add(task.id);
@@ -54,7 +61,7 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
   requireValue(JSON.stringify(value).length <= 200000, "Module content exceeds the size limit. Split it into smaller modules.");
   // Copy only supported fields; discard any extra caller-supplied properties.
   return { id: module.id, vendor: module.vendor, title: module.title.trim(), summary: module.summary.trim(), lessons: module.lessons.map(lesson => ({
-    kind: lesson.kind ?? "reading", ...(lesson.kind === "policy" ? { policyExercise: lesson.policyExercise } : {}),
+    kind: lesson.kind ?? "reading", ...(lesson.kind === "configuration" ? { configurationExercise: validateConfigurationExercise(lesson.configurationExercise) } : {}), ...(lesson.kind === "policy" ? { policyExercise: lesson.policyExercise } : {}),
     id: lesson.id, title: lesson.title.trim(), summary: lesson.summary.trim(), minutes: lesson.minutes, level: lesson.level, body: lesson.body,
     tasks: lesson.tasks.map(task => ({ id: task.id, type: task.type, prompt: task.prompt, choices: [...task.choices], correctIndex: task.correctIndex, acceptedAnswers: [...task.acceptedAnswers] })),
   })) };
@@ -170,7 +177,7 @@ export class ContentStore {
     const rows = this.db.prepare("SELECT published_json FROM content_modules WHERE published_json IS NOT NULL ORDER BY published_at,id").all();
     this.cachedCatalog = rows.map((row: { published_json: string }) => {
       const module = JSON.parse(row.published_json) as AuthoredModule;
-      return { id: module.id, vendor: module.vendor, title: module.title, summary: module.summary, lessons: module.lessons.map(lesson => ({ id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, kind: lesson.kind ?? "reading", ...(lesson.kind === "policy" && lesson.policyExercise ? { scenarioVersion: createHash("sha256").update(JSON.stringify(lesson.policyExercise)).digest("hex").slice(0, 24) } : {}) })) };
+      return { id: module.id, vendor: module.vendor, title: module.title, summary: module.summary, lessons: module.lessons.map(lesson => ({ id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, kind: lesson.kind ?? "reading", ...(lesson.kind === "configuration" && lesson.configurationExercise ? { simulatorFamily: lesson.configurationExercise.family, scenarioVersion: createHash("sha256").update(JSON.stringify(lesson.configurationExercise)).digest("hex").slice(0, 24) } : {}), ...(lesson.kind === "policy" && lesson.policyExercise ? { scenarioVersion: createHash("sha256").update(JSON.stringify(lesson.policyExercise)).digest("hex").slice(0, 24) } : {}) })) };
     });
     return this.cachedCatalog!;
   }
@@ -189,6 +196,25 @@ export class ContentStore {
     const { lesson, module } = this.lesson(id);
     return { id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, body: lesson.body, kind: lesson.kind ?? "reading", moduleId: module.id, vendor: module.vendor, tasks: lesson.tasks.map(({ id, type, prompt, choices }) => ({ id, type, prompt, choices: type === "choice" ? choices : [] })) };
   }
+  configurationExercise(id: string) {
+    let item;
+    try { item = this.lesson(id); } catch (error) { if (error instanceof ContentError && error.status === 404) return null; throw error; }
+    const exercise = item.lesson.configurationExercise;
+    if (item.lesson.kind !== "configuration" || !exercise) return null;
+    return { exercise, vendor: item.module.vendor, version: createHash("sha256").update(JSON.stringify(exercise)).digest("hex").slice(0, 24) };
+  }
+  publicConfigurationExercise(id: string) {
+    const data = this.configurationExercise(id);
+    if (!data) throw new ContentError(404, "Configuration exercise is not published.");
+    return { family: data.exercise.family, starterConfig: data.exercise.starterConfig, version: data.version, checks: data.exercise.checks.map(({ id, description }) => ({ id, description })) };
+  }
+  gradeConfiguration(id: string, config: unknown, version: unknown) {
+    const data = this.configurationExercise(id);
+    if (!data) throw new ContentError(404, "Configuration exercise is not published.");
+    if (version !== data.version) throw new ContentError(409, "The exercise changed. Reload it before checking your work.");
+    try { return gradeConfigurationExercise(data.exercise, config); }
+    catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid configuration."); }
+  }
   policyExercise(id: string) {
     let item;
     try { item = this.lesson(id); } catch (error) { if (error instanceof ContentError && error.status === 404) return null; throw error; }
@@ -202,7 +228,7 @@ export class ContentStore {
   }
   grade(id: string, answers: unknown) {
     const { lesson } = this.lesson(id);
-    requireValue(lesson.kind !== "policy", "Use the simulator grading endpoint for this lesson.");
+    requireValue(lesson.kind !== "policy" && lesson.kind !== "configuration", "Use the simulator grading endpoint for this lesson.");
     requireValue(Array.isArray(answers) && answers.length <= 20, "Submit a valid answer list.");
     const entries = answers as { taskId: string; value: unknown }[];
     requireValue(entries.every(answer => !!answer && typeof answer === "object" && lesson.tasks.some(task => task.id === answer.taskId) && (text(answer.value, 2000) || typeof answer.value === "number" && Number.isInteger(answer.value))), "Invalid task answer.");

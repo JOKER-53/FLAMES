@@ -79,6 +79,8 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
   });
   app.use("/api/classroom", classroomRouter(groups, store, content, integration.mode === "academy"));
   app.use("/api/drafts", draftsRouter(store, integration.mode === "academy", (platform, id) => {
+    const configuration = content.configurationExercise(id);
+    if (configuration && configuration.vendor === platform) return { kind: configuration.exercise.family, scenarioVersion: configuration.version };
     const policy = platform === "fortigate" ? content.policyExercise(id) : null;
     return policy ? { kind: "policy", scenarioVersion: policy.version } : builtinDraftSpec(platform, id);
   }));
