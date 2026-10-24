@@ -88,3 +88,5 @@ For development containers, copy the backend example environment file and run `d
 Start at the [documentation index](docs/README.md). Contributors should read [CONTRIBUTING.md](CONTRIBUTING.md); dated reports and retired prototypes are in [docs/archive](docs/archive/README.md).
 
 Operations and feature guides: [backup, recovery and rollback](docs/OPERATIONS_RUNBOOK.md), [classrooms, content transfer and hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md).
+
+Browser regression tests: after `npm run build`, run `npx playwright install chromium` and `npm run test:browser`. The runner creates isolated temporary accounts/content databases, disables live AI, and cleans up its servers; it never uses your development database. See [browser checks](docs/BROWSER_TESTING.md).

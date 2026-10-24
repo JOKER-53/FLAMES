@@ -19,7 +19,8 @@
     "frontend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/frontend",
     "admin:create": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && node scripts/create-admin.cjs",
     "data:backup": "node scripts/data-backup.cjs backup",
-    "data:restore": "node scripts/data-backup.cjs restore"
+    "data:restore": "node scripts/data-backup.cjs restore",
+    "test:browser": "playwright test"
   },
   "allowScripts": {
     "esbuild@0.21.5": true
@@ -28,6 +29,7 @@
     "postcss-selector-parser": "$postcss-selector-parser"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "postcss-selector-parser": "^7.1.7"
   }
 }

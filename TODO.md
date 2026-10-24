@@ -4,7 +4,9 @@ Updated: 2026-10-24
 
 Completed implementation and verification are recorded in [updation.md](updation.md). Checked feature items are implemented; unchecked items remain future work or deployment acceptance. Completing implementation does not imply the college deployment has been performed.
 
-## Priority 0 — connect and validate the college deployment
+## Priority 0 — connect and validate deployment
+
+2026-10-24: the college server is unavailable. The user plans to host Academy and FLAMES together on AWS for testing; live college checks below are deferred, not marked complete. AWS account/region, HTTPS hostnames, and deployment access still need to be established. Local production images build successfully; that is separate from AWS deployment acceptance.
 
 ### Academy connection
 
@@ -120,7 +122,7 @@ Delivered feature guidance: [classrooms, content transfer and hints](docs/CLASSR
 - [ ] Extend the visual exercise builder to additional FortiGate and Palo Alto simulator families.
 
 - [ ] Expand content-studio editing tools after teacher feedback: search, duplication, richer safe formatting, and clearer change history.
-- [ ] Add browser interaction regressions to CI for authoring, accounts, themes, and progress; retain meaningful WebGL/manual acceptance.
+- [x] Add browser interaction regressions to CI for authoring, accounts, themes, and progress; retain meaningful WebGL/manual acceptance (five isolated Playwright workflows, including catalog races and sync outages).
 - [ ] Improve large 3D asset loading/caching and investigate the lazy-loaded Three.js chunk-size warning.
 - [ ] Add accessibility checks for focus order, keyboard-only use, contrast, and reduced motion.
 - [ ] Add rate-limit observability, useful operational error logs, and migration/versioning procedures.

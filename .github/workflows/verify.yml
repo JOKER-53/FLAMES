@@ -15,6 +15,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run verify
+      - name: Install browser for workflow regressions
+        run: npx playwright install --with-deps chromium
+      - name: Browser workflows
+        run: npm run test:browser
       - name: Validate deployment configuration
         run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml config --quiet
       - name: Validate Academy integration configuration

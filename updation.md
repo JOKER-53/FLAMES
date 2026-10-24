@@ -240,3 +240,7 @@ Saved simulator configurations now reject duplicate/empty row identities (includ
 ## 23. Unknown knowledge task lookup — 2026-10-24
 
 Knowledge-check metadata and fallback lookups now require own properties. Prototype names such as `constructor`, `toString` and `__proto__` previously reached the generation/error path instead of being rejected as unknown tasks. Both vendor endpoints return 404 before generation. A focused route regression covers unknown and prototype-named IDs.
+
+## 24. Browser regressions in CI — 2026-10-24
+
+Added an isolated Playwright test server with temporary databases and no AI credentials. Five workflows cover instructor publication, student registration/reading completion and cross-device isolation, theme persistence, mobile/reduced-motion keyboard dialog behavior, guest autosave/account separation, stale catalog responses, and failed completion synchronization. All five passed locally using Chromium; GitHub Actions now installs Chromium and runs the suite. Browser artifacts are ignored. Both local production images built successfully. AWS deployment is pending; the unavailable college deployment was not modified.
