@@ -216,3 +216,7 @@ Firewall/interface/port enum fields now require actual strings instead of accept
 ## 17. Accurate completion messaging — 2026-10-24
 
 Passing a grader no longer unconditionally displays “your progress has been saved.” That claim was shown even when account synchronization failed. The result now reports passed checks, while the existing sync warning reports persistence failures separately. The frontend render regression passed.
+
+## 18. Routing failure containment — 2026-10-24
+
+The routing evaluator validates nested OSPF and SD-WAN lists, object fields and bounds before evaluating them. Previously null/missing nested lists could throw outside the static-route catch and crash the caller. The new malformed-input regression passed with the engine suite.
