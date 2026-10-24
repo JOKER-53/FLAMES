@@ -295,3 +295,7 @@ Final checks passed: 162 engine/API/frontend tests, nine isolated browser workfl
 ## 36. FortiGate knowledge check placement
 
 Moved the built-in firewall policy knowledge check from the topology sidebar into the main lesson column, directly after Test your policy and before Check your work. Custom policy exercises retain their existing behavior. Verified frontend type checking and production build.
+
+## 37. Policy editor opens on demand
+
+FortiGate policy lessons initially show the policy table without the editor. Create New opens a fresh form; Edit opens the selected policy. Saving or cancelling closes the form, and changing lessons clears the editor. Updated the empty-table instruction to point to Create New above. Frontend production build and the browser create/cancel/add/edit/save/trace workflow passed.

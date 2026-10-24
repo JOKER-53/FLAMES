@@ -58,6 +58,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
   }, [requestedScenario, scenarioId, session]);
 
   const [draft, setDraft] = useState<Omit<FirewallPolicy, "id">>(emptyPolicyDraft());
+  const [showEditor, setShowEditor] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [selectedRow, setSelectedRow] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<{ packet: TestPacket; action: "ACCEPT" | "DENY"; matchedPolicyName: string | null }[]>([]);
@@ -78,11 +79,13 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
     return () => { gradeGeneration.current++; };
   }, [scenarioId, addresses, services, policies, webFilterProfiles]);
 
-  function resetDraft() { setDraft(emptyPolicyDraft()); setEditingId(null); }
+  function resetDraft() { setDraft(emptyPolicyDraft()); setEditingId(null); setShowEditor(false); }
+
+  useEffect(() => { resetDraft(); setSelectedRow(null); }, [scenarioId]);
 
   function startEdit(policy: FirewallPolicy) {
     const { id, ...rest } = policy;
-    setDraft(rest); setEditingId(id); setSelectedRow(id);
+    setShowEditor(true); setDraft(rest); setEditingId(id); setSelectedRow(id);
   }
 
   function savePolicy() {
@@ -176,7 +179,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       <div className="min-w-0 space-y-6">
         <ConsoleFrame path={["Policy & Objects", "Firewall Policy"]}>
           <div className="flex items-center gap-2 px-2 py-1.5 border-b border-line bg-sunken">
-            <button onClick={resetDraft} className="text-[12px] px-2.5 py-1 bg-forti-red text-white rounded-sm hover:bg-forti-red/90 flex items-center gap-1"><span className="text-[13px] leading-none">+</span> Create New</button>
+            <button aria-label="Create New" onClick={() => { resetDraft(); setShowEditor(true); }} className="text-[12px] px-2.5 py-1 bg-forti-red text-white rounded-sm hover:bg-forti-red/90 flex items-center gap-1"><span className="text-[13px] leading-none">+</span> Create New</button>
             <button onClick={() => { const p = policies.find((p) => p.id === selectedRow); if (p) startEdit(p); else alert("Select a policy row first."); }} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken">Edit</button>
             <button onClick={() => { if (selectedRow) deletePolicy(selectedRow); }} disabled={!selectedRow} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken disabled:opacity-40">Delete</button>
           </div>
@@ -189,7 +192,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
               </tr>
             </thead>
             <tbody>
-              {policies.length === 0 && <tr><td colSpan={13} className="px-3 py-6 text-center text-faint">No policies yet — use "Create New" below.</td></tr>}
+              {policies.length === 0 && <tr><td colSpan={13} className="px-3 py-6 text-center text-faint">No policies yet — use "Create New" above.</td></tr>}
               {policies.map((p, idx) => (
                 <tr key={p.id} id={`policy-row-${encodeURIComponent(p.id)}`} tabIndex={-1} onClick={() => setSelectedRow(p.id)} className={`border-b border-line cursor-pointer ${selectedRow === p.id ? "bg-info-soft" : "hover:bg-sunken"}`}>
                   <td className="px-3 py-2 text-faint">{idx + 1}</td>
@@ -216,7 +219,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
           </table>
           <div className="px-3 py-2 text-[11.5px] text-faint border-t border-line bg-sunken">Implicit rule: any traffic not matched above is denied (default-deny).</div>
 
-        <div className="p-4 border-t border-line">
+        {showEditor && <div className="p-4 border-t border-line">
           <div className="text-[13px] font-medium text-body mb-3">{editingId ? "Edit Policy" : "New Policy"}</div>
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
@@ -290,9 +293,9 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
           </div>
           <div className="flex gap-2">
             <button onClick={savePolicy} className="px-3 py-1.5 bg-forti-red text-white rounded-sm text-[12.5px] hover:bg-forti-red/90">{editingId ? "Save Changes" : "Add Policy"}</button>
-            {editingId && <button onClick={resetDraft} className="px-3 py-1.5 border border-line-strong rounded-sm text-[12.5px] text-body hover:bg-sunken">Cancel</button>}
+            <button onClick={resetDraft} className="px-3 py-1.5 border border-line-strong rounded-sm text-[12.5px] text-body hover:bg-sunken">Cancel</button>
           </div>
-        </div>
+        </div>}
 
         {scenario.starterWebFilterProfiles !== undefined && (
           <div className="p-4 border-t border-line">
