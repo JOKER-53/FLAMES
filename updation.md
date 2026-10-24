@@ -244,3 +244,7 @@ Knowledge-check metadata and fallback lookups now require own properties. Protot
 ## 24. Browser regressions in CI — 2026-10-24
 
 Added an isolated Playwright test server with temporary databases and no AI credentials. Five workflows cover instructor publication, student registration/reading completion and cross-device isolation, theme persistence, mobile/reduced-motion keyboard dialog behavior, guest autosave/account separation, stale catalog responses, and failed completion synchronization. All five passed locally using Chromium; GitHub Actions now installs Chromium and runs the suite. Browser artifacts are ignored. Both local production images built successfully. AWS deployment is pending; the unavailable college deployment was not modified.
+
+## 25. Private build-context exclusions — 2026-10-24
+
+Docker build contexts now exclude whole operational backup/release directories and browser recordings, in addition to existing environment/database exclusions. This avoids transferring private auxiliary artifacts or recordings into the builder context. Runtime data and secrets remain outside Git and production images.

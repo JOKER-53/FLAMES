@@ -12,3 +12,8 @@
 **/coverage
 **/.~lock.*
 acceptance-report.txt
+# Private operational artifacts and browser recordings
+.backups
+.release
+test-results
+playwright-report
