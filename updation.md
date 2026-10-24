@@ -284,3 +284,10 @@ Added expected-value-free route/PAN security/PAN NAT packet explorers, shared wi
 ## 34. Learning update verification — 2026-10-24
 
 Final checks passed: 162 engine/API/frontend tests, nine isolated browser workflows, frontend production build, both production image builds, read-only production startup/health/auth smoke checks, development/standalone/Academy Compose configuration, clean diff checks, and zero npm audit findings. The real port-5173 settings endpoint and both course overviews were verified, plus checking-account progress after recovery. Screenshots of the new header and representative studio/student/mobile views were reviewed. AWS/remote Academy deployment remains pending; the supplied parent adapter must be updated before integrated use of new authored families.
+
+## 35. Palo Alto network replay
+
+- Added Network view to native and authored Palo Alto Security and NAT packet explorers using the existing FLAMES themed dialog.
+- Security replays the current allow/deny decision. NAT shows translated/unchanged outcomes without implying a security decision; unspecified endpoints are labelled illustrative.
+- Preserved FortiGate replay, keyboard dismissal, focus restoration and reduced-motion support.
+- Verified frontend production build and three targeted browser workflows covering FortiGate trace behavior, translated NAT, and Palo Alto security/NAT dialog behavior.

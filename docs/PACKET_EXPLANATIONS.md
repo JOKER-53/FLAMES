@@ -32,3 +32,5 @@ After checking an authored configuration lesson, open a requirement under **Why 
 All controls use the existing light/dark tokens. Row focus is keyboard-accessible; scrolling respects reduced motion. Admin starter/reference tables use distinct DOM row IDs.
 
 Regression coverage includes route preference/non-matches, effective rule selection, unchanged NAT, disabled policies, source/destination/service comparisons and actual web-filter decisions. Browser workflows verify policy/route/NAT highlighting, stale-result clearing, generic field highlighting for all five new families, account recovery and mobile overflow containment.
+
+Palo Alto Security and NAT packet explorers also provide **Network view** using the same themed replay dialog as FortiGate. Enter the original zones and application or destination, then open the view. Security displays the actual allow/deny decision from the current rules. NAT displays translated/unchanged results and explicitly leaves security permission unevaluated. Where the exercise provides no endpoint IPs, the diagram labels endpoints as illustrative. Custom Security and NAT lessons use the same view.

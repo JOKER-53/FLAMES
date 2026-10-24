@@ -88,5 +88,23 @@ test('packet explanations highlight effective policies/routes and clear after co
 });
 test('native NAT explorer explains translation without treating it as security permission',async({page})=>{
  await page.goto('/');await page.evaluate(()=>localStorage.setItem('flames:simulator-draft:v1:paloalto:pan-nat-02',JSON.stringify({schemaVersion:1,scenarioVersion:'1',revision:1,updatedAt:Date.now(),config:[{id:1,name:'Trace DNAT',type:'destination',srcZone:'Untrust',dstZone:'Untrust',dstAddr:'203.0.113.10',translated:'10.0.1.10'}]})));
- await page.goto('/paloalto/nat?task=pan-nat-02');await expect(page.getByText('Saved on this device',{exact:true})).toBeVisible();await page.getByLabel('Trace source zone',{exact:true}).fill('Untrust');await page.getByLabel('Trace destination IPv4',{exact:true}).fill('203.0.113.10');const explorer=page.getByRole('region',{name:'Packet explorer',exact:true});await explorer.getByRole('button',{name:'Explain packet',exact:true}).click();await expect(explorer.getByText('Simulation result: destination → 10.0.1.10',{exact:true})).toBeVisible();await expect(explorer.getByText(/translation does not grant permission/)).toBeVisible();await explorer.getByRole('button',{name:'Show configuration row',exact:true}).click();await expect(page.locator('#nat-row-1')).toHaveClass(/bg-info-soft/);
+ await page.goto('/paloalto/nat?task=pan-nat-02');await expect(page.getByText('Saved on this device',{exact:true})).toBeVisible();await page.getByLabel('Trace source zone',{exact:true}).fill('Untrust');await page.getByLabel('Trace destination IPv4',{exact:true}).fill('203.0.113.10');const explorer=page.getByRole('region',{name:'Packet explorer',exact:true});await explorer.getByRole('button',{name:'Explain packet',exact:true}).click();await expect(explorer.getByText('Simulation result: destination → 10.0.1.10',{exact:true})).toBeVisible();await expect(explorer.getByText(/translation does not grant permission/)).toBeVisible();await explorer.getByRole('button',{name:'Show configuration row',exact:true}).click();await expect(page.locator('#nat-row-1')).toHaveClass(/bg-info-soft/);await explorer.getByRole('button',{name:'Network view',exact:true}).click();const network=page.getByRole('dialog',{name:'Network view',exact:true});await expect(network.getByText(/Original destination 203.0.113.10 · destination → 10.0.1.10/)).toBeVisible();await network.getByRole('button',{name:'Close network view',exact:true}).click();
+});
+
+test('Palo Alto network view shows security decisions and separate NAT translation',async({page})=>{
+ await page.emulateMedia({reducedMotion:'reduce'});
+ await page.goto('/paloalto/security');
+ const explorer=page.getByRole('region',{name:'Packet explorer',exact:true});
+ await explorer.getByRole('button',{name:'Network view',exact:true}).click();
+ const dialog=page.getByRole('dialog',{name:'Network view',exact:true});
+ await expect(dialog).toHaveAttribute('data-vendor','paloalto');
+ await expect(dialog.getByText('PA-220 · Simulated packet paths',{exact:true})).toBeVisible();
+ await expect(dialog.getByText('Denied',{exact:true})).toBeVisible();
+ await page.keyboard.press('Escape');await expect(dialog).toHaveCount(0);
+ await page.goto('/paloalto/nat?task=pan-nat-02');
+ await page.getByRole('region',{name:'Packet explorer',exact:true}).getByRole('button',{name:'Network view',exact:true}).click();
+ await expect(dialog.getByText('Unchanged',{exact:true})).toBeVisible();
+ await expect(dialog.getByText('Translation does not grant security permission.',{exact:true})).toBeVisible();
+ await expect(dialog.getByText('Accepted',{exact:true})).toHaveCount(0);
+ await dialog.getByRole('button',{name:'Close network view',exact:true}).click();await expect(dialog).toHaveCount(0);
 });
