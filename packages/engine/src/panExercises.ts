@@ -1,3 +1,4 @@
+import { ipMatchesAddressValue } from "./matching";
 /** Simplified teaching models, not a complete PAN-OS dataplane or configuration schema. */
 export interface PanSecurityRule { id: number; name: string; srcZone: string; dstZone: string; apps: string[]; action: "allow" | "deny"; }
 export interface PanZone { id: number; name: string; type: "layer3" | "layer2" | "tap" | "ha" | "management"; profile: "none" | "default" | "strict"; interfaces: string[]; logForwarding: boolean; }
@@ -67,8 +68,24 @@ export const PAN_ZONE_SCENARIOS = [
   exercise("pan-zone-final", "Zone Design Final", "Combine Trust, Untrust (strict), DMZ, HA on ethernet1/6 + ethernet1/7, and Management with log forwarding on ethernet1/8. Every interface belongs to only one zone.", [...basicZones, ...haZones, ...managementZones, uniqueZones]),
 ];
 
-const snat: Check<PanNatRule> = { desc: "Coherent outbound source translation", fn: rules => rules.some(rule => rule.type === "source" && rule.srcZone === "Trust" && rule.dstZone === "Untrust" && rule.translated.trim().toLowerCase() === "interface") };
-const dnat = (publicIp: string, internalIp: string, service: string): Check<PanNatRule> => ({ desc: `${service}: coherent destination translation`, fn: rules => rules.some(rule => rule.type === "destination" && rule.srcZone === "Untrust" && rule.dstZone === "Untrust" && rule.dstAddr.trim() === publicIp && [internalIp, `${internalIp}:443`].includes(rule.translated.trim())) });
+/** First matching original-packet rule; translation never grants security permission. */
+export function evaluatePanNat(rules: PanNatRule[], srcZone: string, dstZone: string, destination: string): PanNatRule | null {
+  return rules.find(rule => {
+    if (rule.srcZone !== "any" && rule.srcZone !== srcZone || rule.dstZone !== "any" && rule.dstZone !== dstZone) return false;
+    const address = rule.dstAddr.trim();
+    if (["any", "all"].includes(address.toLowerCase())) return true;
+    try { return address.includes("/") ? ipMatchesAddressValue(destination, "subnet", address) : address === destination; }
+    catch { return false; }
+  }) ?? null;
+}
+const snat: Check<PanNatRule> = { desc: "Coherent outbound source translation", fn: rules => {
+  const rule = evaluatePanNat(rules, "Trust", "Untrust", "198.51.100.10");
+  return !!rule && rule.type === "source" && rule.srcZone === "Trust" && rule.dstZone === "Untrust" && ["any", "all"].includes(rule.dstAddr.trim().toLowerCase()) && rule.translated.trim().toLowerCase() === "interface";
+} };
+const dnat = (publicIp: string, internalIp: string, service: string): Check<PanNatRule> => ({ desc: `${service}: coherent destination translation`, fn: rules => {
+  const rule = evaluatePanNat(rules, "Untrust", "Untrust", publicIp);
+  return !!rule && rule.type === "destination" && rule.srcZone === "Untrust" && rule.dstZone === "Untrust" && rule.dstAddr.trim() === publicIp && [internalIp, `${internalIp}:443`].includes(rule.translated.trim());
+} });
 const staticNat = (publicIp: string, internalIp: string): Check<PanNatRule> => ({ desc: "Exact static one-to-one mapping", fn: rules => rules.some(rule => rule.type === "static" && rule.dstAddr.trim() === publicIp && rule.translated.trim() === internalIp) });
 export const PAN_NAT_SCENARIOS = [
   exercise("pan-nat-01", "Outbound SNAT", "Create a source NAT rule: Trust → Untrust, translated address 'interface'.", [snat]),

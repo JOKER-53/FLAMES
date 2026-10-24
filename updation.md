@@ -220,3 +220,7 @@ Passing a grader no longer unconditionally displays “your progress has been sa
 ## 18. Routing failure containment — 2026-10-24
 
 The routing evaluator validates nested OSPF and SD-WAN lists, object fields and bounds before evaluating them. Previously null/missing nested lists could throw outside the static-route catch and crash the caller. The new malformed-input regression passed with the engine suite.
+
+## 19. Effective NAT grading — 2026-10-24
+
+Outbound source and inbound destination NAT checks now evaluate the first matching original-packet rule instead of accepting any later correct-looking row. Source translation also requires the intended unrestricted destination scope. Regressions reject shadowed translations and an overly narrow source rule while preserving satisfiable exercises. The 41-test engine suite passed. This remains the documented simplified NAT model, not a full PAN-OS dataplane.

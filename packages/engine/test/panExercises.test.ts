@@ -48,3 +48,11 @@ describe("PAN exercise grading", () => {
     expect(() => gradePanExercise("unknown", [])).toThrow(/Unknown/);
   });
 });
+
+it('rejects shadowed NAT rules and overly narrow outbound translation scope',()=>{
+ const source=nat[0], destination=nat[1];
+ expect(gradePanExercise('pan-nat-01',[{...source,id:99,translated:'192.0.2.1'},source]).overallPassed).toBe(false);
+ expect(gradePanExercise('pan-nat-01',[{...source,dstAddr:'198.51.100.10'}]).overallPassed).toBe(false);
+ expect(gradePanExercise('pan-nat-02',[{...destination,id:99,dstAddr:'any',translated:'10.0.1.99'},destination]).overallPassed).toBe(false);
+ expect(gradePanExercise('pan-nat-02',[destination,{...destination,id:99,dstAddr:'any',translated:'10.0.1.99'}]).overallPassed).toBe(true);
+});
