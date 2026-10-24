@@ -15,7 +15,7 @@
     "test": "npm run build --workspace=@fortisim/engine && npm test --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm test --workspace=@fortisim/backend && npm test --workspace=@fortisim/frontend",
     "verify": "npm test && npm run build --workspace=@fortisim/frontend",
     "engine:demo": "npm run demo --workspace=@fortisim/engine",
-    "backend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/backend",
+    "backend:dev": "node scripts/backend-dev.cjs",
     "frontend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/frontend",
     "admin:create": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && node scripts/create-admin.cjs",
     "data:backup": "node scripts/data-backup.cjs backup",
