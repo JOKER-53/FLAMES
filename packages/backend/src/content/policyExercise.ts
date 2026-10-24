@@ -7,9 +7,11 @@ export function validatePolicyExercise(value: unknown, publishing: boolean, chec
   for (const policies of [exercise.starterPolicies, exercise.referencePolicies]) {
     parseStudentSubmission({ scenarioId: "author-preview", addresses: exercise.starterAddresses, services: exercise.starterServices, policies, webFilterProfiles: exercise.starterWebFilterProfiles });
   }
+  if (![exercise.starterAddresses, exercise.starterServices, exercise.starterWebFilterProfiles, exercise.starterPolicies, exercise.referencePolicies].every(Array.isArray)) throw new Error("Exercise object, profile and policy lists must be arrays.");
   const ids = new Set<string>();
   for (const packet of exercise.testPackets) {
-    if (!packet || typeof packet.id !== "string" || !packet.id || ids.has(packet.id) || !["WAN", "LAN", "DMZ"].includes(packet.srcIntf) || !["WAN", "LAN", "DMZ"].includes(packet.dstIntf) || !["TCP", "UDP", "ICMP"].includes(packet.protocol) || typeof packet.description !== "string" || packet.description.length > 1000 || typeof packet.srcIp !== "string" || typeof packet.dstIp !== "string" || (packet.domain !== undefined && (typeof packet.domain !== "string" || packet.domain.length > 253))) throw new Error("Every test packet needs valid fields and a unique ID.");
+    if (!packet || typeof packet.id !== "string" || !packet.id || packet.id.length > 1000 || ids.has(packet.id) || !["WAN", "LAN", "DMZ"].includes(packet.srcIntf) || !["WAN", "LAN", "DMZ"].includes(packet.dstIntf) || !["TCP", "UDP", "ICMP"].includes(packet.protocol) || typeof packet.description !== "string" || packet.description.length > 1000 || typeof packet.srcIp !== "string" || typeof packet.dstIp !== "string" || (packet.domain !== undefined && (typeof packet.domain !== "string" || packet.domain.length > 253))) throw new Error("Every test packet needs valid fields and a unique ID.");
+    if (packet.port !== undefined && (!Number.isInteger(packet.port) || packet.port < 0 || packet.port > 65535)) throw new Error("Test packet ports must be integers between 0 and 65535.");
     ids.add(packet.id);
   }
   if (exercise.expectedOutcomes.some(outcome => !outcome || !ids.has(outcome.testPacketId) || !["ACCEPT", "DENY"].includes(outcome.expectedAction) || outcome.expectedLog !== undefined && typeof outcome.expectedLog !== "boolean") || new Set(exercise.expectedOutcomes.map(outcome => outcome.testPacketId)).size !== exercise.expectedOutcomes.length) throw new Error("Invalid or duplicate expected outcomes.");

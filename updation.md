@@ -208,3 +208,7 @@ Content mutations now begin an immediate SQLite transaction before reading revis
 ## 15. Preserve assignment credit after publication changes — 2026-10-24
 
 Assignment reports now read historical completion markers, including withdrawn custom lessons, while normal course catalogs/totals still filter to current published lessons. Previously unpublishing a module could change an already completed assignment back to incomplete/overdue. The Academy adapter's owned progress read supports `includeArchived=true`, and its admin report retains historical custom IDs. Nineteen focused classroom/adapter checks passed. Install the updated parent adapter before integrated reports use this contract.
+
+## 16. Strict API and exercise schema validation — 2026-10-24
+
+Firewall/interface/port enum fields now require actual strings instead of accepting arrays through string coercion. Policy exercises require explicit object/profile/policy lists, bounded packet IDs and integer ports in range, including draft and ICMP packets. This prevents malformed persisted drafts from reaching editors and evaluators. Two focused regressions cover the enum families, missing lists, and invalid packet ports.
