@@ -212,3 +212,7 @@ Assignment reports now read historical completion markers, including withdrawn c
 ## 16. Strict API and exercise schema validation — 2026-10-24
 
 Firewall/interface/port enum fields now require actual strings instead of accepting arrays through string coercion. Policy exercises require explicit object/profile/policy lists, bounded packet IDs and integer ports in range, including draft and ICMP packets. This prevents malformed persisted drafts from reaching editors and evaluators. Two focused regressions cover the enum families, missing lists, and invalid packet ports.
+
+## 17. Accurate completion messaging — 2026-10-24
+
+Passing a grader no longer unconditionally displays “your progress has been saved.” That claim was shown even when account synchronization failed. The result now reports passed checks, while the existing sync warning reports persistence failures separately. The frontend render regression passed.

@@ -67,7 +67,7 @@ export function CheckYourWork({ onSubmit, grading, error, result, tutor, note }:
               <div className={`font-semibold ${result.passed ? "text-success" : "text-ink"}`}>
                 {result.passed ? "Lesson complete" : "Not quite yet"}
               </div>
-              <div className="text-sm text-muted">{passedCount} of {total} checks passed{result.passed ? " — your progress has been saved." : ". Fix the failing checks and try again."}</div>
+              <div className="text-sm text-muted">{passedCount} of {total} checks passed{result.passed ? "." : ". Fix the failing checks and try again."}</div>
             </div>
             <span className="text-lg font-semibold tabular-nums text-ink">{passedCount}/{total}</span>
           </div>

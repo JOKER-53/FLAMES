@@ -1,3 +1,4 @@
+import { CheckYourWork } from "../src/components/lesson/LessonParts";
 // Render-only checks: no browser automation, WebGL, or DOM effects are involved.
 import { describe, it, expect } from "vitest";
 import * as React from "react";
@@ -48,5 +49,10 @@ describe("frontend render smoke checks", () => {
     expect(html).toContain("Palo Alto Networks Firewall Essentials");
     expect(html).toContain("Web Server Destination NAT");
     expect(html).toContain("Lesson 2 of 3");
+  });
+  it("does not claim persistence solely because grading passed", () => {
+    const html = render(React.createElement(CheckYourWork, { onSubmit: () => {}, result: { passed: true, checks: [{ label: "Route check", passed: true }] } }), "/");
+    expect(html).toContain("1 of 1 checks passed");
+    expect(html).not.toContain("your progress has been saved");
   });
 });
