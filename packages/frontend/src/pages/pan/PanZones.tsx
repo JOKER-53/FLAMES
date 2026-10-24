@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
@@ -153,6 +154,7 @@ export function PanZones({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-zones" config={zones}/>
           <Section title="Zone types" bodyClassName="px-5 py-2">
             <dl className="divide-y divide-line">
               {ZONE_TYPES.map(([type, description]) => (

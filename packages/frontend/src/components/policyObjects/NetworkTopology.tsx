@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import type { AddressObject } from "@fortisim/engine";
+import { ipMatchesAddressValue, type AddressObject, type TestPacket } from "@fortisim/engine";
 
 interface NetworkTopologyProps {
   addresses: AddressObject[];
+  packets?: TestPacket[];
   highlightSystemIds?: string[];
   activeFlow?: {
     srcZone: "WAN" | "LAN" | "DMZ";
@@ -14,14 +15,17 @@ interface NetworkTopologyProps {
 interface SystemNode {
   id: string;
   address: AddressObject;
-  zone: "WAN" | "LAN" | "DMZ";
+  zone: string;
 }
 
-function inferZone(addr: AddressObject): "WAN" | "LAN" | "DMZ" {
-  const v = addr.value.toLowerCase();
-  if (v.startsWith("10.0.2") || addr.name.toLowerCase().includes("dmz")) return "DMZ";
-  if (v.startsWith("10.0.1") || addr.name.toLowerCase().includes("lan")) return "LAN";
-  return "WAN";
+function endpointZone(addr: AddressObject, packets: TestPacket[]): string {
+  const zones = new Set<string>();
+  for (const packet of packets) {
+    for (const [ip, zone] of [[packet.srcIp, packet.srcIntf], [packet.dstIp, packet.dstIntf]]) {
+      try { if (ipMatchesAddressValue(ip, addr.type, addr.value)) zones.add(zone); } catch { /* Invalid or unsupported objects have no inferred zone. */ }
+    }
+  }
+  return zones.size === 1 ? [...zones][0] : zones.size > 1 ? "Multiple zones" : "Unspecified";
 }
 
 const CANVAS_STYLE: React.CSSProperties = {
@@ -34,12 +38,12 @@ function ConnectorDot({ color = "#6b7280" }: { color?: string }) {
   return <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: color }} />;
 }
 
-const ZONE_DOTS: Record<string, string> = { WAN: "#fb923c", LAN: "#10b981", DMZ: "#60a5fa" };
+const ZONE_DOTS: Record<string, string> = { WAN: "#fb923c", LAN: "#10b981", DMZ: "#60a5fa", "Multiple zones": "#64748b", Unspecified: "#64748b" };
 
-export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow = null }: NetworkTopologyProps) {
+export function NetworkTopology({ addresses, packets = [], highlightSystemIds = [], activeFlow = null }: NetworkTopologyProps) {
   const systems: SystemNode[] = addresses
     .filter((a) => a.value.toLowerCase() !== "all" && a.value !== "0.0.0.0/0")
-    .map((a) => ({ id: a.id, address: a, zone: inferZone(a) }));
+    .map((a) => ({ id: a.id, address: a, zone: endpointZone(a, packets) }));
 
   const [phase, setPhase] = useState(0);
 
@@ -127,6 +131,7 @@ export function NetworkTopology({ addresses, highlightSystemIds = [], activeFlow
           )}
         </div>
       </div>
+      <p className="mt-3 text-xs leading-relaxed text-muted">Logical endpoints · zones come from the exercise test packets. This diagram does not infer physical cabling.</p>
     </section>
   );
 }

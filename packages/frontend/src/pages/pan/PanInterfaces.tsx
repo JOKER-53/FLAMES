@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { gradePanInterfaces } from "../../course/panInterfaceGrader";
@@ -169,6 +170,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-interfaces" config={ifaces}/>
           <Callout tone="info" title="Zones come first">
             An interface must belong to a zone before any security policy applies to its traffic. Interfaces in the same zone talk freely; traffic between zones needs an explicit rule.
           </Callout>

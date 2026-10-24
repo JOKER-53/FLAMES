@@ -354,7 +354,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       </div>
 
       <aside className="space-y-4 min-w-0">
-        <NetworkTopology addresses={addresses} activeFlow={activeFlow} />
+        <NetworkTopology addresses={addresses} packets={scenario.testPackets} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} onSelectPolicy={id=>{setSelectedRow(id);focusConfigurationRow("policy-row",id);}} />
       </aside>
 

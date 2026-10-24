@@ -34,3 +34,25 @@ All controls use the existing light/dark tokens. Row focus is keyboard-accessibl
 Regression coverage includes route preference/non-matches, effective rule selection, unchanged NAT, disabled policies, source/destination/service comparisons and actual web-filter decisions. Browser workflows verify policy/route/NAT highlighting, stale-result clearing, generic field highlighting for all five new families, account recovery and mobile overflow containment.
 
 Palo Alto Security and NAT packet explorers also provide **Network view** using the same themed replay dialog as FortiGate. Enter the original zones and application or destination, then open the view. Security displays the actual allow/deny decision from the current rules. NAT displays translated/unchanged results and explicitly leaves security permission unevaluated. Where the exercise provides no endpoint IPs, the diagram labels endpoints as illustrative. Custom Security and NAT lessons use the same view.
+
+### Topology coverage across task families
+
+Every built-in simulator task includes a responsive **Network topology** panel, including assessments:
+
+| Vendor | Task family | Lessons | Diagram data |
+| --- | --- | ---: | --- |
+| FortiGate | Firewall policy | 11 | Public address objects and test-packet endpoint zones |
+| FortiGate | Interfaces | 4 | Current interface roles, addresses and management access |
+| FortiGate | Port assignment | 6 | Current port and zone assignments |
+| FortiGate | Static routing | 1 | Current destination prefixes, interfaces, gateways and distances |
+| Palo Alto | Security policy | 6 | Current ordered rules, original zones, applications and actions |
+| Palo Alto | Zones | 4 | Current zone types and interface membership |
+| Palo Alto | NAT | 4 | Current original scope and configured translations |
+| Palo Alto | Interfaces | 1 | Current interface zones, addresses and link state |
+| Palo Alto | Port assignment | 2 | Current port zones, including dedicated management |
+
+The five authored configuration families also include the shared topology panel; authored firewall policy lessons use the policy topology. These views read only public lesson data and the student's configuration. Empty configurations show an explicit empty state; private reference answers are never used to populate a diagram. Policy zones without test-packet evidence are labelled unspecified, and address objects spanning zones are labelled accordingly rather than guessed from their IP range.
+
+Diagrams show logical relationships, not discovered physical cabling or guaranteed permitted traffic. NAT translation is separate from security permission. Reading-only lessons and hardware/reference pages retain their own content and diagrams rather than an invented network.
+
+`tests/browser/topology.spec.mjs` derives its coverage from the live curriculum and checks all 39 built-in task routes at desktop and mobile widths. It also verifies that the Palo Alto diagram updates after adding and deleting a security rule.

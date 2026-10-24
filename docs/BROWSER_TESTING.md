@@ -15,3 +15,5 @@ The fixture starts an API on `127.0.0.1:4101` and Vite on `127.0.0.1:4173`. Both
 The test runner uses one worker and retains a trace on failure. `test-results/` and `playwright-report/` are ignored. These checks complement engine/API tests; they do not replace real-device WebGL/socket-alignment checks or authenticated AWS/Academy deployment acceptance.
 
 Additional workflows now cover all five expanded authoring families end to end, private grading with student save/resume and wrong configurations, empty proxy account responses with retry, effective policy/route/NAT explanations, highlighting and stale-result clearing. Representative studio/student/mobile screenshots are written into ignored test outputs.
+
+Topology coverage is generated from both course curricula in `tests/browser/topology.spec.mjs`: all 39 built-in tasks (including assessments) must expose a topology region that fits its card on desktop and mobile. A separate workflow checks live Palo Alto rule updates; the authored-family workflow verifies topology availability for each configuration family.

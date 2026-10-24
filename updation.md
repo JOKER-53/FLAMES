@@ -303,3 +303,13 @@ FortiGate policy lessons initially show the policy table without the editor. Cre
 ## 38. Sidebar topology fits multiple servers
 
 Replaced the unbounded endpoint row with a wrapping two-column layout inside the topology card. Devices now display their address-object names and readable wrapping IP labels. Verified production build and a browser layout check confirming all five multi-DMZ endpoints remain within the card at desktop and mobile widths.
+
+## 39. Topology coverage for every simulator task
+
+- Audited all 39 built-in task routes: 22 FortiGate and 17 Palo Alto, including assessments.
+- Added topology panels for FortiGate routing/port assignment and every Palo Alto task family; retained the existing FortiGate interface and policy diagrams.
+- Added the shared configuration topology to all five authored configuration families; authored policy exercises already use the policy diagram.
+- Panels reflect current student configuration, update on edits and show an explicit empty state. NAT never implies security permission; physical cabling is not inferred.
+- Replaced FortiGate policy IP-prefix zone guesses with public test-packet evidence, labelling unspecified or multi-zone address objects explicitly.
+- Made the existing interface topology wrap on narrow viewports and documented coverage by family.
+- Verified frontend type checking/production build and all 51 browser workflows. Curriculum-driven coverage checks every built-in task at desktop and mobile widths; authored-family and live rule-add/delete workflows also passed.

@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { PacketExplorer } from "../../components/configuration/PacketExplorer";
 import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
@@ -131,6 +132,7 @@ export function PanNAT({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-nat" config={rules}/>
           <Section title="NAT types" bodyClassName="px-5 py-2">
             <dl className="divide-y divide-line">
               {([["source", "Translate the source address of outbound traffic"], ["destination", "Redirect inbound traffic to an internal server"], ["static", "1:1 mapping that works in both directions"]] as [NATType, string][]).map(([type, text]) => (

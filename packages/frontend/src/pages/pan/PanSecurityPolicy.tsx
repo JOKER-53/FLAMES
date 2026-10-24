@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { PacketExplorer } from "../../components/configuration/PacketExplorer";
 import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
@@ -189,6 +190,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-security" config={rules}/>
           <Section title="App-ID reference" bodyClassName="px-5 py-2">
             <ul className="divide-y divide-line">
               {APP_OPTIONS.filter(a => a.id !== "any").map(a => (

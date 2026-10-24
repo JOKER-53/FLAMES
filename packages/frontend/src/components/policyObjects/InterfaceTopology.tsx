@@ -53,12 +53,12 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
     : "This task tests full interface configuration";
 
   return (
-    <div className="bg-surface border border-line rounded-md p-4">
+    <section aria-label="Network topology" className="bg-surface border border-line rounded-md p-4 min-w-0">
       <div className="text-[12px] font-medium text-body mb-1 uppercase tracking-wide">Network Topology</div>
       <div className="text-[10.5px] text-faint mb-3">{focusLabel}</div>
 
       <div className="rounded border border-line p-4" style={CANVAS_STYLE}>
-        <div className="flex items-center justify-center gap-3">
+        <div className="flex flex-wrap items-center justify-center gap-3">
           {ROLE_ORDER.map((role, idx) => {
             const intf = byRole(role);
             const hasIp = intf && intf.ip.trim() !== "";
@@ -109,6 +109,6 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { apiFetch } from "../../api/http";
@@ -233,6 +234,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
       {track === "port" && (
         <div className="space-y-6">
+          <TaskTopology vendor="fortigate" family="ports" config={portAssignments}/>
           <ConsoleFrame path={["Network", "Physical ports"]}>
             <div className="p-4">
               <CableDragDiagram ports={portAssignments} onChange={handlePortChange} fullHeight />

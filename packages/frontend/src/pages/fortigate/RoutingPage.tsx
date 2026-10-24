@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { PacketExplorer } from "../../components/configuration/PacketExplorer";
 import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
@@ -85,6 +86,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
           </div>
         </ConsoleFrame>
 
+        <TaskTopology vendor="fortigate" family="routing" config={routes}/>
         <PacketExplorer family="routing" config={routes} onShowRow={showTraceRow}/>
         <CheckYourWork onSubmit={grade} result={results && { passed: results.success, checks: [{ label: results.message, passed: results.success }] }} />
       </div>

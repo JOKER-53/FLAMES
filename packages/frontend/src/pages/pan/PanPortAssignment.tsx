@@ -1,3 +1,4 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { useEffect, useState } from "react";
@@ -96,7 +97,8 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
           />
         </div>
 
-        <aside className="min-w-0">
+        <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="ports" config={ports}/>
           <Section
             title="Zone assignments"
             actions={<button onClick={() => { setPorts(INIT_PORTS); setResults(null); }} className="btn-ghost btn-sm"><Icon name="refresh" size={14} />Reset</button>}
