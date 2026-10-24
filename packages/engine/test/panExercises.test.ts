@@ -36,7 +36,7 @@ describe("PAN exercise grading", () => {
     expect(gradePanExercise("pan-zone-01", zones.filter(entry => entry.name !== "DMZ")).overallPassed).toBe(false);
     expect(gradePanExercise("pan-zone-final", [...zones, zone("Other", "layer3", ["ethernet1/1"])]).overallPassed).toBe(false);
   });
-  it.each(PAN_NAT_SCENARIOS.map(scenario => scenario.id))("has a satisfiable NAT exercise %s", id => expect(gradePanExercise(id, nat).overallPassed).toBe(true));
+  it.each(PAN_NAT_SCENARIOS.map(scenario => scenario.id))("has a satisfiable NAT exercise %s", id => expect(gradePanExercise(id, [nat[2],nat[0],nat[1]]).overallPassed).toBe(true));
   it("does not accept substring addresses or unrelated rules combining into a pass", () => {
     expect(gradePanExercise("pan-nat-03", [{ ...nat[2], dstAddr: "203.0.113.200", translated: "10.0.1.200" }]).overallPassed).toBe(false);
     expect(gradePanExercise("pan-nat-02", [{ ...nat[1], translated: "bad" }, { ...nat[1], dstAddr: "bad" }]).overallPassed).toBe(false);
@@ -55,4 +55,13 @@ it('rejects shadowed NAT rules and overly narrow outbound translation scope',()=
  expect(gradePanExercise('pan-nat-01',[{...source,dstAddr:'198.51.100.10'}]).overallPassed).toBe(false);
  expect(gradePanExercise('pan-nat-02',[{...destination,id:99,dstAddr:'any',translated:'10.0.1.99'},destination]).overallPassed).toBe(false);
  expect(gradePanExercise('pan-nat-02',[destination,{...destination,id:99,dstAddr:'any',translated:'10.0.1.99'}]).overallPassed).toBe(true);
+});
+
+it('static mappings must be effective across their configured zone scope',()=>{
+ const mapping=nat[2];const wrong={...mapping,id:99,translated:'10.0.1.99'};
+ expect(gradePanExercise('pan-nat-03',[wrong,mapping]).overallPassed).toBe(false);
+ expect(gradePanExercise('pan-nat-03',[{...wrong,srcZone:'Trust',dstZone:'Untrust'},mapping]).overallPassed).toBe(false);
+ expect(gradePanExercise('pan-nat-03',[mapping,wrong]).overallPassed).toBe(true);
+ expect(gradePanExercise('pan-nat-final',[...nat]).overallPassed).toBe(false);
+ expect(gradePanExercise('pan-nat-final',[nat[2],nat[0],nat[1]]).overallPassed).toBe(true);
 });

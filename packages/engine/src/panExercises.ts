@@ -86,12 +86,20 @@ const dnat = (publicIp: string, internalIp: string, service: string): Check<PanN
   const rule = evaluatePanNat(rules, "Untrust", "Untrust", publicIp);
   return !!rule && rule.type === "destination" && rule.srcZone === "Untrust" && rule.dstZone === "Untrust" && rule.dstAddr.trim() === publicIp && [internalIp, `${internalIp}:443`].includes(rule.translated.trim());
 } });
-const staticNat = (publicIp: string, internalIp: string): Check<PanNatRule> => ({ desc: "Exact static one-to-one mapping", fn: rules => rules.some(rule => rule.type === "static" && rule.dstAddr.trim() === publicIp && rule.translated.trim() === internalIp) });
+const staticNat = (publicIp: string, internalIp: string): Check<PanNatRule> => ({ desc: "Effective static one-to-one mapping", fn: rules => rules.some(rule => {
+  if (rule.type !== "static" || rule.dstAddr.trim() !== publicIp || rule.translated.trim() !== internalIp) return false;
+  const sources = rule.srcZone === "any" ? zones : [rule.srcZone];
+  const destinations = rule.dstZone === "any" ? zones : [rule.dstZone];
+  return sources.every(src => destinations.every(dst => {
+    const effective = evaluatePanNat(rules, src, dst, publicIp);
+    return effective?.type === "static" && effective.dstAddr.trim() === publicIp && effective.translated.trim() === internalIp;
+  }));
+}) });
 export const PAN_NAT_SCENARIOS = [
   exercise("pan-nat-01", "Outbound SNAT", "Create a source NAT rule: Trust → Untrust, translated address 'interface'.", [snat]),
   exercise("pan-nat-02", "Web Server DNAT", "Create destination NAT using pre-NAT Untrust → Untrust zones: original destination 203.0.113.10, translated destination 10.0.1.10 in DMZ (or 10.0.1.10:443). Ports are simplified in this lab.", [dnat("203.0.113.10", "10.0.1.10", "Web server")]),
   exercise("pan-nat-03", "Static NAT", "Create a static mapping with original address 203.0.113.20 and translated address 10.0.1.20.", [staticNat("203.0.113.20", "10.0.1.20")]),
-  exercise("pan-nat-final", "NAT Policy Final", "Combine Trust → Untrust source NAT to 'interface', pre-NAT Untrust → Untrust destination NAT 203.0.113.10 → 10.0.1.10 in DMZ, and static NAT 203.0.113.20 → 10.0.1.20.", [snat, dnat("203.0.113.10", "10.0.1.10", "Web server"), staticNat("203.0.113.20", "10.0.1.20")]),
+  exercise("pan-nat-final", "NAT Policy Final", "Combine Trust → Untrust source NAT to 'interface', pre-NAT Untrust → Untrust destination NAT 203.0.113.10 → 10.0.1.10 in DMZ, and static NAT 203.0.113.20 → 10.0.1.20. Put specific static mappings before broader source rules that would otherwise match the same original packet.", [snat, dnat("203.0.113.10", "10.0.1.10", "Web server"), staticNat("203.0.113.20", "10.0.1.20")]),
 ];
 
 export function gradePanExercise(taskId: string, config: unknown) {

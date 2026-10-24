@@ -248,3 +248,7 @@ Added an isolated Playwright test server with temporary databases and no AI cred
 ## 25. Private build-context exclusions — 2026-10-24
 
 Docker build contexts now exclude whole operational backup/release directories and browser recordings, in addition to existing environment/database exclusions. This avoids transferring private auxiliary artifacts or recordings into the builder context. Runtime data and secrets remain outside Git and production images.
+
+## 26. Static NAT shadowing correction — 2026-10-24
+
+Static mappings now also must be effective for every source/destination zone pair in their configured scope. A later correct mapping no longer passes when an earlier broad or partially overlapping rule changes that traffic. The final exercise instructions explain the required ordering, and the reference fixture puts specific static mappings before broad source translation. A regression covers complete/partial shadowing and a satisfiable final configuration; all 43 engine tests passed.
