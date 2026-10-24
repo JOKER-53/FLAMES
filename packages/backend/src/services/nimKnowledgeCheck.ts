@@ -1,3 +1,4 @@
+import { validateGeneratedQuestion } from "./questionStore";
 import { sendLLMRequest, getStaticFallbackQuestion } from "./llmClient";
 
 // ============================================================================
@@ -52,6 +53,7 @@ the underlying networking/security principle should answer correctly.
     ) {
       throw new Error("Invalid shape from LLM");
     }
+    validateGeneratedQuestion(parsed);
     return { question: parsed.question, choices: parsed.choices, correctIndex: parsed.correctIndex, source: "ai" };
   } catch (err) {
     console.warn(`[KnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);

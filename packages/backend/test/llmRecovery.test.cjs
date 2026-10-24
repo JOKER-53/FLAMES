@@ -21,3 +21,17 @@ test('provider success is labelled AI; retired model, timeout and empty answers 
   global.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:'<think>hidden</think>Answer only.'}}]}));assert.equal(await sendLLMRequest({messages:[]}), 'Answer only.');
  }finally{global.fetch=originalFetch;process.env=env;}
 });
+
+test('malformed AI question contents fall back to validated banks for both vendors', async()=>{
+ const env={...process.env};const originalFetch=global.fetch;
+ const {generateKnowledgeCheck}=require('../dist/services/nimKnowledgeCheck');
+ const {generatePanKnowledgeCheck}=require('../dist/services/nimPanKnowledgeCheck');
+ try {
+  Object.assign(process.env,{LLM_API_KEY:'test',LLM_BASE_URL:'https://provider.invalid/v1',LLM_MODEL:'fixture'});
+  const invalid=[{question:'Q',choices:['A','B','C','D'],correctIndex:4},{question:'Q',choices:['A','a','C','D'],correctIndex:0},{question:'',choices:['A','B','C','D'],correctIndex:0},{question:'Q',choices:['A','B',null,'D'],correctIndex:0},{question:'Q'.repeat(2001),choices:['A','B','C','D'],correctIndex:0}];
+  for(const data of invalid){global.fetch=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify(data)}}]}));
+   assert.equal((await generateKnowledgeCheck('web-server-access-01','Web','scope')).source,'bank');
+   assert.equal((await generatePanKnowledgeCheck('pan-nat-01')).source,'bank');
+  }
+ }finally{global.fetch=originalFetch;process.env=env;}
+});

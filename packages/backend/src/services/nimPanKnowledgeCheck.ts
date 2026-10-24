@@ -1,3 +1,4 @@
+import { validateGeneratedQuestion } from "./questionStore";
 import { sendLLMRequest, getStaticFallbackQuestion } from "./llmClient";
 
 // ============================================================================
@@ -222,6 +223,7 @@ export async function generatePanKnowledgeCheck(taskId: string): Promise<Generat
     const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.question || !Array.isArray(parsed.choices) || parsed.choices.length !== 4 || typeof parsed.correctIndex !== "number")
       throw new Error("Invalid shape");
+    validateGeneratedQuestion(parsed);
     return { question: parsed.question, choices: parsed.choices, correctIndex: parsed.correctIndex, source: "ai" };
   } catch (err) {
     console.warn(`[PanKnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);

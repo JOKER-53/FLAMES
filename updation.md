@@ -196,3 +196,7 @@ Verification: 131 automated checks (39 engine, 68 backend, 24 frontend) and prod
 ## 12. Dependency remediation — 2026-10-24
 
 Patched the Express body-parser dependency and Vitest packages, upgraded React Router to 7.18.4, and pinned the shared PostCSS selector parser to a patched release through a direct tooling dependency/override. `npm audit` reports zero vulnerabilities. `npm run verify` passed (131 tests plus frontend production build). Advisory references: [React Router](https://github.com/advisories/GHSA-wrjc-x8rr-h8h6), [selector parser](https://github.com/advisories/GHSA-rj75-hqrm-r3gf).
+
+## 13. AI question fallback fix — 2026-10-24
+
+Both vendors now validate question text, answer bounds, choice types/uniqueness and length inside the generation fallback boundary. Previously a malformed successful provider response could escape generation and fail at answer hiding, producing an error instead of a bank question. Shared validation keeps the public endpoint and generator consistent. Regression fixtures cover out-of-range answer indexes, duplicate/null choices and empty/oversized questions; the two focused recovery tests passed.
