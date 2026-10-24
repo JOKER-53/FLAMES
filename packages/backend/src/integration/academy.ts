@@ -2,6 +2,14 @@ import { Router, type Request } from "express";
 import { isCompletionTask } from "@fortisim/engine";
 
 export interface IntegrationConfig { mode: "standalone" | "academy"; parentOrigin: string | null; parentUrl: string | null; }
+/** Validate the upstream identity before granting any local administrative access. */
+export function academyIdentity(value: unknown) {
+  const user = value as { id?: unknown; username?: unknown; email?: unknown; role?: unknown } | null;
+  if (!user || typeof user !== "object" || typeof user.username !== "string" || !user.username.trim() || user.username.length > 1000) return null;
+  if (typeof user.id === "number" ? !Number.isSafeInteger(user.id) || user.id <= 0 : typeof user.id !== "string" || !/^[A-Za-z0-9._:-]{1,128}$/.test(user.id)) return null;
+  if (user.email !== undefined && user.email !== null && (typeof user.email !== "string" || user.email.length > 254)) return null;
+  return { id: String(user.id), name: user.username, email: typeof user.email === "string" ? user.email : "", role: user.role === "admin" ? "instructor" as const : "student" as const, canManageContent: user.role === "admin" };
+}
 export function integrationConfig(): IntegrationConfig {
   const mode = process.env.PLATFORM_MODE || "standalone";
   if (mode !== "standalone" && mode !== "academy") throw new Error("PLATFORM_MODE must be standalone or academy.");

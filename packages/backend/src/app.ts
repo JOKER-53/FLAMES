@@ -6,7 +6,7 @@ import { builtinDraftSpec } from "@fortisim/engine";
 import { getScenarioById } from "./scenarios/registry";
 import { ContentStore, ContentError } from "./content/store";
 import { adminContentRouter, studentContentRouter } from "./content/routes";
-import { integrationConfig, academyAccountRouter, academyRequest, AcademyError, bearer } from "./integration/academy";
+import { integrationConfig, academyAccountRouter, academyRequest, AcademyError, bearer, academyIdentity } from "./integration/academy";
 import express, { type ErrorRequestHandler } from "express";
 import cors from "cors";
 import { createScenariosRouter } from "./routes/scenarios";
@@ -48,9 +48,9 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
       }
       try {
         const result = await academyRequest(req, "/auth/me");
-        const user = result.user;
-        if (!user || !["string", "number"].includes(typeof user.id) || typeof user.username !== "string") throw new AcademyError(502, "Academy returned an invalid identity.");
-        res.locals.academyUser = { id: String(user.id), name: user.username, email: typeof user.email === "string" ? user.email : "", role: user.role === "admin" ? "instructor" : "student", canManageContent: user.role === "admin" };
+        const user = academyIdentity(result?.user);
+        if (!user) throw new AcademyError(502, "Academy returned an invalid identity.");
+        res.locals.academyUser = user;
         next();
       } catch (error) { next(error); }
     });

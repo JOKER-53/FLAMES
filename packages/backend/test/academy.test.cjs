@@ -21,10 +21,10 @@ before(async () => {
   parent.use('/api', (req, res, next) => {
     upstreamCalls++;
     const token = req.headers.authorization?.slice(7);
-    if (!['alice-token', 'bob-token', 'admin-token'].includes(token)) return res.status(401).json({ message: 'Expired' });
+    if (!['alice-token', 'bob-token', 'admin-token', 'malformed-token'].includes(token)) return res.status(401).json({ message: 'Expired' });
     req.parentId = token === 'alice-token' ? 1 : token === 'admin-token' ? 3 : 2; next();
   });
-  parent.get('/api/auth/me', (req, res) => res.json({ user: { id: req.parentId, username: req.parentId === 1 ? 'Alice' : 'Bob', role: req.parentId === 3 ? 'admin' : 'operator' } }));
+  parent.get('/api/auth/me', (req, res) => req.headers.authorization==='Bearer malformed-token' ? res.json({user:{id:'',username:'Malformed admin',role:'admin'}}) : res.json({ user: { id: req.parentId, username: req.parentId === 1 ? 'Alice' : 'Bob', role: req.parentId === 3 ? 'admin' : 'operator' } }));
   parent.all('/api/integrations/fortisim/progress/:platform', (req, res) => {
     const key = `${req.parentId}:${req.params.platform}`;
     const ids = progress.get(key) || new Set();
@@ -110,4 +110,14 @@ test('Academy classroom uses parent identity/progress without creating local stu
   assert.deepEqual((await call('/api/classroom/','bob-token')).body.groups,[]);
   assert.deepEqual(store.roster().map(user=>user.email),['local@example.org']); // Deliberate bypass fixture exists; no Academy accounts are copied.
   assert.deepEqual(store.progress('1','fortigate'),[]);
+});
+
+test('malformed parent identities fail closed before administrative access',async()=>{
+ assert.equal((await call('/api/admin/modules','malformed-token')).status,502);
+ const {academyIdentity}=require('../dist/integration/academy');
+ for(const id of ['',0,-1,NaN,Infinity,{},[],'with spaces','x'.repeat(129)])assert.equal(academyIdentity({id,username:'Admin',role:'admin'}),null);
+ assert.equal(academyIdentity({id:1,username:' ',role:'admin'}),null);assert.equal(academyIdentity(null),null);
+ assert.equal(academyIdentity({id:1,username:'Admin',role:'admin'}).canManageContent,true);
+ assert.equal(academyIdentity({id:1,username:'Admin',role:'admin',email:null}).email,'');
+ assert.equal(academyIdentity({id:'u-1',username:'Student',role:'unknown'}).role,'student');
 });
