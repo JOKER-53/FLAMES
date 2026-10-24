@@ -260,3 +260,7 @@ Administrative access now requires a valid upstream identity with a nonempty bou
 ## 28. Final audit verification — 2026-10-24
 
 The [code audit report](docs/CODE_AUDIT_2026-10-24.md) records the reproduced failures and individual fix commits. Final verification: 146 unit/API/render tests, five isolated Chromium workflows, zero npm audit findings, production image builds, isolated read-only production startup/health/auth checks, valid standalone/Academy Compose configuration, and clean diff checks. College/AWS deployment and unchecked new features remain explicitly pending in TODO.md.
+
+## 29. Lesson header layout — 2026-10-24
+
+Combined lesson title, metadata and scenario into one compact themed header, changed healthy autosave status to a slim toolbar, and slightly widened lesson workspaces. Warning/retry states remain prominent. The frontend production build and five browser workflows passed; desktop light/dark and mobile screenshots were captured and the mobile page has no horizontal overflow.
