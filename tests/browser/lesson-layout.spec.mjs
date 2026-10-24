@@ -7,11 +7,11 @@ test('lesson introduction keeps a readable brief and wraps metadata across theme
   await expect(header.getByRole('heading',{level:1})).toBeVisible();
   for(const dark of [false,true]){
    if(dark)await page.getByRole('button',{name:'Switch to dark mode',exact:true}).click();
-   for(const width of [1440,390]){
+   for(const width of [1920,1440,1366,390]){
     await page.setViewportSize({width,height:1000});
     const scenario=page.getByRole('region',{name:'Scenario',exact:true});
     const fits=await header.evaluate(node=>{const bounds=node.getBoundingClientRect();return node.scrollWidth<=node.clientWidth+1&&bounds.left>=0&&bounds.right<=innerWidth+1;});
-    expect(fits).toBe(true);await expect(scenario).toBeVisible();
+    expect(fits).toBe(true);await expect(scenario).toBeVisible();if(width===1920){const main=page.getByRole('main');const bounds=await main.boundingBox();const content=await main.locator(':scope > div').boundingBox();expect(content.width).toBeGreaterThan(bounds.width-60);}
     await page.screenshot({path:test.info().outputPath(`${vendor}-${dark?'dark':'light'}-${width}.png`)});
    }
    if(dark)await page.getByRole('button',{name:'Switch to light mode',exact:true}).click();

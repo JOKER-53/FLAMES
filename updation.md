@@ -325,3 +325,7 @@ Verified frontend production build and two browser workflows covering both vendo
 Removed the 1280px cap from course overview and module-list pages so they use the content area beside the navigation. Refined module headings to match the lesson hierarchy and separated lesson rows with more padding and vertical space. Progress, Start/Review links and assessment locks retain their existing behavior.
 
 Verified production build, course/module content width on 1920px screens, mobile containment, both vendors, and the shared lesson-header workflow. Reviewed desktop light/dark screenshots.
+
+## 42. Desktop lesson fit at normal zoom
+
+Removed the remaining 1440px lesson-width cap so simulator pages use the space beside the sidebar at normal browser zoom. Reduced title/scenario spacing and scenario line height while retaining readable text, responsive wrapping and standard browser zoom behavior. Verified production build and three browser workflows, including both vendors in light/dark themes at 1920px, 1440px, 1366px and mobile widths. Reviewed the normal-scale desktop screenshot.
