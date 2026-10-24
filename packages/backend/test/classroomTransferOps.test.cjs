@@ -100,7 +100,7 @@ test('password recovery preserves identity and progress but revokes all sessions
 test('backup includes committed WAL data, restores in isolation and rejects tampering/overwrite',()=>{
  const temp=mkdtempSync(join(tmpdir(),'flames-backup-'));const source=join(temp,'source');require('node:fs').mkdirSync(source);
  const account=new PlatformStore(join(source,'fortisim.sqlite'));const contents=new ContentStore(join(source,'content.sqlite'));const user=account.createUser('test@test.invalid','Student','hash');account.mergeProgress(user.id,'fortigate',['web-server-access-01']);contents.create('fortigate','Keep my draft');
- const script=resolve('../../scripts/data-backup.cjs');const backup=join(temp,'backup'),target=join(temp,'restored');
+ const script=resolve(__dirname,'../../../scripts/data-backup.cjs');const backup=join(temp,'backup'),target=join(temp,'restored');
  const run=(...args)=>spawnSync(process.execPath,[script,...args],{encoding:'utf8'});
  try {
   assert.equal(run('backup','--source-dir',source,'--output',backup).status,0);
@@ -117,7 +117,18 @@ test('production startup rejects the checking administrator password in an exist
  const temp=mkdtempSync(join(tmpdir(),'flames-production-guard-'));const path=join(temp,'fortisim.sqlite');const store=new PlatformStore(path);
  store.createUser('checking@test.invalid','Checking',await hashPassword('admin123'),'instructor');store.close();
  try {
-  const result=spawnSync(process.execPath,[resolve('dist/server.js')],{cwd:temp,encoding:'utf8',timeout:5000,env:{...process.env,NODE_ENV:'production',PLATFORM_MODE:'standalone',DATABASE_PATH:path,CONTENT_DATABASE_PATH:join(temp,'content.sqlite'),INSTRUCTOR_EMAIL:'',INSTRUCTOR_PASSWORD:''}});
+  const result=spawnSync(process.execPath,[resolve(__dirname,'../dist/server.js')],{cwd:temp,encoding:'utf8',timeout:5000,env:{...process.env,NODE_ENV:'production',PLATFORM_MODE:'standalone',DATABASE_PATH:path,CONTENT_DATABASE_PATH:join(temp,'content.sqlite'),INSTRUCTOR_EMAIL:'',INSTRUCTOR_PASSWORD:''}});
   assert.equal(result.status,1);assert.match(result.stderr,/checking-only administrator password must be rotated/);
  }finally{rmSync(temp,{recursive:true,force:true});}
+});
+
+test('withdrawing a custom module does not remove earned assignment credit',async()=>{
+ let lesson=content.create('fortigate','Withdrawn after completion');const id=`custom-${randomUUID()}`;
+ lesson.module.lessons=[{id,title:'Read',summary:'',body:'Read this',minutes:5,level:'Foundation',tasks:[]}];lesson=content.save(lesson.module.id,lesson.module,lesson.revision);lesson=content.publish(lesson.module.id,lesson.revision);
+ const group=(await call('/api/classroom/groups','teacher',{name:'Retained credit'})).body.id;
+ const invite=(await call('/api/classroom/')).body.groups.find(item=>item.id===group).inviteCode;await call('/api/classroom/join','alice',{code:invite});
+ await call(`/api/classroom/groups/${group}/assignments`,'teacher',{vendor:'fortigate',moduleId:lesson.module.id,requiredCount:1,dueAt:new Date(Date.now()+86400000).toISOString()});
+ accounts.mergeProgress(alice.id,'fortigate',[id]);content.unpublish(lesson.module.id,lesson.revision);
+ assert.equal(accounts.progress(alice.id,'fortigate').includes(id),false);
+ for(const who of ['teacher','alice']){const report=(await call('/api/classroom/',who)).body.groups.find(item=>item.id===group);assert.equal(report.assignments[0].results[0].status,'completed');}
 });

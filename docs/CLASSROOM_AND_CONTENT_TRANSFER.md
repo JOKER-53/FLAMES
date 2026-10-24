@@ -47,3 +47,7 @@ The policy network dialog now uses the same theme tokens, icon set, typography, 
 ## Validation
 
 Automated checks cover instructor isolation, forged enrollment IDs, invitation rotation/removal, assignment validation/status, Academy-backed reports without local progress copies, admin-only transfer, fresh IDs/draft-only imports, equivalent answer grading, unsafe-text rendering in browser verification, targeted concepts, AI failure labels, password rotation/session revocation, and WAL-aware backup/isolated restore/checksum rejection. Browser verification exercises the real local Docker deployment. College deployment acceptance still requires its operator and authenticated Academy accounts.
+
+### Historical completion correction (2026-10-24)
+
+Assignment credit survives a module being unpublished or a lesson being removed. Standalone reports use stored completion markers; integrated student reports request their own parent progress with `includeArchived=true`, and the admin report also includes historical custom IDs. Normal course totals still exclude withdrawn lessons. This is historical practice credit, not a new permission to submit unknown completion IDs. Update the supplied Academy router for this read contract.

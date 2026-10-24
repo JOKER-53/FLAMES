@@ -127,7 +127,16 @@ test('Academy classroom progress is admin-only, validated and isolated to reques
   assert.equal((await send('admin',['1 OR 1=1'])).status,400);
   assert.equal((await send('admin',Array(501).fill('1'))).status,400);
   const result=await send('admin',['1','2']);assert.equal(result.status,200);
-  assert.deepEqual(result.body.progress['1'].fortigate,['web-server-access-01']);
+  assert.ok(result.body.progress['1'].fortigate.includes('web-server-access-01')); // Assignment reports also retain previously earned archived custom credit.
   assert.deepEqual(result.body.progress['2'].fortigate,[]);
   assert.deepEqual(Object.keys((await send('admin',['2'])).body.progress),['2']);
+});
+
+test('Academy retains archived custom lesson credit for assignment reports while current course totals stay filtered',async()=>{
+ const id='custom-00000000-0000-0000-0000-000000000099';
+ catalogModules=[{vendor:'fortigate',lessons:[{id}]}];await call('/progress/fortigate','alice',[id]);catalogModules=[];
+ assert.equal((await call('/progress/fortigate','alice')).body.completed.includes(id),false);
+ assert.equal((await call('/progress/fortigate?includeArchived=true','alice')).body.completed.includes(id),true);
+ const response=await fetch(base+'/classroom/progress',{method:'POST',headers:{Authorization:'Bearer admin','Content-Type':'application/json'},body:JSON.stringify({userIds:['1']})});
+ assert.equal((await response.json()).progress['1'].fortigate.includes(id),true);
 });

@@ -204,3 +204,7 @@ Both vendors now validate question text, answer bounds, choice types/uniqueness 
 ## 14. Content consistency fix — 2026-10-24
 
 Content mutations now begin an immediate SQLite transaction before reading revisions, identity collisions or module limits. This prevents separate processes from passing stale checks before writing. The public catalog checks SQLite's data version so another connection's publication/unpublication is visible without a restart. Two focused multi-connection regressions passed, including stale save/publish/unpublish/delete rejection and private-draft visibility.
+
+## 15. Preserve assignment credit after publication changes — 2026-10-24
+
+Assignment reports now read historical completion markers, including withdrawn custom lessons, while normal course catalogs/totals still filter to current published lessons. Previously unpublishing a module could change an already completed assignment back to incomplete/overdue. The Academy adapter's owned progress read supports `includeArchived=true`, and its admin report retains historical custom IDs. Nineteen focused classroom/adapter checks passed. Install the updated parent adapter before integrated reports use this contract.

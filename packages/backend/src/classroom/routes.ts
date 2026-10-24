@@ -24,11 +24,11 @@ export function classroomRouter(groups: ClassroomStore, accounts: PlatformStore,
             }
           }
         } else {
-          const [fg,pan]=await Promise.all([academyRequest(req,"/integrations/fortisim/progress/fortigate"),academyRequest(req,"/integrations/fortisim/progress/paloalto")]);
+          const [fg,pan]=await Promise.all([academyRequest(req,"/integrations/fortisim/progress/fortigate?includeArchived=true"),academyRequest(req,"/integrations/fortisim/progress/paloalto?includeArchived=true")]);
           if(!Array.isArray(fg.completed)||!Array.isArray(pan.completed)) throw new AcademyError(502,"Academy returned invalid progress.");
           progress[user.id]={fortigate:fg.completed,paloalto:pan.completed};
         }
-      } else for(const id of ids) progress[id]={fortigate:accounts.progress(id,"fortigate"),paloalto:accounts.progress(id,"paloalto")};
+      } else for(const id of ids) progress[id]={fortigate:accounts.progress(id,"fortigate",true),paloalto:accounts.progress(id,"paloalto",true)};
       res.json({groups:list.map(group=>({...group,assignments:group.assignments.map(assignment=>({...assignment,results:(user.role==="instructor"?group.members:[user]).map(member=>({userId:member.id,name:member.name,...assignmentStatus(assignment,progress[member.id]?.[assignment.vendor as "fortigate"|"paloalto"]??[],groups.started(assignment.id,member.id))}))}))})), modules:user.role==="instructor"?assignmentModules(content):[],provenance:academy?"Academy-owned student-reported practice progress":"Student-reported practice progress; not certified assessment evidence"});
     } catch(error){next(error);}
   });

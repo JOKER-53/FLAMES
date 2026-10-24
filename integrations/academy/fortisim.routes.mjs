@@ -38,9 +38,9 @@ export function createFortisimRouter({ Router, authenticate, pool, catalogUrl = 
     try { const catalog = await loadAcademyCatalog(catalogUrl); res.locals.lessons = catalog.registry; res.locals.catalog = catalog.modules; next() }
     catch { res.status(503).json({ message: 'FLAMES lesson library unavailable. Try again later.' }) }
   })
-  async function read(userId, platform, registry) {
+  async function read(userId, platform, registry, includeArchived = false) {
     const [rows] = await pool.query('SELECT task_id FROM fortisim_progress WHERE user_id = ? AND platform = ? ORDER BY task_id', [userId, platform])
-    return rows.map(row => row.task_id).filter(id => registry[platform].includes(id))
+    return rows.map(row => row.task_id).filter(id => registry[platform].includes(id) || includeArchived && /^custom-[a-f0-9-]{36}$/.test(id))
   }
   router.get('/summary', async (req, res, next) => {
     try {
@@ -56,7 +56,7 @@ export function createFortisimRouter({ Router, authenticate, pool, catalogUrl = 
     if (!Object.hasOwn(LESSONS, req.params.platform)) return res.status(400).json({ message: 'Unknown platform' })
     next()
   }).get(async (req, res, next) => {
-    try { res.json({ completed: await read(req.user.id, req.params.platform, res.locals.lessons) }) }
+    try { res.json({ completed: await read(req.user.id, req.params.platform, res.locals.lessons, req.query.includeArchived === 'true') }) }
     catch (error) { next(error) }
   }).post(async (req, res, next) => {
     const platform = req.params.platform
@@ -84,7 +84,7 @@ export function createFortisimRouter({ Router, authenticate, pool, catalogUrl = 
       const unique = [...new Set(ids)]
       const [rows] = await pool.query(`SELECT user_id,platform,task_id FROM fortisim_progress WHERE user_id IN (${unique.map(() => '?').join(',')})`, unique)
       const progress = Object.fromEntries(unique.map(id => [id, { fortigate: [], paloalto: [] }]))
-      for (const row of rows) if (progress[String(row.user_id)] && res.locals.lessons[row.platform]?.includes(row.task_id)) progress[String(row.user_id)][row.platform].push(row.task_id)
+      for (const row of rows) if (progress[String(row.user_id)] && (res.locals.lessons[row.platform]?.includes(row.task_id) || Object.hasOwn(LESSONS, row.platform) && /^custom-[a-f0-9-]{36}$/.test(row.task_id))) progress[String(row.user_id)][row.platform].push(row.task_id)
       res.json({ progress, provenance: 'Academy-owned student-reported practice progress' })
     } catch (error) { next(error) }
   })

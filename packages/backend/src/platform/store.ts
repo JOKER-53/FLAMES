@@ -84,9 +84,9 @@ export class PlatformStore {
     return row ? this.user(row) : undefined;
   }
   revoke(token: string) { this.db.prepare("DELETE FROM sessions WHERE hash=?").run(tokenHash(token)); }
-  progress(userId: string, platform: string): string[] {
+  progress(userId: string, platform: string, includeArchived = false): string[] {
     return this.db.prepare("SELECT task_id FROM progress WHERE user_id=? AND platform=? ORDER BY task_id")
-      .all(userId, platform).map(row => String(row.task_id)).filter(id => this.isCompletionTask(platform, id));
+      .all(userId, platform).map(row => String(row.task_id)).filter(id => this.isCompletionTask(platform, id) || includeArchived && /^custom-[a-f0-9-]{36}$/.test(id));
   }
   mergeProgress(userId: string, platform: string, ids: string[]) {
     this.db.exec("BEGIN IMMEDIATE");
