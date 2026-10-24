@@ -232,3 +232,7 @@ The LLM client now selects credentials, URL and model from one provider namespac
 ## 21. Catalog refresh ordering — 2026-10-24
 
 A generation guard now prevents a slower initial catalog request from overwriting a newer publication refresh, or setting errors/loading state after a newer request or unmount. An intercepted browser regression holds the initial response, publishes a module, then releases the stale response and verifies the new module remains in the course. The browser workflow suite passed.
+
+## 22. Draft row identity validation — 2026-10-24
+
+Saved simulator configurations now reject duplicate/empty row identities (including interface names and physical port IDs) before restoration. Duplicate IDs previously could make editing/deleting one row affect several rows or produce duplicate React keys. Optional filter references must also have the expected string shape, and unknown simulator kinds explicitly fail validation. The Academy contract was regenerated. The 42-test engine suite passed.

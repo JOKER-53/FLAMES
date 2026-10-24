@@ -12,17 +12,19 @@ export function isSimulatorConfiguration(kind, value) {
     const record = (v) => v && typeof v === "object" && !Array.isArray(v);
     const text = (v) => typeof v === "string" && v.length <= 2000;
     const strings = (v) => Array.isArray(v) && v.length <= 200 && v.every(text);
-    const array = (v, check) => Array.isArray(v) && v.length <= 200 && v.every(entry => record(entry) && check(entry));
+    const array = (v, check, key = "id") => Array.isArray(v) && v.length <= 200 &&
+        v.every(entry => record(entry) && (typeof entry[key] === "string" ? entry[key].length > 0 : Number.isSafeInteger(entry[key])) && check(entry)) &&
+        new Set(v.map(entry => entry[key])).size === v.length;
     if (JSON.stringify(value)?.length > 100000)
         return false;
     const config = value;
     switch (kind) {
         case "policy": return record(config) && array(config.addresses, a => text(a.id) && text(a.name) && ["subnet", "range"].includes(a.type) && text(a.value)) &&
             array(config.services, s => text(s.id) && text(s.name) && ["TCP", "UDP", "ICMP"].includes(s.protocol) && (s.port === undefined || text(s.port))) &&
-            array(config.policies, p => text(p.id) && text(p.name) && text(p.srcIntf) && text(p.dstIntf) && strings(p.srcAddrIds) && strings(p.dstAddrIds) && strings(p.serviceIds) && ["ACCEPT", "DENY"].includes(p.action) && typeof p.enabled === "boolean" && typeof p.log === "boolean") &&
+            array(config.policies, p => text(p.id) && text(p.name) && text(p.srcIntf) && text(p.dstIntf) && strings(p.srcAddrIds) && strings(p.dstAddrIds) && strings(p.serviceIds) && ["ACCEPT", "DENY"].includes(p.action) && typeof p.enabled === "boolean" && typeof p.log === "boolean" && (p.webFilterProfileId === undefined || text(p.webFilterProfileId))) &&
             array(config.webFilterProfiles, p => text(p.id) && text(p.name) && strings(p.blockedDomains));
-        case "interfaces": return array(config, i => text(i.name) && text(i.role) && text(i.ip) && text(i.subnet) && strings(i.adminAccess));
-        case "ports": return array(config, p => text(p.portId) && text(p.zone));
+        case "interfaces": return array(config, i => text(i.name) && text(i.role) && text(i.ip) && text(i.subnet) && strings(i.adminAccess), "name");
+        case "ports": return array(config, p => text(p.portId) && text(p.zone), "portId");
         case "routing": return array(config, r => text(r.id) && text(r.destination) && text(r.gateway) && text(r.interfaceName) && typeof r.distance === "number" && Number.isFinite(r.distance));
         case "pan-security": return array(config, r => Number.isSafeInteger(r.id) && text(r.name) && text(r.srcZone) && text(r.dstZone) && strings(r.apps) && ["allow", "deny"].includes(r.action));
         case "pan-zones": return array(config, z => Number.isSafeInteger(z.id) && text(z.name) && text(z.type) && text(z.profile) && strings(z.interfaces) && typeof z.logForwarding === "boolean");
@@ -30,4 +32,5 @@ export function isSimulatorConfiguration(kind, value) {
         case "pan-interfaces": return array(config, i => text(i.id) && text(i.type) && text(i.zone) && text(i.ip) && typeof i.link === "boolean" && text(i.speed) && text(i.comment));
         case "pan-ports": return array(config, p => text(p.id) && text(p.zone) && text(p.label));
     }
+    return false;
 }
