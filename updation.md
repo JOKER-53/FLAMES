@@ -256,3 +256,7 @@ Static mappings now also must be effective for every source/destination zone pai
 ## 27. Academy identity validation — 2026-10-24
 
 Administrative access now requires a valid upstream identity with a nonempty bounded username and a positive safe numeric ID or bounded identifier string. Empty IDs, non-finite/negative numeric IDs and malformed types previously passed the loose type-only check. Invalid profiles fail with 502 before administrative routes, while unknown roles remain least-privilege students. The integration regression suite covers a malformed admin profile and valid role normalization.
+
+## 28. Final audit verification — 2026-10-24
+
+The [code audit report](docs/CODE_AUDIT_2026-10-24.md) records the reproduced failures and individual fix commits. Final verification: 146 unit/API/render tests, five isolated Chromium workflows, zero npm audit findings, production image builds, isolated read-only production startup/health/auth checks, valid standalone/Academy Compose configuration, and clean diff checks. College/AWS deployment and unchecked new features remain explicitly pending in TODO.md.
