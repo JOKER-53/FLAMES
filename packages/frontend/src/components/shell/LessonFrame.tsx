@@ -33,29 +33,21 @@ export function LessonFrame({ brief, hint, title, children }: LessonFrameProps) 
 
   return (
     <article>
-      <header className="mb-3 overflow-hidden rounded-lg border border-line bg-surface">
-        <div className="px-4 py-4 sm:px-5 flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
-          <div className="min-w-0">
-            {module && lesson && <div className="mb-1.5 flex flex-wrap items-center gap-x-2 text-xs text-muted">
-              <Link to={`${course.base}/modules/${module.id}`} className="hover:text-ink">{module.title}</Link>
-              <span aria-hidden="true" className="text-faint">/</span>
-              <span>{lesson.final ? "Module assessment" : `Lesson ${index + 1} of ${module.lessons.filter(l => !l.final).length}`}</span>
-            </div>}
-            <h1 className="text-xl sm:text-2xl font-semibold text-ink leading-tight">{lesson?.title ?? title}</h1>
-          </div>
-          <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
+      <header className="mb-6 space-y-5" aria-label="Lesson introduction">
+        <div>
+          <h1 className="text-2xl sm:text-[28px] font-semibold text-ink leading-tight tracking-tight">{lesson?.title ?? title}</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
+            {module && lesson && <span>{lesson.final ? "Module assessment" : `Lesson ${index + 1} of ${module.lessons.filter(l => !l.final).length}`}</span>}
             {lesson && <><span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} />{lesson.minutes} min</span><LevelBadge level={lesson.level} /></>}
-            {done && <span className="badge bg-success-soft text-success"><Icon name="check" size={13} strokeWidth={2.25} />Completed</span>}
+            {done && <span className="inline-flex items-center gap-1.5 text-success"><Icon name="check" size={13} strokeWidth={2.25} />Completed</span>}
           </div>
         </div>
-        <section className="border-t border-line bg-canvas/60 px-4 py-3 sm:px-5" aria-label="Scenario">
-          <div className="flex items-start gap-2.5">
-            <Icon name="target" size={16} className="text-accent mt-0.5 shrink-0" />
-            <div className="min-w-0"><h2 className="text-xs font-semibold text-ink mb-1">Scenario</h2><div className="text-sm text-body leading-relaxed max-w-5xl">{brief}</div></div>
-          </div>
-          {hint && <div className="mt-2.5 sm:ml-[26px]">
+        <section className="rounded-r-md border-l-2 border-accent bg-surface px-4 py-4 sm:px-5 sm:py-5" aria-label="Scenario">
+          <h2 className="text-sm font-semibold text-ink mb-2">Scenario</h2>
+          <div className="max-w-[85ch] text-sm text-body leading-7 [overflow-wrap:anywhere]">{brief}</div>
+          {hint && <div className="mt-3">
             <button className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-ink" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}><Icon name="lightbulb" size={14} />{showHint ? "Hide hint" : "Show a hint"}</button>
-            {showHint && <div className="mt-2 rounded-md bg-warn-soft px-3.5 py-2.5 text-sm text-body">{hint}</div>}
+            {showHint && <div className="mt-2 max-w-[85ch] rounded-md bg-warn-soft px-3.5 py-2.5 text-sm text-body leading-relaxed">{hint}</div>}
           </div>}
         </section>
       </header>

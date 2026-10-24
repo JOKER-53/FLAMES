@@ -313,3 +313,9 @@ Replaced the unbounded endpoint row with a wrapping two-column layout inside the
 - Replaced FortiGate policy IP-prefix zone guesses with public test-packet evidence, labelling unspecified or multi-zone address objects explicitly.
 - Made the existing interface topology wrap on narrow viewports and documented coverage by family.
 - Verified frontend type checking/production build and all 51 browser workflows. Curriculum-driven coverage checks every built-in task at desktop and mobile widths; authored-family and live rule-add/delete workflows also passed.
+
+## 40. Less crowded lesson introduction
+
+Replaced the stacked, bordered title/scenario header with a plain lesson heading, one metadata row, and a separate scenario block with a restrained vendor accent. Removed repeated module context already available in the breadcrumb and constrained paragraph reading width. Scenario hints and completion metadata remain available. Shared section actions now wrap instead of squeezing text and overflowing on narrow screens.
+
+Verified frontend production build and two browser workflows covering both vendors, light/dark themes, desktop/mobile layout, hint expansion and policy editing/tracing. Reviewed generated desktop and mobile screenshots.

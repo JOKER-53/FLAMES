@@ -59,12 +59,12 @@ export function Section({ title, description, actions, children, className = "",
   return (
     <section className={`card ${className}`}>
       {(title || actions) && (
-        <div className="flex items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
-          <div className="min-w-0">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5 border-b border-line">
+          <div className="min-w-0 flex-1 basis-56">
             {title && <h2 className="text-sm font-semibold">{title}</h2>}
             {description && <p className="text-xs text-muted mt-0.5">{description}</p>}
           </div>
-          {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+          {actions && <div className="flex flex-wrap items-center gap-2 min-w-0 max-w-full">{actions}</div>}
         </div>
       )}
       <div className={bodyClassName}>{children}</div>
