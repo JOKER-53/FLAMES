@@ -280,3 +280,7 @@ Empty/non-JSON proxy errors are normalized to readable API errors; account JSON 
 ## 33. Decision explanations and row highlighting — 2026-10-24
 
 Added expected-value-free route/PAN security/PAN NAT packet explorers, shared with configuration grading, and detailed authored check explanations. The FortiGate policy panel now shows disabled rules, interface/address/service criteria and actual filter decisions with clear routing/NAT/TLS limits. Row links highlight/focus the responsible policy, route or custom configuration row; configuration edits clear stale results and reduced-motion scrolling is respected. New engine and browser regressions verify effective decisions, privacy, all-five-family highlighting and stale clearing. See [packet explanations](docs/PACKET_EXPLANATIONS.md).
+
+## 34. Learning update verification — 2026-10-24
+
+Final checks passed: 162 engine/API/frontend tests, nine isolated browser workflows, frontend production build, both production image builds, read-only production startup/health/auth smoke checks, development/standalone/Academy Compose configuration, clean diff checks, and zero npm audit findings. The real port-5173 settings endpoint and both course overviews were verified, plus checking-account progress after recovery. Screenshots of the new header and representative studio/student/mobile views were reviewed. AWS/remote Academy deployment remains pending; the supplied parent adapter must be updated before integrated use of new authored families.

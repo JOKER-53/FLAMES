@@ -77,7 +77,7 @@ As with existing practice, completion is not a certified exam result and repeate
 
 ### Current builder scope
 
-The visual builder supports **FortiGate policy exercises**. Instructional lessons and choice/short-answer tasks still work for both vendors. Adding visual builders for other configuration families remains future work; their existing built-in exercises already support autosave.
+The original visual builder supports **FortiGate policy exercises**. As of 2026-10-24, [expanded authoring](CONFIGURATION_EXERCISE_BUILDER.md) also supports FortiGate interfaces/static routing and Palo Alto security/NAT/zones. Instructional lessons and choice/short-answer tasks still work for both vendors. Built-in physical-port/PAN-interface exercises retain autosave but are not authorable through the new builder.
 
 ## Academy upgrade steps
 

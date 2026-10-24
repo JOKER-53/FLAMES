@@ -55,9 +55,9 @@ Acceptance: close and reopen a partially completed lesson on another device; res
 
 Delivered: applied configurations resume per guest/account and lesson. See the implementation guide for save status, reset, changed-version handling, and verified failure behavior.
 
-## Priority 2 — visual simulator exercise builder — implemented for FortiGate policies
+## Priority 2 — visual simulator exercise builders — implemented
 
-The content studio now also authors FortiGate policy simulator exercises through forms, validates the reference configuration, and publishes them into the normal course flow.
+The content studio authors FortiGate policy, interfaces and static routing, plus Palo Alto security/NAT/zones through forms. It validates private reference configurations and publishes lessons into the normal course flow.
 
 - [x] Define a versioned simulator scenario schema for supported exercise types.
 - [x] Edit starter addresses/services, policy source/destination interfaces, filter profiles, and initial policies through forms.
@@ -70,7 +70,7 @@ The content studio now also authors FortiGate policy simulator exercises through
 
 Acceptance: an admin creates and publishes a complete supported firewall exercise through the UI; the correct configuration passes; defined common mistakes fail; students can open it through the normal course outline.
 
-Implemented scope: FortiGate policy exercises. Other simulator families remain a later extension.
+Implemented scope: FortiGate policy/interfaces/static routing and Palo Alto security/NAT/zones. See [expanded authoring](docs/CONFIGURATION_EXERCISE_BUILDER.md). Physical-port and PAN interface authoring are not included in this release.
 
 Implementation and verification: [autosave and builder guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md). Academy adapter/schema upgrades and live college acceptance remain under Priority 0; completing the code does not imply the college deployment is complete.
 

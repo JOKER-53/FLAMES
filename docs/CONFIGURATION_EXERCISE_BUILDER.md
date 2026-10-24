@@ -39,3 +39,7 @@ The supplied Academy adapter recognizes published family/version metadata for al
 These exercises are intentionally separate teaching models. Static routing covers IPv4 prefixes, next hops, interfaces, distance and equal-cost selection, without dynamic routing or live reachability. Security uses zone/App-ID matching without sessions or protocol identification. NAT matches the original destination and returns the configured translation string; it does not simulate connection tracking, full source/port rewriting, routing or security permission. Zone checks compare authored membership/settings without discovering physical cabling. Interface checks do not configure real equipment.
 
 Verification includes all five publication/grading/draft flows, private serializers, stale versions, vendor boundaries, unsatisfied references, broad security rules, NAT shadowing, route conflicts/longest-prefix selection, zone ownership, module transfer, Academy draft recognition and browser author/student solve-and-resume workflows.
+
+## Rollback compatibility
+
+Back up content before publishing the new lesson kinds. Older releases do not support configuration lessons. Before rolling application code back to one of those releases, unpublish these modules using the current release or restore the matched pre-upgrade content snapshot. Do not assume that an older backend can correctly grade a new published lesson kind.
