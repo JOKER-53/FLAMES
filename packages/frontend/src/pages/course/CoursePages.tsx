@@ -168,7 +168,7 @@ export function ModulePage({ course, completed }: { course: Course; completed: S
           return (
             <li key={lesson.id} className="card overflow-hidden">
               {locked
-                ? <div className="flex items-start sm:items-center gap-3 sm:gap-5 px-4 sm:px-6 py-5 opacity-80">{body}</div>
+                ? <div className="flex items-start sm:items-center gap-3 sm:gap-5 px-4 sm:px-6 py-5">{body}</div>
                 : <Link to={lesson.route} className="group flex items-start sm:items-center gap-3 sm:gap-5 px-4 sm:px-6 py-5 hover:bg-sunken/60">{body}</Link>}
             </li>
           );

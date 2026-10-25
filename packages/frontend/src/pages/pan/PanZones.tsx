@@ -64,7 +64,7 @@ export function PanZones({ session }: { session: PanSession }) {
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
             path={["Network", "Zones"]}
-            actions={<button onClick={() => setAdding(!adding)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add zone</button>}
+            actions={<button onClick={() => setAdding(!adding)} className="btn-accent btn-sm"><Icon name="plus" size={14} />Add zone</button>}
           >
             {zones.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-line bg-sunken" aria-label="Zone map">

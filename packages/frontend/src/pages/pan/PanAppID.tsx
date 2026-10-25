@@ -57,12 +57,12 @@ export function PanAppID({ session }: { session?: PanSession }) {
         <p style={{ fontSize: 13, color: "rgb(var(--body))", margin: 0, lineHeight: 1.5 }}>{scenario.description}</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: 16 }}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--line-strong))", borderRadius: 8, padding: 16 }}>
           <h3 style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Available Applications</h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {APPS.map(app => (
-              <label key={app.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, background: selectedApps.includes(app.id) ? "#f0f9ff" : "#f8fafc", border: `1px solid ${selectedApps.includes(app.id) ? "#bae6fd" : "#e2e8f0"}`, borderRadius: 6, cursor: "pointer" }}>
+              <label key={app.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: 8, background: selectedApps.includes(app.id) ? "rgb(var(--accent-soft))" : "rgb(var(--sunken))", border: `1px solid ${selectedApps.includes(app.id) ? "rgb(var(--accent))" : "rgb(var(--line))"}`, borderRadius: 6, cursor: "pointer" }}>
                 <input type="checkbox" checked={selectedApps.includes(app.id)} onChange={() => toggleApp(app.id)} />
                 <span style={{ fontFamily: "monospace", fontSize: 13 }}>{app.id}</span>
                 <span style={{ marginLeft: "auto", fontSize: 11, color: "rgb(var(--muted))" }}>Risk: {app.risk}</span>
@@ -74,11 +74,11 @@ export function PanAppID({ session }: { session?: PanSession }) {
         <div style={{ background: "rgb(var(--surface))", border: "1px solid rgb(var(--line-strong))", borderRadius: 8, padding: 16 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: results ? 12 : 0 }}>
             <span style={{ fontSize: 14, fontWeight: 600 }}>Submit for Grading</span>
-            <button onClick={grade} style={{ padding: "6px 16px", fontSize: 12, borderRadius: 4, background: "#fa4616", color: "#fff", border: "none", cursor: "pointer" }}>Submit</button>
+            <button onClick={grade} className="btn-accent btn-sm">Submit</button>
           </div>
           {results && (
             <div style={{ marginTop: 12 }}>
-              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: passed === total ? "#166534" : "#dc2626" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8, color: passed === total ? "rgb(var(--success))" : "rgb(var(--danger))" }}>
                 {passed === total ? "✓ All checks passed!" : "Not yet correct"} — {passed}/{total} checks
               </div>
               {results.map((r, i) => (

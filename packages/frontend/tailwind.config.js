@@ -32,7 +32,7 @@ export default {
         "info-soft": token("info-soft"),
         // Legacy FortiOS console colours, still used inside lab workspaces.
         forti: {
-          red: "#DA291C",
+          red: "#C8201A",
           dark: "#1A1A1A",
           sidebar: "#212934",
           panel: "#F5F6F8",

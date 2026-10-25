@@ -346,3 +346,7 @@ Added server-generated request IDs, structured redacted failure/rate-limit loggi
 ## 45. Search, duplication and revision comparison
 
 Added module/lesson search and vendor filtering, safe module/lesson duplication with new identities, and administrator-only revision snapshots/comparison against the current editor. History retains the latest 50 versions and never appears in student APIs; copies remain private and never inherit progress. Added content migration 2 with legacy baseline adoption. Backend build and 92 tests, frontend unit tests/build, and the instructor search/duplicate/compare browser workflow passed.
+
+## 46. Accessibility foundations and regressions
+
+Added skip-to-main links, mobile modal focus trapping/Escape/background inertness/focus return, keyboard-selectable policy/address/service rows, named legacy form/reorder controls, and contrast-correct theme text, badges and buttons. Fixed reference-page dark styling and App-ID responsive layout. Added axe checks across representative pages and expanded forms in both themes, plus keyboard focus and policy interaction regressions. Frontend production build and four targeted browser workflows passed. Documented automated coverage and actual assistive-technology acceptance separately.

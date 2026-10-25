@@ -102,7 +102,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
   return (
     <DraftWorkspace draft={session.draft}>
     <div className="max-w-3xl">
-      <h1 className="text-lg font-semibold text-forti-dark mb-1">Addresses</h1>
+      <h1 className="text-lg font-semibold text-ink mb-1">Addresses</h1>
       <p className="text-muted text-[12.5px] mb-4">
         Address objects represent IP subnets, ranges, or "all" — referenced by source/destination in firewall policies.
       </p>
@@ -158,7 +158,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
             {addresses.map((a) => (
               <tr
                 key={a.id}
-                onClick={() => setSelectedRow(a.id)}
+                tabIndex={0} aria-selected={selectedRow===a.id} onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==="Enter"||event.key===" ")){event.preventDefault();setSelectedRow(a.id);}}} onClick={() => setSelectedRow(a.id)}
                 className={`border-b border-line cursor-pointer ${selectedRow === a.id ? "bg-info-soft" : "hover:bg-sunken"}`}
               >
                 <td className="px-3 py-2 font-medium text-ink">{a.name}</td>
@@ -184,7 +184,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
             <label className="block text-[11px] text-muted mb-1">Name</label>
             <input
               type="text"
-              value={draft.name}
+              aria-label="Address name" value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]"
               placeholder="e.g. DB-Server"
@@ -193,7 +193,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
           <div>
             <label className="block text-[11px] text-muted mb-1">Type</label>
             <select
-              value={draft.type}
+              aria-label="Address type" value={draft.type}
               onChange={(e) => setDraft((d) => ({ ...d, type: e.target.value as "subnet" | "range" }))}
               className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]"
             >
@@ -205,7 +205,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
             <label className="block text-[11px] text-muted mb-1">Value</label>
             <input
               type="text"
-              value={draft.value}
+              aria-label="Address value" value={draft.value}
               onChange={(e) => setDraft((d) => ({ ...d, value: e.target.value }))}
               className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px] font-mono"
               placeholder={draft.type === "subnet" ? "10.0.2.0/24" : "10.0.1.10-10.0.1.20"}
@@ -217,7 +217,7 @@ export function AddressesPage({ session }: AddressesPageProps) {
           <label className="block text-[11px] text-muted mb-1">Comment (optional)</label>
           <input
             type="text"
-            value={draft.comment ?? ""}
+            aria-label="Comment (optional)" value={draft.comment ?? ""}
             onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
             className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]"
           />

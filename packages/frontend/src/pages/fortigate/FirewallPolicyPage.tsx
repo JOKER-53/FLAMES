@@ -180,7 +180,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
         <ConsoleFrame path={["Policy & Objects", "Firewall Policy"]}>
           <div className="flex items-center gap-2 px-2 py-1.5 border-b border-line bg-sunken">
             <button aria-label="Create New" onClick={() => { resetDraft(); setShowEditor(true); }} className="text-[12px] px-2.5 py-1 bg-forti-red text-white rounded-sm hover:bg-forti-red/90 flex items-center gap-1"><span className="text-[13px] leading-none">+</span> Create New</button>
-            <button onClick={() => { const p = policies.find((p) => p.id === selectedRow); if (p) startEdit(p); else alert("Select a policy row first."); }} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken">Edit</button>
+            <button disabled={!selectedRow} onClick={() => { const p = policies.find((p) => p.id === selectedRow); if (p) startEdit(p); else alert("Select a policy row first."); }} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken">Edit</button>
             <button onClick={() => { if (selectedRow) deletePolicy(selectedRow); }} disabled={!selectedRow} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken disabled:opacity-40">Delete</button>
           </div>
           <div className="overflow-x-auto" role="region" aria-label="Firewall policies" tabIndex={0}>
@@ -195,7 +195,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             <tbody>
               {policies.length === 0 && <tr><td colSpan={13} className="px-3 py-6 text-center text-faint">No policies yet — use "Create New" above.</td></tr>}
               {policies.map((p, idx) => (
-                <tr key={p.id} id={`policy-row-${encodeURIComponent(p.id)}`} tabIndex={-1} onClick={() => setSelectedRow(p.id)} className={`border-b border-line cursor-pointer ${selectedRow === p.id ? "bg-info-soft" : "hover:bg-sunken"}`}>
+                <tr key={p.id} id={`policy-row-${encodeURIComponent(p.id)}`} tabIndex={0} aria-selected={selectedRow===p.id} onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==="Enter"||event.key===" ")){event.preventDefault();setSelectedRow(p.id);}}} onClick={() => setSelectedRow(p.id)} className={`border-b border-line cursor-pointer ${selectedRow === p.id ? "bg-info-soft" : "hover:bg-sunken"}`}>
                   <td className="px-3 py-2 text-faint">{idx + 1}</td>
                   <td className="px-3 py-2 font-medium text-ink">{p.name}</td>
                   <td className="px-3 py-2">{p.srcIntf}</td>
@@ -210,8 +210,8 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
                   <td className="px-3 py-2 text-faint">Standard</td>
                   <td className="px-3 py-2">
                     <div className="flex items-center gap-1 justify-end">
-                      <button onClick={(e) => { e.stopPropagation(); movePolicy(p.id, -1); }} disabled={idx === 0} className="px-1 text-muted hover:text-ink disabled:opacity-30">↑</button>
-                      <button onClick={(e) => { e.stopPropagation(); movePolicy(p.id, 1); }} disabled={idx === policies.length - 1} className="px-1 text-muted hover:text-ink disabled:opacity-30">↓</button>
+                      <button aria-label={`Move ${p.name} up`} onClick={(e) => { e.stopPropagation(); movePolicy(p.id, -1); }} disabled={idx === 0} className="px-1 text-muted hover:text-ink disabled:opacity-30">↑</button>
+                      <button aria-label={`Move ${p.name} down`} onClick={(e) => { e.stopPropagation(); movePolicy(p.id, 1); }} disabled={idx === policies.length - 1} className="px-1 text-muted hover:text-ink disabled:opacity-30">↓</button>
                     </div>
                   </td>
                 </tr>
@@ -225,19 +225,19 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
           <div className="text-[13px] font-medium text-body mb-3">{editingId ? "Edit Policy" : "New Policy"}</div>
           <div className="grid grid-cols-2 gap-4 mb-3">
             <div>
-              <label className="block text-[11px] text-muted mb-1">Name</label>
-              <input type="text" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]" placeholder="e.g. Allow-HTTPS-to-WebServer" />
+              <label htmlFor="policy-name" className="block text-[11px] text-muted mb-1">Name</label>
+              <input id="policy-name" type="text" value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]" placeholder="e.g. Allow-HTTPS-to-WebServer" />
             </div>
             <div className="flex gap-4">
               <div className="flex-1">
                 <label className="block text-[11px] text-muted mb-1">Source Interface</label>
-                <select value={draft.srcIntf} onChange={(e) => setDraft((d) => ({ ...d, srcIntf: e.target.value as InterfaceZone }))} className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]">
+                <select aria-label="Source Interface" value={draft.srcIntf} onChange={(e) => setDraft((d) => ({ ...d, srcIntf: e.target.value as InterfaceZone }))} className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]">
                   {INTERFACES.map((i) => <option key={i} value={i}>{i}</option>)}
                 </select>
               </div>
               <div className="flex-1">
                 <label className="block text-[11px] text-muted mb-1">Dest Interface</label>
-                <select value={draft.dstIntf} onChange={(e) => setDraft((d) => ({ ...d, dstIntf: e.target.value as InterfaceZone }))} className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]">
+                <select aria-label="Dest Interface" value={draft.dstIntf} onChange={(e) => setDraft((d) => ({ ...d, dstIntf: e.target.value as InterfaceZone }))} className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]">
                   {INTERFACES.map((i) => <option key={i} value={i}>{i}</option>)}
                 </select>
               </div>
@@ -274,7 +274,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
           <div className="flex items-center gap-5 mb-3">
             <div className="flex items-center gap-2">
               <label className="text-[11px] text-muted">Action</label>
-              <select value={draft.action} onChange={(e) => setDraft((d) => ({ ...d, action: e.target.value as "ACCEPT" | "DENY" }))} className="border border-line-strong rounded px-2 py-1 text-[12.5px]">
+              <select aria-label="Policy action" value={draft.action} onChange={(e) => setDraft((d) => ({ ...d, action: e.target.value as "ACCEPT" | "DENY" }))} className="border border-line-strong rounded px-2 py-1 text-[12.5px]">
                 <option value="ACCEPT">ACCEPT</option>
                 <option value="DENY">DENY</option>
               </select>
@@ -286,7 +286,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             {webFilterProfiles.length > 0 && (
               <div className="flex items-center gap-2">
                 <label className="text-[11px] text-muted">Web Filter</label>
-                <select value={draft.webFilterProfileId ?? ""} onChange={(e) => setDraft((d) => ({ ...d, webFilterProfileId: e.target.value || undefined }))} className="border border-line-strong rounded px-2 py-1 text-[12.5px]">
+                <select aria-label="Web Filter" value={draft.webFilterProfileId ?? ""} onChange={(e) => setDraft((d) => ({ ...d, webFilterProfileId: e.target.value || undefined }))} className="border border-line-strong rounded px-2 py-1 text-[12.5px]">
                   <option value="">None</option>
                   {webFilterProfiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>

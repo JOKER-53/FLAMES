@@ -95,7 +95,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
             path={["Policies", "Security"]}
-            actions={<button onClick={() => setShowNew(!showNew)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add rule</button>}
+            actions={<button onClick={() => setShowNew(!showNew)} className="btn-accent btn-sm"><Icon name="plus" size={14} />Add rule</button>}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">

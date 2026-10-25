@@ -92,7 +92,7 @@ export function NetworkTopology({ addresses, packets = [], highlightSystemIds = 
                   </div>
                   <div title={sys.address.name} className={`text-[11px] text-center break-words w-full font-semibold ${highlighted ? "text-forti-red" : "text-body"}`}>{sys.address.name}</div>
                   <div className="text-[10px] text-muted font-mono text-center break-all w-full">{sys.address.value.split("/")[0]}</div>
-                  <div className="text-[8px] font-bold px-1.5 py-0.5 rounded text-white" style={{ backgroundColor: ZONE_DOTS[zone] }}>{zone}</div>
+                  <div className="text-[8px] font-bold px-1.5 py-0.5 rounded text-ink bg-surface border" style={{ borderColor: ZONE_DOTS[zone] }}>{zone}</div>
                   {/* Cable down to firewall */}
                   <ConnectorDot color={ZONE_DOTS[zone]} />
                   <div className="relative">

@@ -135,7 +135,7 @@ Standalone self-service password recovery is conditional on keeping local accoun
 - [x] Expand content-studio editing with module/lesson search, vendor filtering, identity-safe module/lesson duplication and private saved-revision comparisons. Instructions remain safe plain text; optional rich formatting can follow teacher feedback.
 - [x] Add browser interaction regressions to CI for authoring, accounts, themes, and progress; retain meaningful WebGL/manual acceptance (curriculum-wide desktop/mobile topology, authoring, account, theme, catalog-race and sync-outage workflows; Chromium and Firefox runners).
 - [ ] Improve large 3D asset loading/caching and investigate the lazy-loaded Three.js chunk-size warning.
-- [ ] Add accessibility checks for focus order, keyboard-only use, contrast, and reduced motion.
+- [x] Add automated light/dark WCAG scans, keyboard skip/navigation/focus checks, contrast corrections, named controls and reduced-motion coverage; retain actual assistive-technology/device acceptance in docs/ACCESSIBILITY.md.
 - [x] Add rate-limit observability, request-correlated operational logs, protected diagnostics, and checksummed transactional migrations with documented upgrade/rollback procedures.
 - [ ] Add hosted password recovery/account administration for standalone deployments if they remain in use.
 - [ ] Consider configuration diff views, topology authoring, and supported CLI practice after the core flow is stable.

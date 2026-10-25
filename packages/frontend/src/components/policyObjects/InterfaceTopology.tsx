@@ -68,7 +68,7 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
                   <div className={`w-16 h-12 rounded-sm bg-surface border-2 flex items-center justify-center shadow-sm ${focus === "ip" ? "ring-2 ring-forti-red/30" : ""}`} style={{ borderColor: intf ? ROLE_DOT[role] : "#e5e7eb" }}>
                     {role === "WAN" ? <CloudIcon /> : <SwitchIcon />}
                   </div>
-                  <div className="text-[9.5px] font-bold px-2 py-0.5 rounded text-white" style={{ backgroundColor: ROLE_DOT[role] }}>
+                  <div className="text-[9.5px] font-bold px-2 py-0.5 rounded text-ink bg-surface border" style={{ borderColor: ROLE_DOT[role] }}>
                     {role}
                   </div>
                   {(focus === "ip" || focus === "all") && (
@@ -79,7 +79,7 @@ export function InterfaceTopology({ interfaces, focus = "all" }: InterfaceTopolo
                   {(focus === "access" || focus === "all") && intf && (
                     <div className="flex gap-0.5 flex-wrap justify-center max-w-[64px]">
                       {intf.adminAccess.length === 0 ? (
-                        <span className="text-[8px] text-gray-300">no access</span>
+                        <span className="text-[8px] text-muted">no access</span>
                       ) : (
                         intf.adminAccess.map((a) => (
                           <span key={a} className="text-[7.5px] px-1 py-0.5 rounded bg-gray-700 text-white font-medium">

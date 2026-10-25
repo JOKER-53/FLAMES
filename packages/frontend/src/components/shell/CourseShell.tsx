@@ -1,10 +1,11 @@
+import { useDialogFocus } from "../../hooks/useDialogFocus";
 import { ThemeToggle } from "../ThemeToggle";
 // ============================================================================
 // Learning-platform frame shared by both vendors: course outline on the left,
 // breadcrumb and account on top, lesson content in the middle. Lesson
 // workspaces inside keep their vendor-console styling.
 // ============================================================================
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { ProgressBar, StatusIcon } from "../ui/primitives";
@@ -148,6 +149,9 @@ function Sidebar({ course, done, current, onNavigate }: { course: Course; done: 
 export function CourseShell({ course, completed, children }: { course: Course; completed: Set<string>; children: ReactNode }) {
   const location = useLocation();
   const [drawer, setDrawer] = useState(false);
+  const drawerRef=useRef<HTMLElement>(null);
+  const closeDrawer=useCallback(()=>setDrawer(false),[]);
+  useDialogFocus(drawer,drawerRef,closeDrawer);
   const current = lessonForLocation(course, location.pathname, location.search);
   const moduleFromPath = course.modules.find(m => location.pathname === `${course.base}/modules/${m.id}`);
   const reference = course.reference.find(r => r.path === location.pathname);
@@ -163,6 +167,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
 
   return (
     <CourseContext.Provider value={{ course, completed }}>
+    <a href="#main-content" className="skip-link">Skip to content</a>
     <div data-vendor={course.vendor} className="flex h-screen bg-canvas text-base">
       <aside className="hidden lg:flex w-[272px] shrink-0 flex-col bg-surface border-r border-line">
         <div className="h-14 shrink-0 flex items-center px-4 border-b border-line"><BrandMark /></div>
@@ -172,7 +177,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
       {drawer && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-ink/30" onClick={() => setDrawer(false)} />
-          <aside className="relative w-[300px] max-w-[85vw] flex flex-col bg-surface shadow-raised">
+          <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Course navigation" tabIndex={-1} className="relative w-[300px] max-w-[85vw] flex flex-col bg-surface shadow-raised">
             <div className="h-14 flex items-center justify-between px-4 border-b border-line">
               <BrandMark />
               <button className="btn-ghost w-9 px-0" aria-label="Close navigation" onClick={() => setDrawer(false)}><Icon name="x" size={18} /></button>
@@ -182,7 +187,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
         </div>
       )}
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div data-course-content className="flex-1 min-w-0 flex flex-col">
         <header className="h-14 shrink-0 flex items-center justify-between gap-3 px-4 lg:px-6 bg-surface border-b border-line">
           <div className="flex items-center gap-2 min-w-0">
             <button className="lg:hidden btn-ghost w-9 px-0" aria-label="Open navigation" aria-expanded={drawer} onClick={() => setDrawer(true)}><Icon name="menu" size={18} /></button>
@@ -199,7 +204,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
           </div>
           <AccountMenu />
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto">
           <div className={location.pathname === `${course.base}/hardware`
             ? "mx-auto w-full px-4 lg:px-6 py-4"
             : current ? "w-full px-4 lg:px-6 py-5 lg:py-6" : "w-full px-4 lg:px-6 py-6 lg:py-8"}>{children}</div>
