@@ -50,6 +50,8 @@ export interface ContentDraft {
   hasUnpublishedChanges: boolean;
 }
 export interface ContentSummary {
+  summary?: string;
+  lessonTitles?: string[];
   id: string;
   vendor: ContentVendor;
   title: string;

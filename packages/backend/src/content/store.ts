@@ -80,7 +80,8 @@ export class ContentStore {
     migrate(this.db, "content", [{version:1,name:"Initial content schema",sql:`CREATE TABLE IF NOT EXISTS content_modules (
         id TEXT PRIMARY KEY, draft_json TEXT NOT NULL, published_json TEXT,
         revision INTEGER NOT NULL, updated_at INTEGER NOT NULL, published_at INTEGER
-      );`}]);
+      );`},{version:2,name:"Private content revision history",sql:`CREATE TABLE IF NOT EXISTS content_history (module_id TEXT NOT NULL,revision INTEGER NOT NULL,event TEXT NOT NULL,snapshot_json TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(module_id,revision));
+      INSERT OR IGNORE INTO content_history SELECT id,revision,'adopted',draft_json,updated_at FROM content_modules;`}]);
   }
   close() { this.db.close(); }
   private write<T>(operation: () => T): T {
@@ -96,7 +97,7 @@ export class ContentStore {
   list(): ContentSummary[] {
     return this.db.prepare("SELECT id FROM content_modules ORDER BY updated_at DESC, id").all().map((row: { id: string }) => {
       const draft = this.get(row.id);
-      return { id: row.id, title: draft.module.title, vendor: draft.module.vendor, lessonCount: draft.module.lessons.length, revision: draft.revision, publishedAt: draft.publishedAt, hasUnpublishedChanges: draft.hasUnpublishedChanges };
+      return { id: row.id, title: draft.module.title, vendor: draft.module.vendor, lessonCount: draft.module.lessons.length, revision: draft.revision, summary: draft.module.summary, lessonTitles: draft.module.lessons.map(lesson => lesson.title), publishedAt: draft.publishedAt, hasUnpublishedChanges: draft.hasUnpublishedChanges };
     });
   }
   create(vendor: unknown, title: unknown): ContentDraft {
@@ -104,7 +105,7 @@ export class ContentStore {
     requireValue(this.list().length < 100, "Content library limit reached (100 modules).");
     const module = validateModule({ id: `module-${randomUUID()}`, vendor, title, summary: "", lessons: [] });
     this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id, JSON.stringify(module), Date.now());
-    return this.get(module.id);
+    return this.record(module.id,"created");
       });
   }
   exportModule(id: string) {
@@ -123,8 +124,30 @@ export class ContentStore {
     requireValue(this.list().length < 100, "Content library limit reached (100 modules).");
     const { module } = this.previewImport(value);
     this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id, JSON.stringify(module), Date.now());
-    return this.get(module.id);
+    return this.record(module.id,"imported");
       });
+  }
+  private record(id:string,event:string): ContentDraft {
+    const draft=this.get(id);
+    this.db.prepare("INSERT INTO content_history VALUES (?,?,?,?,?)").run(id,draft.revision,event,JSON.stringify(draft.module),Date.now());
+    this.db.prepare("DELETE FROM content_history WHERE module_id=? AND revision NOT IN (SELECT revision FROM content_history WHERE module_id=? ORDER BY revision DESC LIMIT 50)").run(id,id);
+    return draft;
+  }
+  history(id:string) {
+    this.get(id);return this.db.prepare("SELECT revision,event,created_at AS createdAt FROM content_history WHERE module_id=? ORDER BY revision DESC LIMIT 50").all(id);
+  }
+  historical(id:string,revision:unknown): AuthoredModule {
+    this.get(id);const value=Number(revision);requireValue(Number.isInteger(value)&&value>0,"Choose a valid revision.");
+    const row=this.db.prepare("SELECT snapshot_json FROM content_history WHERE module_id=? AND revision=?").get(id,value);
+    if(!row)throw new ContentError(404,"Revision not found or no longer retained.");return JSON.parse(row.snapshot_json);
+  }
+  duplicate(id:string,revision:unknown):ContentDraft {
+    return this.write(()=>{
+      requireValue(this.list().length<100,"Content library limit reached (100 modules).");const source=this.revision(id,revision);
+      const {module}=this.previewImport(this.exportModule(id));module.title=`Copy of ${source.module.title}`.slice(0,160);
+      this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id,JSON.stringify(module),Date.now());
+      return this.record(module.id,"duplicated");
+    });
   }
   private revision(id: string, revision: unknown) {
     requireValue(Number.isInteger(revision), "A content revision is required.");
@@ -146,7 +169,7 @@ export class ContentStore {
     }
     requireValue(module.lessons.every(lesson => !otherIds.has(lesson.id)), "A lesson ID already belongs to another module.");
     this.db.prepare("UPDATE content_modules SET draft_json=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(JSON.stringify(module), Date.now(), id, revision);
-    return this.get(id);
+    return this.record(id,"saved");
       });
   }
   publish(id: string, revision: unknown): ContentDraft {
@@ -155,20 +178,21 @@ export class ContentStore {
     validateModule(current.module, true);
     const now = Date.now();
     this.db.prepare("UPDATE content_modules SET published_json=draft_json,published_at=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(now, now, id, revision);
-    this.cachedCatalog = null; return this.get(id);
+    this.cachedCatalog = null; return this.record(id,"published");
       });
   }
   unpublish(id: string, revision: unknown): ContentDraft {
     return this.write(() => {
     this.revision(id, revision);
     this.db.prepare("UPDATE content_modules SET published_json=NULL,published_at=NULL,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(Date.now(), id, revision);
-    this.cachedCatalog = null; return this.get(id);
+    this.cachedCatalog = null; return this.record(id,"unpublished");
       });
   }
   delete(id: string, revision: unknown) {
     return this.write(() => {
     const current = this.revision(id, revision);
     if (current.publishedAt) throw new ContentError(409, "Unpublish the module before deleting it.");
+    this.db.prepare("DELETE FROM content_history WHERE module_id=?").run(id);
     this.db.prepare("DELETE FROM content_modules WHERE id=? AND revision=?").run(id, revision); this.cachedCatalog = null;
       });
   }

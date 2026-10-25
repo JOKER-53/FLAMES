@@ -342,3 +342,7 @@ Verification: frontend production build passed; all 53 browser workflows passed 
 ## 44. Operational diagnostics and migrations
 
 Added server-generated request IDs, structured redacted failure/rate-limit logging, protected process counters/schema diagnostics, and transactional checksummed migrations for all SQLite components. Baseline adoption retains existing data; checksum mismatch, future schema and partial failures are rejected safely. Added upgrade/rollback documentation. Backend build and all 90 backend tests passed, including migration and logging regressions. Host log collection and deployment acceptance remain operator tasks.
+
+## 45. Search, duplication and revision comparison
+
+Added module/lesson search and vendor filtering, safe module/lesson duplication with new identities, and administrator-only revision snapshots/comparison against the current editor. History retains the latest 50 versions and never appears in student APIs; copies remain private and never inherit progress. Added content migration 2 with legacy baseline adoption. Backend build and 92 tests, frontend unit tests/build, and the instructor search/duplicate/compare browser workflow passed.

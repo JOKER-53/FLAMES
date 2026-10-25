@@ -36,6 +36,9 @@ export function adminContentRouter(content: ContentStore, accounts: PlatformStor
   router.post("/modules", (req, res, next) => {
     try { res.status(201).json(content.create(req.body?.vendor, req.body?.title)); } catch (error) { next(error); }
   });
+  router.get("/modules/:id/history", (req,res,next)=>{try{res.json({revisions:content.history(req.params.id)});}catch(error){next(error);}});
+  router.get("/modules/:id/history/:revision", (req,res,next)=>{try{res.json({module:content.historical(req.params.id,req.params.revision)});}catch(error){next(error);}});
+  router.post("/modules/:id/duplicate", (req,res,next)=>{try{res.status(201).json(content.duplicate(req.params.id,req.body?.revision));}catch(error){next(error);}});
   router.get("/modules/:id", (req, res, next) => {
     try { res.json(content.get(req.params.id)); } catch (error) { next(error); }
   });

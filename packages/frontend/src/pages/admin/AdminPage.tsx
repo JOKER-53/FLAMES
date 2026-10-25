@@ -1,3 +1,4 @@
+import { RevisionHistory } from "./RevisionHistory";
 import { CONFIGURATION_FAMILIES, type ConfigurationFamily } from "@fortisim/engine";
 import { ConfigurationExerciseEditor, exampleConfigurationExercise } from "./ConfigurationExerciseEditor";
 import { ContentTransfer } from "./ContentTransfer";
@@ -28,6 +29,9 @@ export function AdminPage() {
   const { user, loading, integration } = useAccount();
   const { refresh: refreshCatalog } = useCourseCatalog();
   const allowed = integration?.mode === "academy" ? !!user?.canManageContent : user?.role === "instructor";
+  const [query,setQuery]=useState("");
+  const [lessonQuery,setLessonQuery]=useState("");
+  const [courseFilter,setCourseFilter]=useState("");
   const [modules, setModules] = useState<ContentSummary[]>([]);
   const [draft, setDraft] = useState<ContentDraft | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<string | null>(null);
@@ -62,7 +66,7 @@ export function AdminPage() {
   async function open(id: string) {
     if (busy || dirty && !window.confirm("Discard unsaved changes and open another module?")) return;
     setBusy(true); setError(null); setNotice(null);
-    try { const result = await request<ContentDraft>(`/modules/${id}`); setDraft(result); setSelectedLesson(null); setDirty(false); setPreview(false); }
+    try { const result = await request<ContentDraft>(`/modules/${id}`); setDraft(result); setSelectedLesson(null); setLessonQuery(""); setDirty(false); setPreview(false); }
     catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   }
   async function create(event: React.FormEvent) {
@@ -90,6 +94,11 @@ export function AdminPage() {
       await reloadList(); await refreshCatalog();
     } catch (error) { setError((error as Error).message); } finally { setBusy(false); }
   }
+  async function duplicateModule(){
+    if(!draft||busy)return;setBusy(true);setError(null);
+    try{let current=draft;if(dirty){current=await request<ContentDraft>(`/modules/${current.module.id}`,"PUT",{module:current.module,revision:current.revision});setDraft(current);setDirty(false);}const copy=await request<ContentDraft>(`/modules/${current.module.id}/duplicate`,"POST",{revision:current.revision});setDraft(copy);setSelectedLesson(null);setLessonQuery("");setPreview(false);setNotice("Module duplicated as a private draft with new lesson and task identities.");await reloadList();}catch(error){setError((error as Error).message);}finally{setBusy(false);}
+  }
+  const filteredModules=modules.filter(module=>(!courseFilter||module.vendor===courseFilter)&&[module.title,module.summary,...(module.lessonTitles??[])].join(" ").toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()));
   if (loading) return <SiteLayout><p role="status" className="text-muted">Checking administrator access…</p></SiteLayout>;
   if (!allowed) return <SiteLayout><PageHeader title="Administrator access" description="Manage FLAMES modules, lessons, and tasks." /><Callout tone="info" title="An administrator account is required">{integration?.mode === "academy" ? "Open FLAMES from an Academy account with the admin role." : "Sign in with your instructor account. To create the first instructor, run the admin setup command on the FLAMES server."}</Callout><Link to="/account" className="btn-primary mt-5">{user ? "Your account" : "Sign in"}</Link></SiteLayout>;
 
@@ -97,7 +106,7 @@ export function AdminPage() {
     <PageHeader eyebrow="FLAMES administration" title="Content studio" description="Build modules, write lessons, and add tasks. Publish when you are ready for students to see them." actions={<button className="btn-primary" disabled={busy} onClick={() => { setCreating(true); setPreview(false); }}><Icon name="plus" size={15} />New module</button>} />
     {error && <Callout tone="danger" className="mb-5">{error} {error.includes("another editor") && draft && <button className="link ml-2" onClick={() => void open(draft.module.id)}>Reload module</button>}</Callout>}
     {notice && <p className="mb-5 rounded-md bg-success-soft text-success border border-success/20 px-4 py-3 text-sm" role="status">{notice}</p>}
-    <ContentTransfer moduleId={draft?.module.id} dirty={dirty} onImported={async result => { setDraft(result); setSelectedLesson(null); setDirty(false); setPreview(false); await reloadList(); }} />
+    <ContentTransfer moduleId={draft?.module.id} dirty={dirty} onImported={async result => { setDraft(result); setSelectedLesson(null); setLessonQuery(""); setDirty(false); setPreview(false); await reloadList(); }} />
     {creating && <form onSubmit={create} className="card p-5 mb-6 flex flex-wrap items-end gap-4">
       <label className="min-w-[180px]"><span className="field-label">Course</span><select aria-label="Course" className="input" value={vendor} onChange={event => setVendor(event.target.value as ContentVendor)}><option value="fortigate">FortiGate 60F</option><option value="paloalto">Palo Alto PA-220</option></select></label>
       <label className="flex-1 min-w-[200px]"><span className="field-label">Module title</span><input autoFocus required maxLength={160} className="input" value={title} onChange={event => setTitle(event.target.value)} placeholder="e.g. Branch network fundamentals" /></label>
@@ -106,16 +115,18 @@ export function AdminPage() {
     <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] items-start">
       <aside className="card overflow-hidden lg:sticky lg:top-5">
         <div className="px-4 py-3 border-b border-line flex justify-between text-sm font-semibold text-ink"><span>Your modules</span><span className="text-muted font-normal">{modules.length}</span></div>
-        {modules.length === 0 ? <p className="p-4 text-sm text-muted">Create your first module to add lessons. Existing simulator modules stay available in the courses.</p> : <nav aria-label="Content modules">{modules.map(module => <button key={module.id} disabled={busy} onClick={() => void open(module.id)} className={`w-full text-left p-4 border-b last:border-b-0 border-line hover:bg-sunken ${draft?.module.id === module.id ? "bg-sunken border-l-[3px] border-l-accent" : ""}`}>
+        <div className="p-3 border-b border-line space-y-2"><label className="block"><span className="sr-only">Search modules</span><input type="search" className="input" placeholder="Search modules or lesson titles" value={query} onChange={event=>setQuery(event.target.value)}/></label><label className="block"><span className="sr-only">Filter modules by course</span><select aria-label="Filter modules by course" className="input" value={courseFilter} onChange={event=>setCourseFilter(event.target.value)}><option value="">Both courses</option><option value="fortigate">FortiGate</option><option value="paloalto">Palo Alto</option></select></label><p className="text-xs text-muted" role="status">{filteredModules.length} matching modules</p></div>
+        {modules.length === 0 ? <p className="p-4 text-sm text-muted">Create your first module to add lessons. Existing simulator modules stay available in the courses.</p> : <nav aria-label="Content modules">{filteredModules.map(module => <button key={module.id} disabled={busy} onClick={() => void open(module.id)} className={`w-full text-left p-4 border-b last:border-b-0 border-line hover:bg-sunken ${draft?.module.id === module.id ? "bg-sunken border-l-[3px] border-l-accent" : ""}`}>
           <span className="block text-xs text-muted mb-1">{vendorName(module.vendor)}</span><span className="block font-medium text-ink break-words">{module.title}</span>
           <span className="mt-2 flex items-center justify-between gap-2 text-xs"><span className="text-muted">{module.lessonCount} lessons</span><span className={`badge ${module.publishedAt ? "bg-success-soft text-success" : "bg-warn-soft text-warn"}`}>{module.publishedAt ? module.hasUnpublishedChanges ? "Changes saved" : "Published" : "Draft"}</span></span>
-        </button>)}</nav>}
+        </button>)}{!filteredModules.length&&<p className="p-4 text-sm text-muted">No modules match these filters.</p>}</nav>}
       </aside>
       {!draft ? <section className="card p-8 sm:p-12"><Icon name="book" size={28} className="text-accent" /><h2 className="text-xl font-semibold mt-4">A place for your next lesson</h2><p className="text-muted mt-2 max-w-lg">Start a module for either vendor, add lesson instructions, and create tasks students can check as they learn. Drafts are visible only to administrators.</p><button className="btn-secondary mt-6" onClick={() => setCreating(true)}>Create a module</button></section> : <div className="min-w-0 space-y-5" data-vendor={draft.module.vendor}>
         <div className="card p-4 flex flex-wrap items-center justify-between gap-3">
           <div><div className="text-xs text-muted">{vendorName(draft.module.vendor)} · {dirty ? "Unsaved changes" : "Draft saved"}</div><h2 className="font-semibold mt-1">{draft.module.title}</h2></div>
-          <div className="flex flex-wrap gap-2"><button className="btn-secondary btn-sm" disabled={busy} onClick={() => void action("save")}>{busy ? "Working…" : "Save draft"}</button><button className="btn-primary btn-sm" disabled={busy} onClick={() => void action("publish")}>Publish module</button></div>
+          <div className="flex flex-wrap gap-2"><button className="btn-secondary btn-sm" disabled={busy} onClick={()=>void duplicateModule()}>Duplicate module</button><button className="btn-secondary btn-sm" disabled={busy} onClick={() => void action("save")}>{busy ? "Working…" : "Save draft"}</button><button className="btn-primary btn-sm" disabled={busy} onClick={() => void action("publish")}>Publish module</button></div>
         </div>
+        <RevisionHistory module={draft.module} revision={draft.revision}/>
         <fieldset disabled={busy} className="card p-5 space-y-4 min-w-0">
           <legend className="px-2 text-sm font-semibold">Module details</legend>
           <label className="block"><span className="field-label">Title</span><input className="input" maxLength={160} value={draft.module.title} onChange={event => updateModule({ title: event.target.value })} /></label>
@@ -123,8 +134,10 @@ export function AdminPage() {
         </fieldset>
         <section className="card p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4"><h3 className="font-semibold">Lessons <span className="font-normal text-muted">({draft.module.lessons.length})</span></h3><button className="btn-secondary btn-sm" disabled={busy || draft.module.lessons.length >= 30} onClick={() => { const item = newLesson(); updateModule({ lessons: [...draft.module.lessons, item] }); setSelectedLesson(item.id); setPreview(false); }}>Add lesson</button></div>
-          {draft.module.lessons.length === 0 ? <p className="text-sm text-muted">Add a lesson, then write instructions and tasks.</p> : <ol className="space-y-2">{draft.module.lessons.map((item, index) => <li key={item.id} className={`flex items-center gap-2 rounded border px-3 py-2 ${selectedLesson === item.id ? "border-accent bg-accent-soft" : "border-line"}`}>
+          <label className="block mb-3"><span className="sr-only">Search lessons</span><input type="search" className="input" placeholder="Search lessons" value={lessonQuery} onChange={event=>setLessonQuery(event.target.value)}/></label>
+          {draft.module.lessons.length === 0 ? <p className="text-sm text-muted">Add a lesson, then write instructions and tasks.</p> : <ol className="space-y-2">{draft.module.lessons.map((item, index) => <li key={item.id} style={![item.title,item.summary,item.body].join(" ").toLocaleLowerCase().includes(lessonQuery.trim().toLocaleLowerCase())?{display:"none"}:undefined} className={`flex items-center gap-2 rounded border px-3 py-2 ${selectedLesson === item.id ? "border-accent bg-accent-soft" : "border-line"}`}>
             <button className="flex-1 min-w-0 text-left text-sm text-ink" onClick={() => { setSelectedLesson(item.id); setPreview(false); }}><span className="text-muted mr-2">{index + 1}.</span>{item.title || "Untitled lesson"}<span className="text-muted ml-2">· {item.tasks.length} tasks</span></button>
+            <button className="btn-ghost btn-sm" disabled={busy || draft.module.lessons.length>=30} aria-label={`Duplicate ${item.title}`} onClick={()=>{const copy=structuredClone(item);copy.id=`custom-${contentId()}`;copy.title=`Copy of ${item.title}`.slice(0,160);copy.tasks=copy.tasks.map(task=>({...task,id:`task-${contentId()}`}));updateModule({lessons:[...draft.module.lessons.slice(0,index+1),copy,...draft.module.lessons.slice(index+1)]});setSelectedLesson(copy.id);setPreview(false);}}>Duplicate</button>
             <button className="btn-ghost btn-sm px-2" disabled={busy || index === 0} aria-label={`Move ${item.title} up`} onClick={() => { const lessons = [...draft.module.lessons]; [lessons[index - 1], lessons[index]] = [lessons[index], lessons[index - 1]]; updateModule({ lessons }); }}><Icon name="chevronUp" size={14} /></button>
             <button className="btn-ghost btn-sm px-2" disabled={busy || index === draft.module.lessons.length - 1} aria-label={`Move ${item.title} down`} onClick={() => { const lessons = [...draft.module.lessons]; [lessons[index + 1], lessons[index]] = [lessons[index], lessons[index + 1]]; updateModule({ lessons }); }}><Icon name="chevronDown" size={14} /></button>
           </li>)}</ol>}

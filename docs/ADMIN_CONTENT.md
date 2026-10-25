@@ -70,3 +70,11 @@ Without `FLAMES_CATALOG_URL`, the parent adapter recognizes built-in lessons onl
 Use the studio import/export panel to preview a version 1 module file, then import it as a private draft. Exports contain answer keys and saved draft content; every import receives new IDs. See [content transfer](CLASSROOM_AND_CONTENT_TRANSFER.md). Run `npm run admin:create -- --reset-password` in an operator terminal for existing instructor recovery/session revocation. Production rejects the checking-only password; see [operations](OPERATIONS_RUNBOOK.md).
 
 Expanded authoring: [configuration exercise builder](CONFIGURATION_EXERCISE_BUILDER.md) — FortiGate interfaces/routing and Palo Alto security/NAT/zones.
+
+## Find, copy and compare content
+
+Search modules by title, summary or saved lesson titles, and filter by vendor. Search lessons inside the selected module by title, summary or instructions. Clear filters to see the full library again.
+
+**Duplicate lesson** copies the selected draft lesson next to its source, mints new lesson/task identities, and preserves exercise-internal references. Save/publish explicitly when ready. **Duplicate module** first saves any local changes with the existing revision guard, then creates a private copy with new module/lesson/task identities. It never copies publication state or student completion. Existing size/library limits still apply.
+
+**Revision history** compares a chosen server-saved snapshot against the current editor, including local unsaved changes. It shows changed field paths with saved/current values, including additions/removals. Open it after a save to refresh available versions. History contains the most recent 50 create/import/duplicate/save/publish/unpublish events; earlier versions are pruned. Existing modules start with an adopted baseline at upgrade. No older history is invented. Only content administrators can access snapshots, which can contain private grading answers; public catalog and lesson endpoints never expose history. Comparisons do not restore or republish anything. Large comparisons display the first 200 changed fields. Deleting a draft also deletes its history; retain exports/backups for long-term archival.
