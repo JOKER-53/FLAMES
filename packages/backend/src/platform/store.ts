@@ -1,3 +1,4 @@
+import { migrate, schemaStatus } from "../db/migrations";
 import { DraftError } from "../drafts/errors";
 import type { SimulatorDraft } from "@fortisim/engine";
 import { isCompletionTask as builtinCompletionTask } from "@fortisim/engine";
@@ -39,7 +40,8 @@ export class PlatformStore {
     this.db.exec(`PRAGMA journal_mode=WAL;
       PRAGMA foreign_keys=ON;
       PRAGMA busy_timeout=5000;
-      CREATE TABLE IF NOT EXISTS users (
+      `);
+    migrate(this.db, "platform", [{version:1,name:"Initial platform schema",sql:`CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT NOT NULL,
         role TEXT NOT NULL CHECK(role IN ('student','instructor')), password TEXT NOT NULL,
         created_at INTEGER NOT NULL
@@ -59,8 +61,9 @@ export class PlatformStore {
         platform TEXT NOT NULL CHECK(platform IN ('fortigate','paloalto')),
         task_id TEXT NOT NULL, updated_at INTEGER NOT NULL,
         PRIMARY KEY(user_id,platform,task_id)
-      );`);
+      );`}]);
   }
+  schemaStatus() { return schemaStatus(this.db); }
   close() { this.db.close(); }
   private user(row: Record<string, unknown>): User {
     return { id: String(row.id), email: String(row.email), name: String(row.name), role: row.role as User["role"] };

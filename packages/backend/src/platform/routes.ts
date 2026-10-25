@@ -18,6 +18,7 @@ export function platformRouter(store: PlatformStore, visibleStudents: (ownerId: 
     const entries = keys.map(([key, max]) => ({ key, max, entry: attempts.get(key) ?? { count: 0, until: now + 15 * 60_000 } }));
     if (entries.some(({ max, entry }) => entry.count >= max)) {
       const until = Math.max(...entries.filter(({ max, entry }) => entry.count >= max).map(({ entry }) => entry.until));
+      res.locals.rateLimit="account";
       res.setHeader("Retry-After", String(Math.max(1, Math.ceil((until - now) / 1000))));
       res.status(429).json({ error: "Too many account attempts. Try again in 15 minutes." }); return;
     }

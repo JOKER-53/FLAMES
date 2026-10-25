@@ -1,3 +1,5 @@
+import { Diagnostics } from "./diagnostics";
+import { schemaStatus } from "./db/migrations";
 import { ClassroomStore } from "./classroom/store";
 import { classroomRouter } from "./classroom/routes";
 import { draftsRouter } from "./drafts/routes";
@@ -19,12 +21,13 @@ import { platformRouter } from "./platform/routes";
 import { requestUser } from "./platform/auth";
 import { PlatformStore } from "./platform/store";
 
-export function createApp(store: PlatformStore, content = new ContentStore(":memory:")) {
+export function createApp(store: PlatformStore, content = new ContentStore(":memory:"), diagnostics = new Diagnostics()) {
   const app = express();
   const integration = integrationConfig();
   const groups = new ClassroomStore(content.db, integration.mode === "academy" ? `academy:${integration.parentOrigin}` : "standalone");
   store.setCompletionResolver((platform, id) => content.isPublishedLesson(platform, id));
   app.disable("x-powered-by");
+  app.use(diagnostics.middleware);
   if (process.env.TRUST_PROXY === "1") app.set("trust proxy", 1);
   const allowed = (process.env.FRONTEND_ORIGIN || "http://localhost:5173").split(",").map(origin => origin.trim());
   app.use(cors({ origin: allowed, credentials: true }));
@@ -65,6 +68,7 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
     const entry = tutorRequests.get(key) ?? { count: 0, until: now + 60_000 };
     entry.count++; tutorRequests.set(key, entry);
     if (entry.count > 20) {
+      res.locals.rateLimit="tutor";
       res.setHeader("Retry-After", String(Math.ceil((entry.until - now) / 1000)));
       res.status(429).json({ error: "Tutor request limit reached. Try again in a minute." }); return;
     }
@@ -84,7 +88,7 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
     const policy = platform === "fortigate" ? content.policyExercise(id) : null;
     return policy ? { kind: "policy", scenarioVersion: policy.version } : builtinDraftSpec(platform, id);
   }));
-  app.use("/api/admin", adminContentRouter(content, store, integration.mode === "academy"));
+  app.use("/api/admin", adminContentRouter(content, store, integration.mode === "academy", () => ({...diagnostics.snapshot(),schemas:[...store.schemaStatus(),...schemaStatus(content.db)]})));
   app.use("/api/content", studentContentRouter(content));
   app.use("/api/scenarios", createScenariosRouter(content));
   app.use("/api/submissions", createSubmissionsRouter(id => content.policyExercise(id)?.scenario ?? getScenarioById(id)));
@@ -99,7 +103,7 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
     if (error instanceof AcademyError) { res.status(error.status).json({ error: error.message }); return; }
     if (error.type === "entity.too.large") { res.status(413).json({ error: "Request is too large." }); return; }
     if (error instanceof SyntaxError && "body" in error) { res.status(400).json({ error: "Malformed JSON request." }); return; }
-    console.error("Request failed:", error instanceof Error ? error.message : "Unknown error");
+    res.locals.errorCategory = "internal";
     res.status(500).json({ error: "The request could not be completed. Try again." });
   };
   app.use(errors);

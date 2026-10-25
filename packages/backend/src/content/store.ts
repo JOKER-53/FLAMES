@@ -1,3 +1,4 @@
+import { migrate, schemaStatus } from "../db/migrations";
 import { CONFIGURATION_FAMILIES, validateConfigurationExercise, gradeConfigurationExercise } from "@fortisim/engine";
 import { validatePolicyExercise, policyScenario } from "./policyExercise";
 import { randomUUID, createHash } from "node:crypto";
@@ -75,10 +76,11 @@ export class ContentStore {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
-      CREATE TABLE IF NOT EXISTS content_modules (
+      `);
+    migrate(this.db, "content", [{version:1,name:"Initial content schema",sql:`CREATE TABLE IF NOT EXISTS content_modules (
         id TEXT PRIMARY KEY, draft_json TEXT NOT NULL, published_json TEXT,
         revision INTEGER NOT NULL, updated_at INTEGER NOT NULL, published_at INTEGER
-      );`);
+      );`}]);
   }
   close() { this.db.close(); }
   private write<T>(operation: () => T): T {

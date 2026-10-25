@@ -1,3 +1,4 @@
+import { migrate, schemaStatus } from "../db/migrations";
 import { randomBytes, randomUUID } from "node:crypto";
 import { ContentError } from "../content/store";
 import type { User } from "../platform/store";
@@ -6,10 +7,10 @@ export interface Assignment { id:string; title:string; vendor:string; moduleId:s
 export interface LearningGroup { id:string; name:string; inviteCode?:string; members:{id:string;name:string;email:string}[]; assignments:Assignment[]; }
 export class ClassroomStore {
   constructor(private db: any, private scope: string) {
-    db.exec(`CREATE TABLE IF NOT EXISTS learning_groups (id TEXT PRIMARY KEY, scope TEXT NOT NULL, owner_id TEXT NOT NULL, name TEXT NOT NULL, invite TEXT UNIQUE NOT NULL, created_at INTEGER NOT NULL);
+    migrate(db, "classroom", [{version:1,name:"Initial classroom schema",sql:`CREATE TABLE IF NOT EXISTS learning_groups (id TEXT PRIMARY KEY, scope TEXT NOT NULL, owner_id TEXT NOT NULL, name TEXT NOT NULL, invite TEXT UNIQUE NOT NULL, created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS group_members (group_id TEXT NOT NULL, user_id TEXT NOT NULL, name TEXT NOT NULL, email TEXT NOT NULL, PRIMARY KEY(group_id,user_id));
       CREATE TABLE IF NOT EXISTS group_assignments (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, title TEXT NOT NULL, vendor TEXT NOT NULL, module_id TEXT NOT NULL, lesson_ids TEXT NOT NULL, required_count INTEGER NOT NULL, due_at INTEGER NOT NULL, created_at INTEGER NOT NULL);
-      CREATE TABLE IF NOT EXISTS assignment_starts (assignment_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER NOT NULL, PRIMARY KEY(assignment_id,user_id));`);
+      CREATE TABLE IF NOT EXISTS assignment_starts (assignment_id TEXT NOT NULL, user_id TEXT NOT NULL, started_at INTEGER NOT NULL, PRIMARY KEY(assignment_id,user_id));`}]);
   }
   groups(user: User): LearningGroup[] {
     const rows = user.role === "instructor" ? this.db.prepare("SELECT * FROM learning_groups WHERE scope=? AND owner_id=? ORDER BY created_at,id").all(this.scope,user.id)

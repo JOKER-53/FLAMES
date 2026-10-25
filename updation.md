@@ -338,3 +338,7 @@ Removed the remaining 1440px lesson-width cap so simulator pages use the space b
 - Updated TODO.md with prioritized non-deployment work: accessibility, 3D performance, operational diagnostics and instructor editing polish. Standalone self-service account recovery and advanced assessment/CLI features remain conditional enhancements.
 
 Verification: frontend production build passed; all 53 browser workflows passed with the local Brave/Chromium executable and all 53 passed in Playwright Firefox. Reviewed Firefox and Chromium desktop screenshots. No Firefox-specific layout failure was reproduced by this coverage; actual-device WebGL/keyboard/assistive-technology acceptance remains separate.
+
+## 44. Operational diagnostics and migrations
+
+Added server-generated request IDs, structured redacted failure/rate-limit logging, protected process counters/schema diagnostics, and transactional checksummed migrations for all SQLite components. Baseline adoption retains existing data; checksum mismatch, future schema and partial failures are rejected safely. Added upgrade/rollback documentation. Backend build and all 90 backend tests passed, including migration and logging regressions. Host log collection and deployment acceptance remain operator tasks.

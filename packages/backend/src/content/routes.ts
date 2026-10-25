@@ -6,7 +6,7 @@ import { requestUser } from "../platform/auth";
 import type { PlatformStore } from "../platform/store";
 import { ContentStore } from "./store";
 
-export function adminContentRouter(content: ContentStore, accounts: PlatformStore, academy: boolean) {
+export function adminContentRouter(content: ContentStore, accounts: PlatformStore, academy: boolean, diagnostics?: () => unknown) {
   const router = Router();
   router.use((req, res, next) => {
     const user = academy ? res.locals.academyUser : requestUser(req, accounts);
@@ -14,6 +14,7 @@ export function adminContentRouter(content: ContentStore, accounts: PlatformStor
     if (academy ? !user.canManageContent : user.role !== "instructor") { res.status(403).json({ error: "Content administrator access required." }); return; }
     next();
   });
+  router.get("/diagnostics", (_req, res) => res.json(diagnostics?.() ?? {}));
   router.post("/validate-configuration", (req, res, next) => {
     try { const exercise = validateConfigurationExercise(req.body?.exercise, true, false); res.json(gradeConfigurationExercise(exercise, exercise.referenceConfig)); }
     catch (error) { next(new ContentError(400, error instanceof Error ? error.message : "Invalid configuration exercise.")); }
