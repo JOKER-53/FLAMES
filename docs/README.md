@@ -31,3 +31,5 @@ Start with the repository [README](../README.md) for installation and commands. 
 Expanded authoring: [configuration exercise builder](CONFIGURATION_EXERCISE_BUILDER.md) — FortiGate interfaces/routing and Palo Alto security/NAT/zones.
 
 Learning tools: [packet explanations and row highlighting](PACKET_EXPLANATIONS.md).
+
+Platform improvements: [accessibility support](ACCESSIBILITY.md), [hardware loading/rendering](HARDWARE_PERFORMANCE.md), and [API diagnostics/schema migrations](DIAGNOSTICS_AND_MIGRATIONS.md). The content administration guide covers search, duplication and revision comparisons.

@@ -117,14 +117,14 @@ Acceptance: export a module from local development, import it into a separate te
 
 Delivered feature guidance: [classrooms, content transfer and hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md). Academy classroom reports require the updated parent adapter; it has not been installed remotely.
 
-## Next non-deployment work
+## Non-deployment improvements — implemented
 
-After the compact-header/layout correction, prioritize these existing items:
+The four requested non-deployment priorities are implemented; verification and usage guides are linked below:
 
-1. Accessibility audit: keyboard order, visible focus, contrast, screen-reader labels and reduced-motion behavior across the full platform.
-2. 3D performance: measure model download/render costs, improve asset caching/loading feedback, and review the large lazy-loaded Three.js chunk on real hardware.
-3. Operational diagnostics: actionable API errors, rate-limit visibility and explicit migration/version records.
-4. Instructor editing polish: search, duplication, safe rich formatting and clearer revision comparisons, guided by teacher feedback.
+1. Accessibility: keyboard/focus/skip controls, screen-reader semantics and contrast fixes with automated light/dark scans. See [accessibility](docs/ACCESSIBILITY.md).
+2. 3D performance: optimized texture/default model, compressed transport, bounded caching, loading/retry UI and visibility-aware rendering. See [hardware performance](docs/HARDWARE_PERFORMANCE.md).
+3. Operations: request IDs, redacted error/rate-limit logs, protected diagnostics and checksummed transactional schema tracking. See [diagnostics and migrations](docs/DIAGNOSTICS_AND_MIGRATIONS.md).
+4. Instructor tools: search/filter, module/lesson duplication and private saved-revision comparisons. See [content studio](docs/ADMIN_CONTENT.md).
 
 Standalone self-service password recovery is conditional on keeping local accounts; Academy-owned identities use Academy recovery. Certified assessment evidence, configuration diffs, topology authoring and CLI practice remain optional enhancements rather than current release blockers. Actual-device WebGL/socket alignment still needs a manual check even when browser layout tests pass.
 
