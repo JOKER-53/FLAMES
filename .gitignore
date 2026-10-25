@@ -36,3 +36,8 @@ docs/.~lock.*#
 # Browser regression artifacts
 test-results/
 playwright-report/
+
+# Generated hardware optimization artifacts
+**/firewall.optimized.glb*
+**/pa-220-firewall.glb.gz
+**/hardware-manifest.json

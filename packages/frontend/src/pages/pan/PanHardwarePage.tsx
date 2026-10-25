@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { loadHardwareModel, type ModelProgress } from "../../hardware/modelLoader";
+import { ModelLoading } from "../../hardware/ModelLoading";
+import { renderScheduler } from "../../hardware/renderScheduler";
 import { PanSession } from "../../hooks/usePanSession";
 import { PAN_SOCKETS, PAN_CABLE_TYPES, panAcceptsCable } from "../../hardware/panCables";
 import { buildSocketCable, disposeObject, labelSprite, measureSockets, type MeasuredSocket } from "../../hardware/cableMesh";
@@ -33,9 +35,12 @@ interface SceneState {
   sockets: Record<string, MeasuredSocket>;
   targets: Record<string, THREE.Mesh>;
   distance: number;
+  invalidate:()=>void;
 }
 
 export function PanHardwarePage({ session: _session }: { session: PanSession }) {
+  const [attempt,setAttempt]=useState(0);
+  const [progress,setProgress]=useState<ModelProgress>({phase:"download",loaded:0});
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneState | null>(null);
   const [loading, setLoading] = useState(true);
@@ -79,14 +84,17 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
   useEffect(() => {
     const mount = mountRef.current;
     if (!mount) return;
+    setLoading(true);setLoadErr(null);setProgress({phase:"download",loaded:0});
     let renderer: THREE.WebGLRenderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
     catch { setLoadErr("3D rendering is unavailable. Enable WebGL or try another browser."); setLoading(false); return; }
     const w = mount.clientWidth || 900, h = mount.clientHeight || 500;
     renderer.setSize(w, h);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.domElement.setAttribute("role","img");renderer.domElement.setAttribute("aria-label","Interactive 3D appliance. Use Inspect appliance and the port controls for keyboard access.");
+    const contextLost=(event:Event)=>{event.preventDefault();setLoadErr("The 3D graphics context was lost. Retry the viewer to recover.");setLoading(false);};renderer.domElement.addEventListener("webglcontextlost",contextLost);
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -98,7 +106,7 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
-    controls.autoRotate = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    controls.autoRotate = modeRef.current==="explore"&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     controls.autoRotateSpeed = 0.6;
     renderer.domElement.addEventListener("pointerdown", () => { controls.autoRotate = false; }, { once: true });
 
@@ -111,7 +119,7 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
     scene.add(group);
     let disposed = false;
 
-    new GLTFLoader().load("/pa-220-firewall.glb", gltf => {
+    const cancelLoad=loadHardwareModel("paloalto", gltf => {
       if (disposed) { disposeObject(gltf.scene); return; }
       const model = gltf.scene;
       const raw = new THREE.Box3().setFromObject(model).getSize(new THREE.Vector3());
@@ -141,11 +149,11 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
       controls.minDistance = distance * 0.35;
       controls.maxDistance = distance * 2;
       controls.update();
-      sceneRef.current = { camera, controls, group, overlay, sockets, targets, distance };
-      setLoading(false);
-    }, undefined, () => {
+      sceneRef.current = { camera, controls, group, overlay, sockets, targets, distance, invalidate:loop.invalidate };
+      loop.invalidate();setLoading(false);
+    }, setProgress, () => {
       if (disposed) return;
-      setLoadErr("Could not load pa-220-firewall.glb. Check that it exists in packages/frontend/public.");
+      setLoadErr("The 3D model could not be loaded. Check the connection and retry.");
       setLoading(false);
     });
 
@@ -175,10 +183,9 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
     canvas.addEventListener("pointerup", onUp);
     canvas.addEventListener("pointermove", onHover);
 
-    let animationId = 0;
-    const animate = () => {
-      animationId = requestAnimationFrame(animate);
-      controls.update();
+    const reducedMotion=window.matchMedia("(prefers-reduced-motion: reduce)");
+    const loop=renderScheduler(mount, () => {
+      if(sceneRef.current)controls.update();
       const s = sceneRef.current;
       if (s) {
         const pulse = 0.6 + Math.sin(Date.now() * 0.006) * 0.35;
@@ -188,23 +195,24 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
           if (child.userData.facing) child.visible = child.userData.facing * s.camera.position.z > 0;
           if (!child.userData.dot) return;
           // Sockets that accept the selected cable pulse; the rest stay dim.
-          (((child as THREE.Mesh).material) as THREE.MeshBasicMaterial).opacity = fits(child.userData.dot) ? pulse : cableRef.current ? 0.25 : 0.8;
+          (((child as THREE.Mesh).material) as THREE.MeshBasicMaterial).opacity = fits(child.userData.dot) ? reducedMotion.matches?0.9:pulse : cableRef.current ? 0.25 : 0.8;
         });
       }
       renderer.render(scene, camera);
-    };
-    animate();
+    },()=>!!sceneRef.current&&!reducedMotion.matches&&(controls.autoRotate||modeRef.current==="cable"&&!!cableRef.current));
+    controls.addEventListener("change",loop.invalidate);
+    const motionChange=()=>{if(reducedMotion.matches)controls.autoRotate=false;loop.invalidate();};reducedMotion.addEventListener("change",motionChange);
 
     const resize = new ResizeObserver(() => {
       const nw = mount.clientWidth, nh = mount.clientHeight;
       if (!nw || !nh) return;
-      camera.aspect = nw / nh; camera.updateProjectionMatrix(); renderer.setSize(nw, nh);
+      camera.aspect = nw / nh; camera.updateProjectionMatrix(); renderer.setSize(nw, nh);loop.invalidate();
     });
     resize.observe(mount);
 
     return () => {
       disposed = true;
-      cancelAnimationFrame(animationId);
+      cancelLoad();loop.dispose();controls.removeEventListener("change",loop.invalidate);reducedMotion.removeEventListener("change",motionChange);
       resize.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
       canvas.removeEventListener("pointerup", onUp);
@@ -212,15 +220,17 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
       controls.dispose();
       disposeObject(group);
       sceneRef.current = null;
+      renderer.domElement.removeEventListener("webglcontextlost",contextLost);
       renderer.dispose();
       if (mount.contains(canvas)) mount.removeChild(canvas);
     };
-  }, []);
+  }, [attempt]);
 
   // Redraw cables, socket markers, and labels whenever the plugged set or mode changes.
   useEffect(() => {
     const s = sceneRef.current;
     if (!s || loading) return;
+    s.invalidate();
     for (const child of [...s.overlay.children]) { s.overlay.remove(child); disposeObject(child); }
     if (mode !== "cable") return;
     for (const meta of PAN_SOCKETS) {
@@ -246,7 +256,7 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
       dot.userData.dot = meta.id;
       s.overlay.add(dot);
     }
-  }, [plugged, loading, mode]);
+  }, [plugged, loading, mode, selCable]);
 
   function zoom(factor: number) {
     const s = sceneRef.current; if (!s) return;
@@ -295,7 +305,7 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
             ].map(item => (
               <button key={item.label} onClick={() => setSelectedPart(item.info)}
                 style={{ fontSize: 11, padding: "4px 10px", borderRadius: 4, border: "1px solid rgb(var(--line-strong))", cursor: "pointer", fontWeight: 500,
-                  background: selectedPart === item.info ? "#fa4616" : "#ffffff", color: selectedPart === item.info ? "#ffffff" : "#475569" }}>
+                  background: selectedPart === item.info ? "rgb(var(--accent-soft))" : "rgb(var(--surface))", color: "rgb(var(--ink))" }}>
                 {item.label}
               </button>
             ))}
@@ -303,17 +313,14 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
         )}
       </div>
 
+      <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-medium">Inspect appliance</span><select aria-label="Inspect appliance" className="input w-auto max-w-full" value={Object.entries(PART_INFO).find(([,info])=>info===selectedPart)?.[0]??""} onChange={event=>setSelectedPart(PART_INFO[event.target.value]??OVERVIEW)}><option value="">Overview</option>{Object.entries(PART_INFO).map(([id,info])=><option key={id} value={id}>{info.title}</option>)}</select></label>
       {/* 3D Viewport */}
       <div style={{ position: "relative", flex: "0 0 auto", height: "max(480px, 78dvh)", borderRadius: 8, overflow: "hidden", border: "1px solid #1e2d45", background: "#0d1117" }}>
         <div ref={mountRef} style={{ width: "100%", height: "100%" }} />
 
-        {(loading || loadErr) && (
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "#0d1117ee", color: loadErr ? "#f87171" : "#94a3b8", fontSize: 13, padding: 32, textAlign: "center" }}>
-            {loadErr ?? "Loading PA-220 3D model…"}
-          </div>
-        )}
+        <ModelLoading loading={loading} error={loadErr} progress={progress} retry={()=>setAttempt(value=>value+1)}/>
 
-        <div style={{ position: "absolute", top: 12, left: 14, color: "rgb(var(--muted))", fontSize: 11, pointerEvents: "none" }}>
+        <div style={{ position: "absolute", top: 12, left: 14, color: "#94a3b8", fontSize: 11, pointerEvents: "none" }}>
           {mode === "explore" ? "drag · scroll · click a port to learn" : "select cable → click glowing socket · power inputs are on the rear"}
         </div>
 
@@ -352,7 +359,7 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
             {PAN_CABLE_TYPES.map(c => (
               <button key={c.id} aria-pressed={selCable === c.id} onClick={() => { const next = selCable === c.id ? null : c.id; cableRef.current = next; setSelCable(next); }}
                 style={{ padding: "4px 10px", fontSize: 11, borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", gap: 5,
-                  border: `1.5px solid ${selCable === c.id ? c.color : "#e2e8f0"}`, background: selCable === c.id ? c.color + "22" : "#f8fafc", color: selCable === c.id ? c.color : "rgb(var(--body))" }}>
+                  border: `1.5px solid ${selCable === c.id ? c.color : "#e2e8f0"}`, background: selCable === c.id ? c.color + "22" : "rgb(var(--sunken))", color: "rgb(var(--ink))" }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: c.color, display: "inline-block" }} />
                 {c.label}{Object.values(plugged).includes(c.id) ? " ✓" : ""}
               </button>
@@ -367,7 +374,7 @@ export function PanHardwarePage({ session: _session }: { session: PanSession }) 
               return (
                 <button key={socket.id} aria-pressed={!!cable} onClick={() => cable ? unplug(socket.id) : handleSocket(socket.id)}
                   style={{ fontSize: 11, padding: "6px 9px", borderRadius: 4, cursor: "pointer", border: `1px solid ${cable ? cable.color + "88" : "#e2e8f0"}`,
-                    background: cable ? cable.color + "1a" : "#f8fafc", color: "rgb(var(--ink))" }}>
+                    background: cable ? cable.color + "1a" : "rgb(var(--sunken))", color: "rgb(var(--ink))" }}>
                   {socket.label} {cable ? "✓ Unplug" : "Connect"}
                 </button>
               );

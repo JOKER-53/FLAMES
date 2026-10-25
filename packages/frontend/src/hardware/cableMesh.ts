@@ -8,14 +8,16 @@ export function disposeObject(object: THREE.Object3D) {
   const materials = new Set<THREE.Material>();
   const textures = new Set<THREE.Texture>();
   object.traverse(child => {
-    if (!(child instanceof THREE.Mesh)) return;
-    geometries.add(child.geometry);
+    if (!(child instanceof THREE.Mesh)&&!(child instanceof THREE.Sprite)) return;
+    if(child instanceof THREE.Mesh)geometries.add(child.geometry);
     for (const material of Array.isArray(child.material) ? child.material : [child.material]) {
       materials.add(material);
       for (const value of Object.values(material)) if (value instanceof THREE.Texture) textures.add(value);
     }
   });
-  textures.forEach(texture => texture.dispose());
+  const images=new Set<any>();
+  textures.forEach(texture => {images.add(texture.image);texture.dispose();});
+  images.forEach(image=>{if(typeof image?.close==="function")image.close();});
   materials.forEach(material => material.dispose());
   geometries.forEach(geometry => geometry.dispose());
 }

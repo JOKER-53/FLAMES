@@ -350,3 +350,9 @@ Added module/lesson search and vendor filtering, safe module/lesson duplication 
 ## 46. Accessibility foundations and regressions
 
 Added skip-to-main links, mobile modal focus trapping/Escape/background inertness/focus return, keyboard-selectable policy/address/service rows, named legacy form/reorder controls, and contrast-correct theme text, badges and buttons. Fixed reference-page dark styling and App-ID responsive layout. Added axe checks across representative pages and expanded forms in both themes, plus keyboard focus and policy interaction regressions. Frontend production build and four targeted browser workflows passed. Documented automated coverage and actual assistive-technology acceptance separately.
+
+## 47. Faster hardware loading and rendering
+
+Added a reproducible optimized FortiGate default (391,080 bytes versus 6,909,704) that preserves every geometry buffer and the original asset; reduced its opaque texture decode footprint from ~75 MB to ~23 MB. Added PA-220 gzip transport (1,943,373 versus 7,117,632 bytes), content-hashed URLs, progress/retry/context-loss UI, bounded shared model-buffer caching, deferred parser loading, keyboard component inspection, and visible/on-demand 30fps rendering with reduced-motion support. Fixed sprite/texture cleanup and hardware dark-theme contrast. Build helper and negotiated gzip are wired into Vite and both production configurations.
+
+Frontend tests cover geometry preservation, model byte reduction, shared/failed/bounded downloads and render suspension/cleanup. Software-WebGL workflows verified both models, retry, cache reuse and idle behavior; no-WebGL keyboard/reference fallback passed contrast scans in both themes. Original models remain available unchanged. The remaining Three.js lazy core chunk is documented rather than hidden by a warning-threshold change.

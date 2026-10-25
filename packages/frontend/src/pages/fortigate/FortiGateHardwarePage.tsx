@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
+import { loadHardwareModel, type ModelProgress } from "../../hardware/modelLoader";
+import { ModelLoading } from "../../hardware/ModelLoading";
+import { renderScheduler } from "../../hardware/renderScheduler";
 import { ScenarioSession } from "../../hooks/useScenarioSession";
 import { PageHeader } from "../../components/ui/primitives";
 import { PORTS, CABLE_TYPES, PORT_Y, SOCKET_WIDTH, acceptsCable, connectorKind } from "../../hardware/cables";
@@ -26,6 +28,8 @@ const PART_INFO: Record<string, PartInfo> = {
 
 
 export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
+  const [attempt,setAttempt]=useState(0);
+  const [progress,setProgress]=useState<ModelProgress>({phase:"download",loaded:0});
   const mountRef  = useRef<HTMLDivElement>(null);
   const threeRef  = useRef<{
     camera: THREE.PerspectiveCamera;
@@ -36,6 +40,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
     baseDistance: number;
     rotX:   number;
     rotY:   number;
+    invalidate:()=>void;
   } | null>(null);
 
   const [loading,  setLoading]  = useState(true);
@@ -82,6 +87,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
   useEffect(() => {
     if (!mountRef.current) return;
     const mount = mountRef.current;
+    setLoading(true);setLoadErr(null);setProgress({phase:"download",loaded:0});
     const W = mount.clientWidth || 900;
     const H = mount.clientHeight || 460;
 
@@ -90,10 +96,12 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
     try { renderer = new THREE.WebGLRenderer({ antialias: true }); }
     catch { setLoadErr("3D rendering is unavailable. Enable WebGL or try another browser."); setLoading(false); return; }
     renderer.setSize(W, H);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputEncoding = THREE.sRGBEncoding;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
+    renderer.domElement.setAttribute("role","img");renderer.domElement.setAttribute("aria-label","Interactive 3D appliance. Use Inspect appliance and the port controls for keyboard access.");
+    const contextLost=(event:Event)=>{event.preventDefault();setLoadErr("The 3D graphics context was lost. Retry the viewer to recover.");setLoading(false);};renderer.domElement.addEventListener("webglcontextlost",contextLost);
     mount.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -106,7 +114,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       if (!width || !height) return;
       renderer.setSize(width, height);
       camera.aspect = width / height;
-      camera.updateProjectionMatrix();
+      camera.updateProjectionMatrix();threeRef.current?.invalidate();
     });
     resizeObserver.observe(mount);
 
@@ -122,10 +130,10 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
     const cableMeshes:    Record<string, THREE.Object3D> = {};
 
     // Store in ref immediately — persists across renders
-    threeRef.current = { camera, group, portIndicators, cableMeshes, size: new THREE.Vector3(), baseDistance: 10, rotX: 0.3, rotY: 0 };
+    threeRef.current = { camera, group, portIndicators, cableMeshes, size: new THREE.Vector3(), baseDistance: 10, rotX: 0.3, rotY: 0, invalidate:()=>{} };
 
-    const loader = new GLTFLoader();
-    loader.load("/firewall.glb", (gltf) => {
+    let ready=false;
+    const cancelLoad=loadHardwareModel("fortigate", (gltf) => {
       const model = gltf.scene;
       if (disposed) { disposeObject(model); return; }
       // Measure before the model joins the tilted group; a rotated bounding box
@@ -157,10 +165,10 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
         portIndicators[id] = sphere;
       });
 
-      setLoading(false);
-    }, undefined, (err) => {
+      ready=true;threeRef.current?.invalidate();setLoading(false);
+    }, setProgress, (_err) => {
       if (disposed) return;
-      setLoadErr("Could not load firewall.glb — " + ((err as any)?.message ?? String(err)));
+      setLoadErr("The 3D model could not be loaded. Check the connection and retry.");
       setLoading(false);
     });
 
@@ -172,8 +180,8 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
     let idleTimer: ReturnType<typeof setTimeout> | null = null;
     group.rotation.set(rotX, rotY, 0);
 
-    function syncRotToRef() { if (threeRef.current) { threeRef.current.rotX = rotX; threeRef.current.rotY = rotY; } }
-    function resetIdleTimer() { autoRotate=false; if(idleTimer)clearTimeout(idleTimer); idleTimer=setTimeout(()=>{autoRotate=true;},10000); }
+    function syncRotToRef() { if (threeRef.current) { threeRef.current.rotX = rotX; threeRef.current.rotY = rotY; threeRef.current.invalidate(); } }
+    function resetIdleTimer() { autoRotate=false; if(idleTimer)clearTimeout(idleTimer); idleTimer=setTimeout(()=>{autoRotate=true;threeRef.current?.invalidate();},10000); }
 
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
@@ -256,22 +264,21 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
     mount.addEventListener("touchmove",  onTM, {passive:false});
     mount.addEventListener("touchend",   onTE);
 
-    let animId: number;
-    const animate = () => {
-      animId = requestAnimationFrame(animate);
+    const loop=renderScheduler(mount, () => {
       // Check for reset signal from ref
       if (threeRef.current && (threeRef.current.rotX !== rotX || threeRef.current.rotY !== rotY)) { rotX = threeRef.current.rotX; rotY = threeRef.current.rotY; group.rotation.set(rotX,rotY,0); }
       if (autoRotate && !isDragging && !reducedMotion.matches && modeRef.current === "explore") {
         rotY+=0.004; group.rotation.set(rotX,rotY,0); syncRotToRef();
       }
       renderer.render(scene,camera);
-    };
-    animate();
+    },()=>ready&&autoRotate&&!isDragging&&!reducedMotion.matches&&modeRef.current==="explore");
+    threeRef.current!.invalidate=loop.invalidate;
+    const motionChange=()=>loop.invalidate();reducedMotion.addEventListener("change",motionChange);
 
     return () => {
       disposed = true;
       resizeObserver.disconnect();
-      cancelAnimationFrame(animId);
+      cancelLoad();loop.dispose();reducedMotion.removeEventListener("change",motionChange);
       if (idleTimer) clearTimeout(idleTimer);
       mount.removeEventListener("click",      onClick);
       mount.removeEventListener("mousemove",  onHover);
@@ -284,16 +291,18 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       mount.removeEventListener("touchend",   onTE);
       disposeObject(group);
       threeRef.current = null;
+      renderer.domElement.removeEventListener("webglcontextlost",contextLost);
       renderer.dispose();
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
     };
-  }, []);
+  }, [attempt]);
 
   // Rebuild cables when plugged changes
   useEffect(() => {
     const t = threeRef.current;
     if (!t || !t.size.x) return;
     const { group, portIndicators, cableMeshes, size } = t;
+    t.invalidate();
 
     Object.values(cableMeshes).forEach(m => { group.remove(m); disposeObject(m); });
     Object.keys(cableMeshes).forEach(k => delete cableMeshes[k]);
@@ -317,13 +326,14 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
   }, [plugged, loading, mode]);
 
   // Zoom/reset handlers via threeRef
-  function zoomIn()  { if (threeRef.current) threeRef.current.camera.position.z = Math.max(0.5, threeRef.current.camera.position.z*0.82); }
-  function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); }
+  function zoomIn()  { if (threeRef.current) threeRef.current.camera.position.z = Math.max(0.5, threeRef.current.camera.position.z*0.82); threeRef.current?.invalidate(); }
+  function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); threeRef.current?.invalidate(); }
   function resetView() {
     if (!threeRef.current) return;
     threeRef.current.rotX = 0.3;
     threeRef.current.rotY = 0;
     threeRef.current.camera.position.z = threeRef.current.baseDistance;
+    threeRef.current.invalidate();
   }
 
   return (
@@ -335,18 +345,12 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
         description={mode==="explore" ? "Drag to rotate, scroll to zoom, and click any port to learn what it does." : "Choose a cable, then click a matching socket to plug it in. Click a plugged socket to unplug it."}
       />
 
+      <label className="flex flex-wrap items-center gap-3 text-sm"><span className="font-medium">Inspect appliance</span><select aria-label="Inspect appliance" className="input w-auto max-w-full" value={Object.entries(PART_INFO).find(([,info])=>info===selected)?.[0]??""} onChange={event=>setSelected(PART_INFO[event.target.value]??null)}><option value="">Choose a component</option>{Object.entries(PART_INFO).map(([id,info])=><option key={id} value={id}>{info.title}</option>)}</select></label>
       {/* 3D Viewport with overlay controls */}
       <div style={{ flex:"0 0 auto", height:"max(480px, 78dvh)", position:"relative" }}>
         <div ref={mountRef} style={{ width:"100%", height:"100%", borderRadius:8, overflow:"hidden", border:"1px solid #1e2d45", background:"#0d1117", cursor:"grab" }}>
-          {loading && !loadErr && (
-            <div style={{ position:"absolute", inset:0, display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:12 }}>
-              <div style={{ width:36, height:36, border:"3px solid #1e2d45", borderTopColor:"#ef4444", borderRadius:"50%", animation:"spin 0.8s linear infinite" }}/>
-              <span style={{ color:"#4b5563", fontSize:13 }}>Loading 3D model…</span>
-              <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-            </div>
-          )}
-          {loadErr && <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", color:"#f87171", fontSize:13, padding:24, textAlign:"center" }}>{loadErr}</div>}
         </div>
+        <ModelLoading loading={loading} error={loadErr} progress={progress} retry={()=>setAttempt(value=>value+1)}/>
 
         {/* Zoom + Reset — bottom right */}
         <div style={{ position:"absolute", bottom:12, right:12, display:"flex", flexDirection:"column", gap:4 }}>
@@ -400,7 +404,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
         )}
 
         {/* Hint — top left */}
-        <div style={{ position:"absolute", top:10, left:12, fontSize:11, color:"#3d5270", pointerEvents:"none" }}>
+        <div style={{ position:"absolute", top:10, left:12, fontSize:11, color:"#94a3b8", pointerEvents:"none" }}>
           {mode==="explore" ? "drag · scroll · click to learn" : "select cable → click glowing dot"}
         </div>
       </div>
@@ -416,7 +420,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
                 style={{ padding:"4px 10px", fontSize:11, borderRadius:4, cursor:"pointer",
                   border:`1.5px solid ${selCable===c.id?c.color:"var(--border)"}`,
                   background:selCable===c.id?c.color+"22":"var(--surface-2)",
-                  color:selCable===c.id?c.color:"var(--text-secondary)",
+                  color:"var(--text-primary)",
                   display:"flex", alignItems:"center", gap:5 }}>
                 <span style={{ width:8,height:8,borderRadius:"50%",background:c.color,display:"inline-block" }}/>
                 {c.label}{Object.values(plugged).includes(c.id)?" ✓":""}
@@ -432,7 +436,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
                   showFeedback(`Unplugged ${port.id.toUpperCase()}.`, true);
                 } else handlePortClick(port.id);
               }}
-              style={{ fontSize: 11, padding: "6px 9px", border: "1px solid var(--border)", borderRadius: 4, background: plugged[port.id] ? "#dcfce7" : "var(--surface-2)", color: "var(--text-primary)" }}>
+              style={{ fontSize: 11, padding: "6px 9px", border: "1px solid var(--border)", borderRadius: 4, background: plugged[port.id] ? "rgb(var(--success-soft))" : "var(--surface-2)", color: "var(--text-primary)" }}>
               {port.id.toUpperCase()} {plugged[port.id] ? "✓ Unplug" : "Connect"}
             </button>)}
           </div>
