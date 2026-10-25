@@ -329,3 +329,12 @@ Verified production build, course/module content width on 1920px screens, mobile
 ## 42. Desktop lesson fit at normal zoom
 
 Removed the remaining 1440px lesson-width cap so simulator pages use the space beside the sidebar at normal browser zoom. Reduced title/scenario spacing and scenario line height while retaining readable text, responsive wrapping and standard browser zoom behavior. Verified production build and three browser workflows, including both vendors in light/dark themes at 1920px, 1440px, 1366px and mobile widths. Reviewed the normal-scale desktop screenshot.
+
+## 43. Compact lesson header and browser coverage
+
+- Put title and lesson metadata on one wrapping row, and changed the tall scenario card into a compact instruction strip. Full instructions and hints remain available.
+- Fixed the desktop sidebar brand row shrinking when navigation needs space, and made the firewall policy table horizontally scrollable rather than clipped on narrow screens.
+- Added desktop header-height assertions, configurable Firefox workflow execution, and a Firefox CI run alongside Chromium.
+- Updated TODO.md with prioritized non-deployment work: accessibility, 3D performance, operational diagnostics and instructor editing polish. Standalone self-service account recovery and advanced assessment/CLI features remain conditional enhancements.
+
+Verification: frontend production build passed; all 53 browser workflows passed with the local Brave/Chromium executable and all 53 passed in Playwright Firefox. Reviewed Firefox and Chromium desktop screenshots. No Firefox-specific layout failure was reproduced by this coverage; actual-device WebGL/keyboard/assistive-technology acceptance remains separate.

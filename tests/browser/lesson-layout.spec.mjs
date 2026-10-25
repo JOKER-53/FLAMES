@@ -11,7 +11,7 @@ test('lesson introduction keeps a readable brief and wraps metadata across theme
     await page.setViewportSize({width,height:1000});
     const scenario=page.getByRole('region',{name:'Scenario',exact:true});
     const fits=await header.evaluate(node=>{const bounds=node.getBoundingClientRect();return node.scrollWidth<=node.clientWidth+1&&bounds.left>=0&&bounds.right<=innerWidth+1;});
-    expect(fits).toBe(true);await expect(scenario).toBeVisible();if(width===1920){const main=page.getByRole('main');const bounds=await main.boundingBox();const content=await main.locator(':scope > div').boundingBox();expect(content.width).toBeGreaterThan(bounds.width-60);}
+    expect(fits).toBe(true);await expect(scenario).toBeVisible();if(width>=1366){const height=await header.evaluate(node=>node.getBoundingClientRect().height);expect(height).toBeLessThan(vendor==='fortigate'?125:155);}if(width===1920){const main=page.getByRole('main');const bounds=await main.boundingBox();const content=await main.locator(':scope > div').boundingBox();expect(content.width).toBeGreaterThan(bounds.width-60);}
     await page.screenshot({path:test.info().outputPath(`${vendor}-${dark?'dark':'light'}-${width}.png`)});
    }
    if(dark)await page.getByRole('button',{name:'Switch to light mode',exact:true}).click();

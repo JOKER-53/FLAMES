@@ -33,19 +33,21 @@ export function LessonFrame({ brief, hint, title, children }: LessonFrameProps) 
 
   return (
     <article>
-      <header className="mb-4 space-y-4" aria-label="Lesson introduction">
-        <div>
+      <header className="mb-3 space-y-3" aria-label="Lesson introduction">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
           <h1 className="text-2xl font-semibold text-ink leading-tight tracking-tight">{lesson?.title ?? title}</h1>
-          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted">
             {module && lesson && <span>{lesson.final ? "Module assessment" : `Lesson ${index + 1} of ${module.lessons.filter(l => !l.final).length}`}</span>}
             {lesson && <><span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} />{lesson.minutes} min</span><LevelBadge level={lesson.level} /></>}
             {done && <span className="inline-flex items-center gap-1.5 text-success"><Icon name="check" size={13} strokeWidth={2.25} />Completed</span>}
           </div>
         </div>
-        <section className="rounded-r-md border-l-2 border-accent bg-surface px-4 py-4 sm:px-5" aria-label="Scenario">
-          <h2 className="text-sm font-semibold text-ink mb-2">Scenario</h2>
-          <div className="max-w-[100ch] text-sm text-body leading-6 [overflow-wrap:anywhere]">{brief}</div>
-          {hint && <div className="mt-3">
+        <section className="rounded-r-md border-l-2 border-accent bg-surface px-3 py-3 sm:px-4" aria-label="Scenario">
+          <div className="flex flex-col sm:flex-row gap-x-4 gap-y-1">
+            <h2 className="shrink-0 text-xs font-semibold text-ink leading-[22px]">Scenario</h2>
+            <div className="min-w-0 text-sm text-body leading-[22px] [overflow-wrap:anywhere]">{brief}</div>
+          </div>
+          {hint && <div className="mt-2 sm:ml-[68px]">
             <button className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-ink" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}><Icon name="lightbulb" size={14} />{showHint ? "Hide hint" : "Show a hint"}</button>
             {showHint && <div className="mt-2 max-w-[85ch] rounded-md bg-warn-soft px-3.5 py-2.5 text-sm text-body leading-relaxed">{hint}</div>}
           </div>}

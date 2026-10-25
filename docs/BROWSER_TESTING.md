@@ -17,3 +17,12 @@ The test runner uses one worker and retains a trace on failure. `test-results/` 
 Additional workflows now cover all five expanded authoring families end to end, private grading with student save/resume and wrong configurations, empty proxy account responses with retry, effective policy/route/NAT explanations, highlighting and stale-result clearing. Representative studio/student/mobile screenshots are written into ignored test outputs.
 
 Topology coverage is generated from both course curricula in `tests/browser/topology.spec.mjs`: all 39 built-in tasks (including assessments) must expose a topology region that fits its card on desktop and mobile. A separate workflow checks live Palo Alto rule updates; the authored-family workflow verifies topology availability for each configuration family.
+
+Run the same workflows in Firefox with:
+
+```sh
+npx playwright install firefox
+PLAYWRIGHT_BROWSER=firefox npm run test:browser
+```
+
+The default runner remains Chromium. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` only affects Chromium, so it can stay configured without overriding Firefox. CI installs both engines and runs the workflow suite in each. Layout tests enforce compact desktop lesson introductions at normal scale as well as responsive containment. These checks do not replace actual-device 3D/WebGL and accessibility acceptance.

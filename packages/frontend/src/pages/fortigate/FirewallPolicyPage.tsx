@@ -183,7 +183,8 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
             <button onClick={() => { const p = policies.find((p) => p.id === selectedRow); if (p) startEdit(p); else alert("Select a policy row first."); }} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken">Edit</button>
             <button onClick={() => { if (selectedRow) deletePolicy(selectedRow); }} disabled={!selectedRow} className="text-[12px] px-2.5 py-1 border border-line-strong rounded-sm text-body hover:bg-sunken disabled:opacity-40">Delete</button>
           </div>
-          <table className="w-full text-[12.5px]">
+          <div className="overflow-x-auto" role="region" aria-label="Firewall policies" tabIndex={0}>
+          <table className="w-full min-w-[800px] text-[12.5px]">
             <thead>
               <tr className="bg-sunken text-muted text-left border-b border-line">
                 {["#","Name","Src Intf","Dst Intf","Src Addr","Dst Addr","Service","Action","NAT","Security","Log","Type",""].map((h, i) => (
@@ -217,6 +218,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
               ))}
             </tbody>
           </table>
+          </div>
           <div className="px-3 py-2 text-[11.5px] text-faint border-t border-line bg-sunken">Implicit rule: any traffic not matched above is denied (default-deny).</div>
 
         {showEditor && <div className="p-4 border-t border-line">

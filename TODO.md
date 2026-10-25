@@ -117,12 +117,23 @@ Acceptance: export a module from local development, import it into a separate te
 
 Delivered feature guidance: [classrooms, content transfer and hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md). Academy classroom reports require the updated parent adapter; it has not been installed remotely.
 
+## Next non-deployment work
+
+After the compact-header/layout correction, prioritize these existing items:
+
+1. Accessibility audit: keyboard order, visible focus, contrast, screen-reader labels and reduced-motion behavior across the full platform.
+2. 3D performance: measure model download/render costs, improve asset caching/loading feedback, and review the large lazy-loaded Three.js chunk on real hardware.
+3. Operational diagnostics: actionable API errors, rate-limit visibility and explicit migration/version records.
+4. Instructor editing polish: search, duplication, safe rich formatting and clearer revision comparisons, guided by teacher feedback.
+
+Standalone self-service password recovery is conditional on keeping local accounts; Academy-owned identities use Academy recovery. Certified assessment evidence, configuration diffs, topology authoring and CLI practice remain optional enhancements rather than current release blockers. Actual-device WebGL/socket alignment still needs a manual check even when browser layout tests pass.
+
 ## Later improvements
 
 - [x] Extend the visual exercise builder to FortiGate interfaces/static routing and Palo Alto security/NAT/zones (versioned private definitions, visual forms, server grading and native autosave).
 
 - [ ] Expand content-studio editing tools after teacher feedback: search, duplication, richer safe formatting, and clearer change history.
-- [x] Add browser interaction regressions to CI for authoring, accounts, themes, and progress; retain meaningful WebGL/manual acceptance (five isolated Playwright workflows, including catalog races and sync outages).
+- [x] Add browser interaction regressions to CI for authoring, accounts, themes, and progress; retain meaningful WebGL/manual acceptance (curriculum-wide desktop/mobile topology, authoring, account, theme, catalog-race and sync-outage workflows; Chromium and Firefox runners).
 - [ ] Improve large 3D asset loading/caching and investigate the lazy-loaded Three.js chunk-size warning.
 - [ ] Add accessibility checks for focus order, keyboard-only use, contrast, and reduced motion.
 - [ ] Add rate-limit observability, useful operational error logs, and migration/versioning procedures.

@@ -165,7 +165,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
     <CourseContext.Provider value={{ course, completed }}>
     <div data-vendor={course.vendor} className="flex h-screen bg-canvas text-base">
       <aside className="hidden lg:flex w-[272px] shrink-0 flex-col bg-surface border-r border-line">
-        <div className="h-14 flex items-center px-4 border-b border-line"><BrandMark /></div>
+        <div className="h-14 shrink-0 flex items-center px-4 border-b border-line"><BrandMark /></div>
         <Sidebar course={course} done={completed} current={current} onNavigate={() => undefined} />
       </aside>
 
