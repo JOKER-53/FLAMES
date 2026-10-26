@@ -13,7 +13,7 @@ React/Vite app with shared light/dark tokens. `src/App.tsx` owns public, account
 | `course/CourseCatalog.tsx` | Published modules and server guide visibility |
 | `course/useLearningAccess.ts` | Shared guide access for navigation and direct routes |
 | `drafts/`, `hooks/`, `api/` | Autosave, identity/progress/grading state and HTTP behavior |
-| `hardware/` | Loading/cache, frame scheduling, cable compatibility and calibrated sockets |
+| `hardware/` | Shared PA-220 appliance renderer, loading/cache, frame scheduling, cable compatibility and calibrated sockets |
 | `components/` | Shared primitives, configuration forms, packet traces and network view |
 | `public/` | Original models, theme initialization and credits photograph |
 | `test/` | Frontend unit/static rendering and metadata coverage |
@@ -23,3 +23,5 @@ Run root `npm run frontend:dev` (Vite at port 5173, API proxy to port 4000). `np
 Learning guide access defaults to hidden for students; administrators enable both vendors together and retain preview access. Credits is a public full-width page at `/credits`, reached through the header only, with the original `public/images/beyondbug-team.png` photo. Other site pages keep their standard content widths.
 
 Shared shell styles and public route URLs are compatibility boundaries. Never place credentials in `VITE_` variables or import private authored reference solutions. See [application flow](../../docs/APPLICATION_FLOW.md), [hardware behavior](../../docs/HARDWARE_PERFORMANCE.md) and [browser testing](../../docs/BROWSER_TESTING.md).
+
+The native PA-220 interface task embeds the real model through the shared viewer. Socket selection opens its existing configuration row; keyboard/table editing and draft/grade flows remain available independently of WebGL. The hardware reference route uses the full viewer without exercise editing.

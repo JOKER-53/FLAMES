@@ -32,14 +32,18 @@ Authored lessons use `kind: configuration` with a versioned `configurationExerci
 
 Module import/export retains the new definition privately, remaps module/lesson/task identities, and imports as a draft. The destination must include this builder release; older servers reject the unsupported lesson kind rather than silently changing it.
 
-The supplied Academy adapter recognizes published family/version metadata for all five families. Update the parent router before enabling these lessons in integrated mode. Student identities, progress and saved configurations remain in Academy; teaching definitions remain in the FLAMES content database. No remote Academy installation has been performed.
+The supplied Academy adapter recognizes published family/version metadata for all eight families. Update the parent router before enabling these lessons in integrated mode. Student identities, progress and saved configurations remain in Academy; teaching definitions remain in the FLAMES content database. No remote Academy installation has been performed.
 
 ## Model limits
 
 These exercises are intentionally separate teaching models. Static routing covers IPv4 prefixes, next hops, interfaces, distance and equal-cost selection, without dynamic routing or live reachability. Security uses zone/App-ID matching without sessions or protocol identification. NAT matches the original destination and returns the configured translation string; it does not simulate connection tracking, full source/port rewriting, routing or security permission. Zone checks compare authored membership/settings without discovering physical cabling. Interface checks do not configure real equipment.
 
-Verification includes all five publication/grading/draft flows, private serializers, stale versions, vendor boundaries, unsatisfied references, broad security rules, NAT shadowing, route conflicts/longest-prefix selection, zone ownership, module transfer, Academy draft recognition and browser author/student solve-and-resume workflows.
+Verification includes all eight publication/grading/draft flows, private serializers, stale versions, vendor boundaries, unsatisfied references, broad security rules, NAT shadowing, route conflicts/longest-prefix selection, zone ownership, module transfer, Academy draft recognition and browser author/student solve-and-resume workflows.
 
 ## Rollback compatibility
 
 Back up content before publishing the new lesson kinds. Older releases do not support configuration lessons. Before rolling application code back to one of those releases, unpublish these modules using the current release or restore the matched pre-upgrade content snapshot. Do not assume that an older backend can correctly grade a new published lesson kind.
+
+## Physical and PAN interface families
+
+`ports` authors FortiGate physical assignments, `pan-ports` authors PA-220 assignments, and `pan-interfaces` authors PA-220 interface settings. Use public starter rows and private field requirements/reference configurations. Publishing validates native port IDs and keeps the dedicated management interface outside data-plane zones. Student changes use normal autosave and server grading. New family definitions require the updated Academy router; deploy the companion adapter before integrated use. See [configuration tools](CONFIGURATION_TOOLS.md) for topology/CLI behavior.

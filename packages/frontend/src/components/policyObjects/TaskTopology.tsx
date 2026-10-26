@@ -1,7 +1,7 @@
 import { Icon } from "../ui/Icon";
 
 type Row = Record<string, unknown>;
-type Family = "pan-security" | "pan-nat" | "pan-zones" | "pan-interfaces" | "ports" | "interfaces" | "routing";
+type Family = "pan-security" | "pan-nat" | "pan-zones" | "pan-ports" | "pan-interfaces" | "ports" | "interfaces" | "routing";
 interface Node { id: string; name: string; detail: string; }
 const text = (value: unknown, fallback = "Not configured") => typeof value === "string" && value.trim() ? value : fallback;
 const list = (value: unknown) => Array.isArray(value) ? value.filter(item => typeof item === "string").join(", ") : "";
@@ -15,7 +15,7 @@ export function TaskTopology({ vendor, family, config }: { vendor: "fortigate" |
   if (family === "pan-nat") return {id, name: text(row.name), detail: `${text(row.srcZone)} → ${text(row.dstZone)} · ${text(row.dstAddr)} → ${text(row.translated)} (${text(row.type)})`};
   if (family === "pan-zones") return {id, name: text(row.name), detail: `${text(row.type)} · ${list(row.interfaces) || "No interfaces assigned"}`};
   if (family === "routing") return {id, name: text(row.destination), detail: `${text(row.interfaceName)} → gateway ${text(row.gateway)} · distance ${String(row.distance ?? "—")}`};
-  if (family === "ports") return {id, name: text(row.label, text(row.portId, text(row.id))), detail: `Zone: ${text(row.zone)}${row.locked ? " · dedicated" : ""}`};
+  if (family === "ports" || family === "pan-ports") return {id, name: text(row.label, text(row.portId, text(row.id))), detail: `Zone: ${text(row.zone)}${row.locked ? " · dedicated" : ""}`};
   return {id, name: text(row.name, text(row.id)), detail: `${text(row.role, text(row.zone))} · ${text(row.ip, "No IP assigned")}${row.subnet ? ` / ${row.subnet}` : ""}${row.link === false ? " · link down" : ""}`};
  });
  return <section aria-label="Network topology" data-vendor={vendor} className="card p-4 min-w-0 space-y-3">

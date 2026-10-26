@@ -70,7 +70,7 @@ The content studio authors FortiGate policy, interfaces and static routing, plus
 
 Acceptance: an admin creates and publishes a complete supported firewall exercise through the UI; the correct configuration passes; defined common mistakes fail; students can open it through the normal course outline.
 
-Implemented scope: FortiGate policy/interfaces/static routing and Palo Alto security/NAT/zones. See [expanded authoring](docs/CONFIGURATION_EXERCISE_BUILDER.md). Physical-port and PAN interface authoring are not included in this release.
+Implemented scope: FortiGate policy/interfaces/static routing and Palo Alto security/NAT/zones. See [expanded authoring](docs/CONFIGURATION_EXERCISE_BUILDER.md). FortiGate physical-port, PAN physical-port and PAN interface authoring are now included.
 
 Implementation and verification: [autosave and builder guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md). Academy adapter/schema upgrades and live college acceptance remain under Priority 0; completing the code does not imply the college deployment is complete.
 
@@ -126,7 +126,7 @@ The four requested non-deployment priorities are implemented; verification and u
 3. Operations: request IDs, redacted error/rate-limit logs, protected diagnostics and checksummed transactional schema tracking. See [diagnostics and migrations](docs/DIAGNOSTICS_AND_MIGRATIONS.md).
 4. Instructor tools: search/filter, module/lesson duplication and private saved-revision comparisons. See [content studio](docs/ADMIN_CONTENT.md).
 
-Standalone self-service password recovery is conditional on keeping local accounts; Academy-owned identities use Academy recovery. Certified assessment evidence, configuration diffs, topology authoring and CLI practice remain optional enhancements rather than current release blockers. Actual-device WebGL/socket alignment still needs a manual check even when browser layout tests pass.
+Standalone self-service password recovery is conditional on keeping local accounts; Academy-owned identities use Academy recovery. Certified examination evidence remains conditional. Configuration comparisons, topology authoring and supported CLI practice are implemented; see [configuration tools](docs/CONFIGURATION_TOOLS.md). Internal college certificates remain explicitly unapproved practice records. Actual-device WebGL/socket alignment still needs a manual check even when browser layout tests pass.
 
 ## Later improvements
 
@@ -138,7 +138,9 @@ Standalone self-service password recovery is conditional on keeping local accoun
 - [x] Add automated light/dark WCAG scans, keyboard skip/navigation/focus checks, contrast corrections, named controls and reduced-motion coverage; retain actual assistive-technology/device acceptance in docs/ACCESSIBILITY.md.
 - [x] Add rate-limit observability, request-correlated operational logs, protected diagnostics, and checksummed transactional migrations with documented upgrade/rollback procedures.
 - [ ] Add hosted password recovery/account administration for standalone deployments if they remain in use.
-- [ ] Consider configuration diff views, topology authoring, and supported CLI practice after the core flow is stable.
+- [x] Add student configuration comparisons, validated topology authoring, and an allowlisted FortiGate interface CLI subset.
+- [x] Add physical-port/PAN interface builders with private grading and publication.
+- [x] Add one internal completion certificate per vendor, roll-number ownership, administrator design/background editing and live preview.
 
 ## Learning expansion
 
@@ -161,3 +163,5 @@ Standalone self-service password recovery is conditional on keeping local accoun
 - Test authorization, account isolation, persistence, and failure behavior for new stored features.
 - Run `npm run verify` and relevant browser checks before release.
 - Update this checklist and [updation.md](updation.md) when work is completed; record actual evidence rather than assuming deployment success.
+
+Current human/device and deployment-dependent evidence is tracked in [non-AWS acceptance](docs/acceptance/NON_AWS_ACCEPTANCE.md). Scope decisions for identity, certified assessment and scaling are in [identity/assessment](docs/decisions/0001-identity-and-assessment-boundaries.md) and [runtime](docs/decisions/0002-single-instance-runtime.md).

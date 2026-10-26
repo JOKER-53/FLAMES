@@ -3,12 +3,15 @@ import { evaluatePanPacket, evaluatePanNat, type PanSecurityRule, type PanNatRul
 import { parseCidr, ipToInt } from "../policy/matching";
 import { gradeInterfaceSubmission } from "../interfaces/interfaceGrader";
 import type { InterfaceConfig, InterfaceFieldCheck } from "../interfaces/interfaceTypes";
-export type ConfigurationFamily = "interfaces" | "routing" | "pan-security" | "pan-nat" | "pan-zones";
+export type ConfigurationFamily = "interfaces" | "routing" | "pan-security" | "pan-nat" | "pan-zones" | "ports" | "pan-ports" | "pan-interfaces";
 export type ConfigurationValue = string | number | boolean | string[];
 export type ConfigurationRow = Record<string, ConfigurationValue>;
 export interface ConfigurationField { key:string;label:string;type:"text"|"number"|"boolean"|"list"|"select";options?:string[]; }
 const f=(key:string,label:string,type:ConfigurationField["type"]="text",options?:string[]):ConfigurationField=>({key,label,type,...(options?{options}:{})});
 export const CONFIGURATION_FAMILIES:Record<ConfigurationFamily,{label:string;vendor:"fortigate"|"paloalto";key:string;fields:ConfigurationField[]}>={
+ ports:{label:"Physical port assignment",vendor:"fortigate",key:"portId",fields:[f("portId","Port identifier"),f("zone","Zone","select",["unassigned","WAN","LAN","DMZ"])]},
+ "pan-ports":{label:"PA-220 physical port assignment",vendor:"paloalto",key:"id",fields:[f("id","Port identifier"),f("zone","Zone","select",["unassigned","Trust","Untrust","DMZ","HA","Management"]),f("label","Port label")]},
+ "pan-interfaces":{label:"PA-220 interface configuration",vendor:"paloalto",key:"id",fields:[f("id","Interface identifier"),f("type","Interface type","select",["layer3","layer2","tap","ha","management"]),f("zone","Zone","select",["—","Trust","Untrust","DMZ","HA","Management"]),f("ip","IPv4 address / prefix"),f("link","Link up","boolean"),f("speed","Link speed"),f("comment","Comment")]},
  interfaces:{label:"Interface configuration",vendor:"fortigate",key:"name",fields:[f("name","Interface name"),f("role","Role","select",["WAN","LAN","DMZ"]),f("ip","IPv4 address"),f("subnet","Mask / prefix"),f("adminAccess","Administrative access","list")]},
  routing:{label:"Static routing",vendor:"fortigate",key:"id",fields:[f("destination","Destination CIDR"),f("gateway","Gateway"),f("interfaceName","Outgoing interface"),f("distance","Administrative distance","number")]},
  "pan-security":{label:"Security policy",vendor:"paloalto",key:"id",fields:[f("name","Rule name"),f("srcZone","Source zone"),f("dstZone","Destination zone"),f("apps","Applications","list"),f("action","Action","select",["allow","deny"])]},
@@ -86,6 +89,10 @@ export function gradeConfigurationExercise(exercise:ConfigurationExercise,value:
   }
   return{id:check.id,description:check.description,passed,trace};
  });
+ if(exercise.family==="pan-ports"||exercise.family==="pan-interfaces") {
+  const valid=rows.every(row=>row.id!=="management"?exercise.family!=="pan-interfaces"||row.type!=="management":exercise.family==="pan-ports"?row.zone==="Management":row.type==="management"&&row.zone==="—");
+  results.push({id:"device-boundaries",description:"Dedicated management stays separate from data-plane interfaces",passed:valid,trace:rows.map(row=>({element:String(row.id),rowId:String(row.id),detail:`Zone: ${row.zone}${row.type?`; type: ${row.type}`:""}`}))});
+ }
  if(exercise.family==="pan-zones"){const owned=rows.flatMap(row=>row.interfaces as string[]);results.push({id:"zone-ownership",description:"Interfaces belong to one zone each",passed:new Set(owned).size===owned.length,trace:rows.map(row=>({element:`Zone ${row.name}`,rowId:String(row.name),detail:(row.interfaces as string[]).join(", ")}))});}
  return{overallPassed:results.length>0&&results.every(result=>result.passed),results};
 }
@@ -93,9 +100,9 @@ export function validateConfigurationExercise(value:unknown,publishing=false,che
  const data=value as ConfigurationExercise;assert(!!data&&data.schemaVersion===1&&Object.prototype.hasOwnProperty.call(CONFIGURATION_FAMILIES,data.family),"Choose a valid configuration exercise family.");
  const starterConfig=configurationRows(data.family,data.starterConfig),referenceConfig=configurationRows(data.family,data.referenceConfig);const info=CONFIGURATION_FAMILIES[data.family];
  assert(Array.isArray(data.checks)&&data.checks.length<=100,"Use at most 100 checks.");const ids=new Set<string>();
- for(const check of data.checks){assert(check&&required(check.id)&&!ids.has(check.id)&&check.id!=="zone-ownership"&&required(check.description,1000),"Every check needs a unique ID and description.");ids.add(check.id);
+ for(const check of data.checks){assert(check&&required(check.id)&&!ids.has(check.id)&&!['zone-ownership','device-boundaries'].includes(check.id)&&required(check.description,1000),"Every check needs a unique ID and description.");ids.add(check.id);
   if(check.type==="field"){
-   assert(["interfaces","routing","pan-zones"].includes(data.family),"Use packet checks for policy exercises.");
+   assert(["interfaces","routing","pan-zones","ports","pan-ports","pan-interfaces"].includes(data.family),"Use packet checks for policy exercises.");
    const field=info.fields.find(field=>field.key===check.field&&field.key!==info.key);assert(field&&required(check.target)&&["equals","contains"].includes(check.operator??"equals"),"Choose a valid row, field and comparison.");
    const expected=check.expected;assert(field!.type==="list"?Array.isArray(expected)&&expected.length<=200&&new Set(expected).size===expected.length&&expected.every(item=>required(item)):field!.type==="boolean"?typeof expected==="boolean":field!.type==="number"?typeof expected==="number"&&Number.isFinite(expected):text(expected)&&(!field!.options||field!.options.includes(expected)),"Expected value has the wrong field type.");
    assert(check.operator!=="contains"||field!.type==="list","Contains comparisons require a list field.");assert(data.family!=="interfaces"||check.operator!=="contains","Interface administrative access is checked as an exact set.");
@@ -113,6 +120,20 @@ export function validateConfigurationExercise(value:unknown,publishing=false,che
   if(data.family==="routing")for(const row of referenceConfig){parseCidr(String(row.destination));ipToInt(String(row.gateway));assert(Number.isInteger(row.distance)&&Number(row.distance)>=1&&Number(row.distance)<=255,"Route distance must be 1–255.");}
   if(data.family==="pan-nat")for(const row of referenceConfig){const destination=String(row.dstAddr).trim();if(!["any","all"].includes(destination.toLowerCase()))destination.includes("/")?parseCidr(destination):ipToInt(destination);const translated=String(row.translated).trim();if(!(row.type==="source"&&translated.toLowerCase()==="interface")){const parts=translated.split(":");assert(parts.length<=2,"Use an IPv4 translation with an optional port.");ipToInt(parts[0]);if(parts[1]!==undefined)assert(/^\d+$/.test(parts[1])&&Number(parts[1])>=0&&Number(parts[1])<=65535,"Invalid translated port.");}}
   if(data.family==="interfaces")for(const row of referenceConfig){const access=(row.adminAccess as string[]).map(item=>item.trim().toUpperCase());assert(access.every(item=>["PING","HTTPS","SSH","HTTP"].includes(item))&&new Set(access).size===access.length,"Choose supported, distinct administrative protocols.");if(row.ip)ipToInt(String(row.ip));if(row.subnet){const mask=String(row.subnet).replace(/^\//,"");if(/^\d+$/.test(mask))assert(Number(mask)<=32,"Invalid interface prefix.");else{const bits=String(row.subnet).split(".").map(value=>Number(value).toString(2).padStart(8,"0")).join("");ipToInt(String(row.subnet));assert(/^1*0*$/.test(bits),"Interface masks must be contiguous.");}}}
+  if (["ports","pan-ports","pan-interfaces"].includes(data.family)) {
+   const portId = (row:ConfigurationRow) => String(row[info.key]);
+   const validId = (id:string) => data.family === "ports" ? /^(port([1-9]|10)|wan[12]|[ab])$/.test(id) : /^(ethernet1\/[1-8]|management)$/.test(id);
+   for (const row of [...starterConfig,...referenceConfig]) {
+    const id=portId(row);assert(validId(id),"Choose a supported physical port identifier.");
+    if (data.family==="pan-ports" && id==="management") assert(row.zone==="Management","The dedicated MGT port must retain its Management assignment.");
+    if (data.family==="pan-interfaces") {
+     if(id==="management") assert(row.type==="management" && row.zone==="—","MGT stays out of data-plane zones.");
+     else assert(row.type!=="management","Use the dedicated MGT port for management interface type.");
+     if (row.ip) {const parts=String(row.ip).split("/");assert(parts.length===2&&/^\d+$/.test(parts[1])&&Number(parts[1])<=32,"Use an IPv4 address with prefix length 0–32.");ipToInt(parts[0]);}
+    }
+   }
+   for(const check of data.checks) assert(starterConfig.some(row=>portId(row)===check.target),"Physical/interface field checks need matching public starter row identities.");
+  }
   if(checkReference)assert(gradeConfigurationExercise(normalized,referenceConfig).overallPassed,"The reference solution does not pass all checks.");
  }
  return normalized;

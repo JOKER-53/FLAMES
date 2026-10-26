@@ -15,6 +15,6 @@ PLAYWRIGHT_BROWSER=firefox npm run test:browser
 
 The browser runner starts isolated servers through `scripts/browser-server.cjs`, creates temporary databases and fixture identities, disables live AI credentials and cleans up on exit. It explicitly enables guides for general learning fixtures; dedicated visibility regressions test administrator hide/show behavior and restore fixture settings. It never opens the developer's account/content databases.
 
-Do not run separate browser suites concurrently: they share fixture ports 4101/4173. `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium` overrides the local Chromium executable when needed. Firefox intentionally skips the two software-WebGL model rendering cases; fallback/keyboard checks still run. Actual-device rendering and assistive-technology acceptance remain manual.
+Do not run separate browser suites concurrently: they share fixture ports 4101/4173. `PLAYWRIGHT_CHROMIUM_EXECUTABLE=/path/to/chromium` overrides the local Chromium executable when needed. Firefox intentionally skips software-WebGL model rendering cases; fallback/keyboard checks still run. Actual-device rendering and assistive-technology acceptance remain manual.
 
 `test-results/` and `playwright-report/` are ignored artifacts. See [browser guide](../docs/BROWSER_TESTING.md) and [accessibility acceptance](../docs/ACCESSIBILITY.md).

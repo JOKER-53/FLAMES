@@ -94,7 +94,7 @@ export function createFortisimRouter({ Router, authenticate, pool, catalogUrl = 
     const lesson = modules.filter(module => module.vendor === platform).flatMap(module => module.lessons).find(lesson => lesson.id === taskId && typeof lesson.scenarioVersion === 'string')
     if (!lesson) return null
     if (platform === 'fortigate' && lesson.kind === 'policy') return { kind: 'policy', scenarioVersion: lesson.scenarioVersion }
-    const families = platform === 'fortigate' ? ['interfaces', 'routing'] : ['pan-security', 'pan-nat', 'pan-zones']
+    const families = platform === 'fortigate' ? ['interfaces', 'routing', 'ports'] : ['pan-security', 'pan-nat', 'pan-zones', 'pan-ports', 'pan-interfaces']
     return lesson.kind === 'configuration' && families.includes(lesson.simulatorFamily) ? { kind: lesson.simulatorFamily, scenarioVersion: lesson.scenarioVersion } : null
   }
   async function readDraft(userId, platform, taskId) {

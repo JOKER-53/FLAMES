@@ -1,3 +1,4 @@
+import { validateExerciseTopology } from "@fortisim/engine";
 import { migrate, schemaStatus } from "../db/migrations";
 import { CONFIGURATION_FAMILIES, validateConfigurationExercise, gradeConfigurationExercise } from "@fortisim/engine";
 import { validatePolicyExercise, policyScenario } from "./policyExercise";
@@ -45,6 +46,11 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
         requireValue(CONFIGURATION_FAMILIES[exercise.family].vendor === module.vendor, "Exercise family belongs to a different vendor.");
       } catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid configuration exercise."); }
     }
+    if (lesson.topology !== undefined) {
+      const exercise=lesson.configurationExercise;const info=exercise&&CONFIGURATION_FAMILIES[exercise.family];
+      const bindings=lesson.kind==="policy"?lesson.policyExercise!.starterAddresses.map(row=>row.id):lesson.kind==="configuration"&&exercise&&info?exercise.starterConfig.map(row=>String(row[info.key])):[];
+      try { validateExerciseTopology(lesson.topology,bindings); } catch(error) { throw new ContentError(400,error instanceof Error?error.message:"Invalid exercise topology."); }
+    }
     for (const task of lesson.tasks) {
       requireValue(!!task && typeof task === "object" && identifier(task.id, "task") && !ids.has(task.id), "Every task needs a unique valid ID."); ids.add(task.id);
       requireValue(["choice", "answer"].includes(task.type) && text(task.prompt, 2000), "Invalid task type or question.");
@@ -63,6 +69,7 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
   // Copy only supported fields; discard any extra caller-supplied properties.
   return { id: module.id, vendor: module.vendor, title: module.title.trim(), summary: module.summary.trim(), lessons: module.lessons.map(lesson => ({
     kind: lesson.kind ?? "reading", ...(lesson.kind === "configuration" ? { configurationExercise: validateConfigurationExercise(lesson.configurationExercise) } : {}), ...(lesson.kind === "policy" ? { policyExercise: lesson.policyExercise } : {}),
+    ...(lesson.topology ? { topology: validateExerciseTopology(lesson.topology) } : {}),
     id: lesson.id, title: lesson.title.trim(), summary: lesson.summary.trim(), minutes: lesson.minutes, level: lesson.level, body: lesson.body,
     tasks: lesson.tasks.map(task => ({ id: task.id, type: task.type, prompt: task.prompt, choices: [...task.choices], correctIndex: task.correctIndex, acceptedAnswers: [...task.acceptedAnswers] })),
   })) };
@@ -227,7 +234,7 @@ export class ContentStore {
   }
   publicLesson(id: string): PublicLesson {
     const { lesson, module } = this.lesson(id);
-    return { id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, body: lesson.body, kind: lesson.kind ?? "reading", moduleId: module.id, vendor: module.vendor, tasks: lesson.tasks.map(({ id, type, prompt, choices }) => ({ id, type, prompt, choices: type === "choice" ? choices : [] })) };
+    return { ...(lesson.topology ? { topology: lesson.topology } : {}), id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, body: lesson.body, kind: lesson.kind ?? "reading", moduleId: module.id, vendor: module.vendor, tasks: lesson.tasks.map(({ id, type, prompt, choices }) => ({ id, type, prompt, choices: type === "choice" ? choices : [] })) };
   }
   configurationExercise(id: string) {
     let item;
@@ -254,7 +261,7 @@ export class ContentStore {
     const { lesson } = item;
     if (lesson.kind !== "policy" || !lesson.policyExercise) return null;
     return {
-      scenario: policyScenario(lesson.id, lesson.title, lesson.body, lesson.policyExercise),
+      scenario: { ...policyScenario(lesson.id, lesson.title, lesson.body, lesson.policyExercise), ...(lesson.topology ? { topology: lesson.topology } : {}) },
       starterPolicies: lesson.policyExercise.starterPolicies,
       version: createHash("sha256").update(JSON.stringify(lesson.policyExercise)).digest("hex").slice(0, 24),
     };

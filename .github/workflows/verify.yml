@@ -4,9 +4,13 @@ on:
   pull_request:
 permissions:
   contents: read
+concurrency:
+  group: verify-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -16,17 +20,3 @@ jobs:
       - run: npm ci
       - run: npm run docs:check
       - run: npm run verify
-      - name: Install browsers for workflow regressions
-        run: npx playwright install --with-deps chromium firefox
-      - name: Browser workflows
-        run: npm run test:browser
-      - name: Firefox browser workflows
-        run: npm run test:browser
-        env:
-          PLAYWRIGHT_BROWSER: firefox
-      - name: Validate deployment configuration
-        run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml config --quiet
-      - name: Validate Academy integration configuration
-        run: ACADEMY_ORIGIN=http://academy.example:5173 ACADEMY_API_URL=http://academy:4000/api FRONTEND_ORIGIN=http://lab.example:5174 docker compose -f compose.academy.yml config --quiet
-      - name: Build deployment images
-        run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml build

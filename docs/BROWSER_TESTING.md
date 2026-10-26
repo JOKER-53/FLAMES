@@ -29,9 +29,10 @@ General learning fixtures explicitly enable guide visibility. Dedicated visibili
 | `learning-visibility.spec.mjs` | Admin show/hide, student direct routes/study links, persistent setting and administrator previews |
 | `credits.spec.mjs` | Header access, contributor/organization destinations, original photo loading, themes and mobile headers |
 | `accessibility.spec.mjs` | Representative student/admin WCAG scans, named controls, keyboard skip/navigation and mobile drawer focus |
+| `pan-interface-model.spec.mjs` | Real PA-220 socket picking, interface editing/autosave/topology, shared model transport and accessible no-WebGL editing |
 | `hardware.spec.mjs` | Real software-WebGL loading/retry/cache, reduced-motion idle behavior and useful no-WebGL keyboard references |
 
-Firefox intentionally skips the two actual model-rendering cases; software-WebGL model tests run in Chromium. Firefox still runs fallback/keyboard/layout coverage. Native topology coverage is generated from curriculum so new lessons enter the check automatically.
+Firefox intentionally skips actual model-rendering cases (two hardware-reference cases and the PA-220 interface-model case); software-WebGL model tests run in Chromium. Firefox still runs fallback/keyboard/layout coverage. Native topology coverage is generated from curriculum so new lessons enter the check automatically.
 
 ## Limits and manual acceptance
 

@@ -46,7 +46,7 @@ FLAMES is one npm workspace with three packages and one active dependency lockfi
 │       │   ├── components/               # UI primitives, shells, lessons, packet tools
 │       │   ├── course/                   # Curriculum, catalog, learning source/access
 │       │   ├── drafts/                   # Hydration, autosave, conflicts and status
-│       │   ├── hardware/                 # Model loading, scheduling, sockets and cables
+│       │   ├── hardware/                 # Shared appliance viewer, loading, scheduling, sockets/cables
 │       │   ├── hooks/                    # Identity, progress, grading and sessions
 │       │   ├── integration/              # Verified parent-frame bridge
 │       │   ├── utils/                    # Small shared helpers
@@ -93,3 +93,7 @@ Keep the credits photo in `public/images/`; it is a source asset, not generated 
 `node_modules/`, `dist/`, browser reports, coverage, local environment files, SQLite databases and private backup directories are generated or runtime state. They stay ignored; a repository reorganization must not move or delete live databases, volumes or user backups. Retired implementation reports belong in `docs/archive/`; their historical statements are not current acceptance guarantees.
 
 Package guides: [engine](../packages/engine/README.md), [backend](../packages/backend/README.md), [frontend](../packages/frontend/README.md). Command guide: [scripts](../scripts/README.md). Browser guide: [tests](../tests/README.md).
+
+## Completion and authoring additions
+
+Engine `certificates/` holds validated templates and the shared preview/download renderer. Backend `certificates/` owns authenticated eligibility, staff template/profile routes and the checksummed certificate schema in the content database. Frontend certificate pages/components keep preview and downloaded rendering consistent. Engine `cli/`, `learning/configurationChanges.ts` and `content/topology.ts` own the pure CLI, comparison and topology contracts; corresponding UI lives in `components/configuration`, `drafts`, `components/topology` and `pages/admin`. See [certificates](CERTIFICATES.md) and [configuration tools](CONFIGURATION_TOOLS.md).

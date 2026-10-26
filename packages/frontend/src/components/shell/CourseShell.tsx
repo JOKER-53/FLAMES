@@ -41,7 +41,6 @@ export function BrandMark({ className = "" }: { className?: string }) {
         <Icon name="shield" size={15} strokeWidth={2} />
       </span>
       <span className="text-[15px] font-semibold tracking-tight text-ink">FLAMES</span>
-      <span className="hidden sm:inline text-2xs font-medium text-muted border border-line rounded px-1.5 py-px">Academy</span>
     </Link>
   );
 }

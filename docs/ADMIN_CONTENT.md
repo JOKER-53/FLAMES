@@ -84,3 +84,11 @@ Search modules by title, summary or saved lesson titles, and filter by vendor. S
 In **Admin → Student learning guide**, choose **Show learning guide** to open the guide in both courses, or **Hide learning guide** to close it. The default is **hidden**, including after upgrading an existing database. The setting is stored on the server and survives browser refreshes and restarts. It controls course sidebar links, native lesson study links, and direct in-app `/fortigate/learn` and `/paloalto/learn` routes. Administrators retain preview access through the dashboard links. It does not change tasks, drafts, grading, or completion.
 
 Open student tabs refresh availability when focused and every 30 seconds while visible; a reload also fetches the current setting. Standalone instructors and Academy users with the existing content-administrator capability can change it. Students and guests cannot change settings. `GET`/`PUT /api/admin/learning-settings` use the same authorization as the content studio; PUT accepts the boolean `learningGuideVisible`. The public course catalog exposes only the visibility flag.
+
+## Completion certificate designs
+
+The **Completion certificates** section edits independent FortiGate/Palo Alto templates with live previews, colors, bounded text positions and optional raster backgrounds. It also assigns local student roll numbers; integrated identities take their roll number from Academy. See [certificate operation and limitations](CERTIFICATES.md). These internal college records always retain the unapproved/not-for-placements note.
+
+## Additional exercise tools
+
+Physical-port and PAN interface configuration families are available in the lesson type selector. **Visual exercise topology** supplies node/connection forms and a student-safe preview; see [configuration tools](CONFIGURATION_TOOLS.md) and [builder families](CONFIGURATION_EXERCISE_BUILDER.md).

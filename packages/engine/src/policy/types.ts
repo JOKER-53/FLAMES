@@ -1,3 +1,4 @@
+import type { ExerciseTopology } from "../content/topology";
 export type Protocol = "TCP" | "UDP" | "ICMP";
 
 export interface AddressObject {
@@ -58,6 +59,7 @@ export interface ExpectedOutcome {
 }
 
 export interface Scenario {
+  topology?: ExerciseTopology;
   id: string;
   title: string;
   description: string;

@@ -1,3 +1,4 @@
+import { ExerciseTopologyDiagram } from "../../components/topology/ExerciseTopologyDiagram";
 import { AuthoredConfigurationLesson } from "./AuthoredConfigurationLesson";
 import { useEffect, useRef, useState } from "react";
 import { Navigate, useParams } from "react-router-dom";
@@ -44,7 +45,7 @@ export function AuthoredLessonPage({ complete }: { complete: (id: string) => voi
   return <LessonFrame title={lesson?.title ?? "Lesson"} brief={lesson?.summary || "Read the instructions, then complete the lesson tasks."}>
     {error && <Callout tone="danger" className="mb-5">{error}</Callout>}
     {!lesson ? !error && <p role="status" className="text-muted">Loading lesson…</p> : <div className="space-y-6">
-      <section className="card p-6"><LessonInstructions body={lesson.body} /></section>
+      {lesson.topology&&<ExerciseTopologyDiagram topology={lesson.topology}/>}<section className="card p-6"><LessonInstructions body={lesson.body} /></section>
       {lesson.tasks.length > 0 && <h2 className="text-lg font-semibold">Tasks</h2>}
       {lesson.tasks.map((task, index) => {
         const result = report?.results.find(result => result.taskId === task.id);

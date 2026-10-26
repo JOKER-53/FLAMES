@@ -9,8 +9,10 @@ import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
 import { Callout } from "../../components/ui/primitives";
 import { Icon } from "../../components/ui/Icon";
 import { apiFetch } from "../../api/http";
-import { useState, useRef, useEffect } from "react";
+import { lazy, Suspense, useState, useRef, useEffect } from "react";
 import { PanSession } from "../../hooks/usePanSession";
+
+const PanApplianceViewer = lazy(() => import("../../hardware/PanApplianceViewer").then(module => ({ default: module.PanApplianceViewer })));
 
 type IfaceType = "layer3" | "layer2" | "tap" | "ha" | "management";
 type IfaceZone = "Trust" | "Untrust" | "DMZ" | "Management" | "HA" | "—";
@@ -46,6 +48,7 @@ const ZONES: IfaceZone[] = ["Trust","Untrust","DMZ","Management","HA","—"];
 export function PanInterfaces({ session }: { session: PanSession }) {
   const persisted = useSimulatorDraft<Interface[]>("paloalto", "pan-iface-01", "pan-interfaces", DEFAULT_IFACES);
   const ifaces = persisted.value, setIfaces = persisted.setValue;
+  const [selectedInterface, setSelectedInterface] = useState<string | null>(null);
   const [editing, setEditing] = useState<string|null>(null);
   const [editVal, setEditVal] = useState<Partial<Interface>>({});
   
@@ -65,6 +68,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
   }, [ifaces]);
 
   function startEdit(iface: Interface) {
+    setSelectedInterface(iface.id);
     setEditing(iface.id);
     setEditVal({ zone:iface.zone, ip:iface.ip, type:iface.type, comment:iface.comment });
   }
@@ -109,16 +113,11 @@ export function PanInterfaces({ session }: { session: PanSession }) {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame path={["Network", "Interfaces", "Ethernet"]}>
-            <div className="flex flex-wrap items-end gap-2 px-4 py-3 border-b border-line bg-sunken" aria-label="Port status">
-              {ifaces.map(i => (
-                <div key={i.id} className="text-center w-12">
-                  <div className="mx-auto w-9 h-7 rounded border-2 grid place-items-center" style={{ borderColor: i.zone === "—" ? "#cbd5e1" : ZONE_COLOR[i.zone], background: i.zone === "—" ? "#fff" : ZONE_COLOR[i.zone] + "14" }}>
-                    <span className={`w-1.5 h-1.5 rounded-full ${i.link ? "bg-success" : "bg-line-strong"}`} />
-                  </div>
-                  <div className="mt-1 text-2xs font-mono text-muted">{i.id === "management" ? "MGT" : i.id.replace("ethernet", "")}</div>
-                </div>
-              ))}
-            </div>
+            <section className="border-b border-line p-4" aria-label="Interactive PA-220 interface model">
+              <Suspense fallback={<p role="status" className="min-h-[260px] text-sm text-muted">Loading PA-220 interface viewer…</p>}>
+                <PanApplianceViewer interfacePorts={ifaces} selectedInterface={selectedInterface} onSelectInterface={id => { const iface = ifaces.find(item => item.id === id); if (iface) startEdit(iface); }} />
+              </Suspense>
+            </section>
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
                 <thead>
@@ -130,7 +129,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
                   {ifaces.map(iface => {
                     const edit = editing === iface.id;
                     return (
-                      <tr key={iface.id} className={`border-b border-line ${edit ? "bg-accent-soft/50" : "hover:bg-sunken/60"}`}>
+                      <tr key={iface.id} aria-selected={selectedInterface === iface.id} className={`border-b border-line ${edit ? "bg-accent-soft/50" : "hover:bg-sunken/60"}`}>
                         <td className="px-3 py-2 font-mono text-xs font-semibold text-ink">{iface.id}</td>
                         <td className="px-3 py-2">{edit
                           ? <select aria-label={`${iface.id} type`} className="input h-8 w-32" value={editVal.type} onChange={e => setEditVal(v => ({ ...v, type: e.target.value as IfaceType }))}>
@@ -172,7 +171,7 @@ export function PanInterfaces({ session }: { session: PanSession }) {
         <aside className="min-w-0 space-y-4">
           <TaskTopology vendor="paloalto" family="pan-interfaces" config={ifaces}/>
           <Callout tone="info" title="Zones come first">
-            An interface must belong to a zone before any security policy applies to its traffic. Interfaces in the same zone talk freely; traffic between zones needs an explicit rule.
+            Data-plane interfaces use security zones to define policy boundaries. The dedicated MGT port is out-of-band management and does not join a data-plane security zone. Assigning a zone alone does not configure every policy or service setting.
           </Callout>
           <Callout tone="tip" title="Interface types">
             <b>Layer 3</b> routes between subnets, <b>Layer 2</b> switches, <b>Virtual Wire</b> inspects transparently, and <b>Tap</b> only monitors mirrored traffic.

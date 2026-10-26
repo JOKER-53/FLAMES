@@ -82,3 +82,5 @@ Automated layout/accessibility checks do not replace actual-device WebGL/socket 
 ## Contributing
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md), keep secrets/runtime data out of Git, and update the relevant guide when behavior or ownership changes. Dated verification reports and retired tools belong in [docs/archive](docs/archive/README.md), not among active setup instructions.
+
+Internal college completion certificates are available through **View completion certificate** inside a completed course. Staff customize both vendor designs, preview layouts and manage local roll numbers from **Admin**. These records are explicitly not approved certificates and are not for placements. See [certificate guide](docs/CERTIFICATES.md), [configuration tools](docs/CONFIGURATION_TOOLS.md) and [remaining acceptance](docs/acceptance/NON_AWS_ACCEPTANCE.md).

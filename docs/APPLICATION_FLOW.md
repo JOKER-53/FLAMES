@@ -62,8 +62,18 @@ Original model URLs stay `/firewall.glb` and `/pa-220-firewall.glb`. The default
 
 Topology panels and network views represent the exercise/current configuration, not live traffic. Policy tests use supplied interface direction rather than a complete route/session engine. NAT translation is distinct from permission; App-ID uses supplied labels. These teaching boundaries are described in the learning guide and packet explanations.
 
+### PA-220 interface task
+
+The native Palo Alto Interface Configuration task embeds the real PA-220 model above its interface table. Clicking a data Ethernet socket or MGT selects the matching row and opens its editor; keyboard interface buttons provide the same action. Save applies type/zone/address changes through the existing draft flow and updates topology and the selected-interface summary. The viewer highlights the selected physical socket; console, USB and power are not network configuration targets.
+
+The embedded viewer has a compact in-page height and starts without automatic rotation. It shares the hardware reference's loader/cache, retry, calibrated socket mapping and render suspension through `hardware/PanApplianceViewer.tsx`. A missing WebGL context does not prevent keyboard/table editing. Selecting a port does not assign a zone, change a link, or grant completion.
+
 ## Appearance and credits
 
 Shared headers provide theme and Credits controls. The first visit follows system light/dark preference; an explicit choice persists locally. Course/forms/topology UI uses shared tokens, while the 3D stage keeps its own scene background.
 
 `/credits` is public and lists KADHIRAVAN EG (`JOKER-53`), Harish Kumar (`Harishkumar-47`) and BeyondBug with supplied GitHub/LinkedIn links. Its opt-in full-width layout frames the original 1280 × 567 team photograph at `public/images/beyondbug-team.png` without cropping. Profiles sit alongside it on wide screens and stack below on small screens. Credits is linked only in the shared header, without footer/sidebar duplicates. Other standard pages retain their usual widths.
+
+## Internal completion records
+
+Completed courses link to `/certificates`; the shared header does not show a Certificates button. Signed-in students see separate vendor eligibility and SVG downloads after all required vendor tasks are saved and their authoritative profile supplies a roll number. Administrators edit templates/live previews and local roll numbers in the content studio. See [certificate flow](CERTIFICATES.md); this is explicitly internal practice completion, not approved assessment certification.

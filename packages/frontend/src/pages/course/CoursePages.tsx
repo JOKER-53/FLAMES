@@ -60,7 +60,7 @@ export function CourseOverviewPage({ course, completed }: { course: Course; comp
               <div className="eyebrow text-success">Course complete</div>
               <h2 className="mt-3 text-xl font-semibold">You have finished every lesson.</h2>
               <p className="mt-1.5 text-body">Revisit any assessment to practise, or try the other vendor's course to compare the platforms.</p>
-              <Link to="/" className="btn-secondary mt-5">Browse courses</Link>
+              <div className="mt-5 flex flex-wrap gap-3"><Link to="/certificates" className="btn-primary">View completion certificate</Link><Link to="/" className="btn-secondary">Browse courses</Link></div>
             </div>
           )}
         </section>

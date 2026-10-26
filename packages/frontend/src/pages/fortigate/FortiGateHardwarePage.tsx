@@ -30,6 +30,7 @@ const PART_INFO: Record<string, PartInfo> = {
 export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
   const [attempt,setAttempt]=useState(0);
   const [progress,setProgress]=useState<ModelProgress>({phase:"download",loaded:0});
+  const pauseRotationRef = useRef<() => void>(() => {});
   const mountRef  = useRef<HTMLDivElement>(null);
   const threeRef  = useRef<{
     camera: THREE.PerspectiveCamera;
@@ -183,6 +184,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
     function syncRotToRef() { if (threeRef.current) { threeRef.current.rotX = rotX; threeRef.current.rotY = rotY; threeRef.current.invalidate(); } }
     function resetIdleTimer() { autoRotate=false; if(idleTimer)clearTimeout(idleTimer); idleTimer=setTimeout(()=>{autoRotate=true;threeRef.current?.invalidate();},10000); }
 
+    pauseRotationRef.current = resetIdleTimer;
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
 
@@ -224,6 +226,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       mount.style.cursor="grabbing"; resetIdleTimer();
     };
     const onUp   = () => {
+      if (isDragging) resetIdleTimer();
       isDragging=false;
       mount.style.cursor = "grab";
     };
@@ -252,7 +255,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       prevX=e.touches[0].clientX; prevY=e.touches[0].clientY;
       group.rotation.set(rotX,rotY,0); syncRotToRef();
     };
-    const onTE = () => { isDragging=false; };
+    const onTE = () => { isDragging=false; resetIdleTimer(); };
 
     mount.addEventListener("click",      onClick);
     mount.addEventListener("mousemove",  onHover);
@@ -279,6 +282,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       disposed = true;
       resizeObserver.disconnect();
       cancelLoad();loop.dispose();reducedMotion.removeEventListener("change",motionChange);
+      pauseRotationRef.current = () => {};
       if (idleTimer) clearTimeout(idleTimer);
       mount.removeEventListener("click",      onClick);
       mount.removeEventListener("mousemove",  onHover);
@@ -327,8 +331,9 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
 
   // Zoom/reset handlers via threeRef
   function zoomIn()  { if (threeRef.current) threeRef.current.camera.position.z = Math.max(0.5, threeRef.current.camera.position.z*0.82); threeRef.current?.invalidate(); }
-  function zoomOut() { if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); threeRef.current?.invalidate(); }
+  function zoomOut() { pauseRotationRef.current(); if (threeRef.current) threeRef.current.camera.position.z = Math.min(50,  threeRef.current.camera.position.z*1.22); threeRef.current?.invalidate(); }
   function resetView() {
+    pauseRotationRef.current();
     if (!threeRef.current) return;
     threeRef.current.rotX = 0.3;
     threeRef.current.rotY = 0;

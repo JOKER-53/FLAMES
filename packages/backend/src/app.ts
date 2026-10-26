@@ -1,3 +1,4 @@
+import { certificatesRouter } from "./certificates/routes";
 import { Diagnostics } from "./diagnostics";
 import { schemaStatus } from "./db/migrations";
 import { ClassroomStore } from "./classroom/store";
@@ -81,6 +82,7 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
     }
     next();
   });
+  app.use("/api/certificates", certificatesRouter(store, content, integration.mode === "academy"));
   app.use("/api/classroom", classroomRouter(groups, store, content, integration.mode === "academy"));
   app.use("/api/drafts", draftsRouter(store, integration.mode === "academy", (platform, id) => {
     const configuration = content.configurationExercise(id);

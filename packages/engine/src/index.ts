@@ -30,3 +30,7 @@ export * from "./progress/drafts";
 export * from "./learning/learningHints";
 
 export * from "./content/configurationExercises";
+export * from "./learning/configurationChanges";
+export * from "./cli/interfaceCli";
+export * from "./content/topology";
+export * from './certificates/certificate';

@@ -37,7 +37,7 @@ test('late initial catalog cannot overwrite a newer publication refresh',async({
   await page.getByRole('button',{name:'New module',exact:true}).click();await page.getByLabel('Module title',{exact:true}).fill('Newest catalog module');await page.getByRole('button',{name:'Create draft',exact:true}).click();await expect(page.getByText('Module created as a private draft.',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Add lesson',exact:true}).click();await page.getByLabel('Lesson title',{exact:true}).fill('New publication');await page.getByLabel('Instructions',{exact:true}).fill('This publication must survive a late response.');await page.getByRole('button',{name:'Publish module',exact:true}).click();await expect(page.getByText('Module published. Students can now open its lessons.',{exact:true})).toBeVisible();
   release();await expect.poll(()=>page.evaluate(()=>performance.getEntriesByType('resource').filter(entry=>entry.name.includes('/api/content/catalog')).length)).toBeGreaterThanOrEqual(2);
-  await page.getByRole('link',{name:'FLAMES home',exact:true}).click();await page.locator('a[href="/fortigate"]').first().click();await expect(page.getByRole('heading',{name:'Newest catalog module',exact:true})).toBeVisible();
+  await page.getByRole('link',{name:'FLAMES home',exact:true}).click();await page.locator('article[data-vendor="fortigate"]').getByRole('link',{name:'View syllabus',exact:true}).click();await expect(page.getByRole('heading',{name:'Newest catalog module',exact:true})).toBeVisible();
  }finally{release?.();}
 });
 

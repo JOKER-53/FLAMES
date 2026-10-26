@@ -1,3 +1,4 @@
+import type { ExerciseTopology } from "@fortisim/engine";
 import { useSimulatorDraft, type DraftControls } from "../drafts/useSimulatorDraft";
 import { useLocation } from "react-router-dom";
 import { useEffect, useState, Dispatch, SetStateAction, useCallback } from "react";
@@ -8,6 +9,7 @@ import { useProgress } from "./useProgress";
 export const DEFAULT_SCENARIO_ID = "web-server-access-01";
 
 export interface ScenarioData {
+  topology?: ExerciseTopology;
   id: string;
   title: string;
   description: string;

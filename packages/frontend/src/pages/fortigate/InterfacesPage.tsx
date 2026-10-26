@@ -1,3 +1,4 @@
+import { InterfaceCli } from "../../components/configuration/InterfaceCli";
 import { TaskTopology } from "../../components/policyObjects/TaskTopology";
 import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
@@ -218,7 +219,9 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
               </div>
             </ConsoleFrame>
 
-            <CheckYourWork
+            <InterfaceCli key={ifaceDraft.controls.scopeKey} rows={interfaces} apply={setInterfaces} />
+
+          <CheckYourWork
               onSubmit={submitIfaceGrading}
               grading={ifaceGrading}
               error={ifaceError}
