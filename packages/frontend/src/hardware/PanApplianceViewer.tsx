@@ -42,6 +42,7 @@ export interface PanInterfacePort { id: string; type: string; zone: string; ip: 
 interface PanApplianceViewerProps { interfacePorts?: readonly PanInterfacePort[]; selectedInterface?: string | null; onSelectInterface?: (id: string) => void; }
 export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelectInterface }: PanApplianceViewerProps = {}) {
   const compact = !!interfacePorts;
+  const pauseRotationRef = useRef<() => void>(() => {});
   const currentInterface = interfacePorts?.find(port => port.id === selectedInterface);
   const [attempt,setAttempt]=useState(0);
   const [progress,setProgress]=useState<ModelProgress>({phase:"download",loaded:0});
@@ -127,6 +128,7 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
         sceneRef.current?.invalidate();
       }, 10000);
     };
+    pauseRotationRef.current = pauseRotation;
     const interactionStart = () => { interacting = true; pauseRotation(); };
     const interactionEnd = () => { if (interacting) { interacting = false; pauseRotation(); } };
     mount.addEventListener("pointerdown", interactionStart);
@@ -227,7 +229,7 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
       renderer.render(scene, camera);
     },()=>!!sceneRef.current&&!reducedMotion.matches&&(controls.autoRotate||modeRef.current==="cable"&&!!cableRef.current));
     controls.addEventListener("change",loop.invalidate);
-    const motionChange=()=>{if(reducedMotion.matches)controls.autoRotate=false;loop.invalidate();};reducedMotion.addEventListener("change",motionChange);
+    const motionChange=()=>{pauseRotation();loop.invalidate();};reducedMotion.addEventListener("change",motionChange);
 
     const resize = new ResizeObserver(() => {
       const nw = mount.clientWidth, nh = mount.clientHeight;
@@ -246,6 +248,7 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
     return () => {
       disposed = true;
       clearTimeout(idleTimer);
+      pauseRotationRef.current = () => {};
       mount.removeEventListener("pointerdown", interactionStart);
       window.removeEventListener("pointerup", interactionEnd);
       window.removeEventListener("pointercancel", interactionEnd);
@@ -314,11 +317,13 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
   }, [plugged, loading, mode, selCable, interfacePorts, selectedInterface]);
 
   function zoom(factor: number) {
+    pauseRotationRef.current();
     const s = sceneRef.current; if (!s) return;
     s.camera.position.sub(s.controls.target).multiplyScalar(factor).add(s.controls.target);
     s.controls.update();
   }
   function view(side: 1 | -1) {
+    pauseRotationRef.current();
     const s = sceneRef.current; if (!s) return;
     s.controls.autoRotate = false;
     s.controls.target.set(0, 0, 0);
@@ -326,6 +331,8 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
     s.controls.update();
   }
   function switchMode(next: "explore" | "cable") {
+    modeRef.current = next;
+    pauseRotationRef.current();
     setMode(next);
     if (next === "cable") { view(1); setSelectedPart(OVERVIEW); }
     else { setSelCable(null); cableRef.current = null; setFeedback(null); }
@@ -409,7 +416,7 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
 
       {interfacePorts && <div className="space-y-3">
         <div className="flex flex-wrap gap-2" role="group" aria-label="Configure appliance interfaces">
-          {interfacePorts.map(port => <button type="button" key={port.id} aria-label={`Configure ${port.id}`} aria-pressed={selectedInterface === port.id} onClick={() => onSelectInterface?.(port.id)} className={`rounded-md border px-3 py-2 text-xs text-body ${selectedInterface === port.id ? "border-accent bg-accent-soft" : "border-line bg-surface hover:bg-sunken"}`}>
+          {interfacePorts.map(port => <button type="button" key={port.id} aria-label={`Configure ${port.id}`} aria-pressed={selectedInterface === port.id} onClick={() => { pauseRotationRef.current(); onSelectInterface?.(port.id); }} className={`rounded-md border px-3 py-2 text-xs text-body ${selectedInterface === port.id ? "border-accent bg-accent-soft" : "border-line bg-surface hover:bg-sunken"}`}>
             <span className="font-medium">{port.id === "management" ? "MGT" : port.id.replace("ethernet", "")}</span><span className="ml-2 text-muted">{port.link ? "Up" : "Down"}</span>
           </button>)}
         </div>
