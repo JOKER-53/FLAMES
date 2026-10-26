@@ -5,13 +5,14 @@ import { AccountMenu, BrandMark } from "./CourseShell";
 export function SiteLayout({ children, wide = false }: { children: ReactNode; wide?: boolean }) {
   return (
     <div className="min-h-screen flex flex-col bg-canvas">
+      <a href="#main-content" className="skip-link">Skip to content</a>
       <header className="h-14 shrink-0 bg-surface border-b border-line">
         <div className={`mx-auto h-full flex items-center justify-between gap-4 px-4 lg:px-8 ${wide ? "max-w-[1280px]" : "max-w-[1120px]"}`}>
           <BrandMark />
           <AccountMenu />
         </div>
       </header>
-      <main className="flex-1">
+      <main id="main-content" tabIndex={-1} className="flex-1">
         <div className={`mx-auto px-4 lg:px-8 py-10 lg:py-14 ${wide ? "max-w-[1280px]" : "max-w-[1120px]"}`}>{children}</div>
       </main>
       <footer className="border-t border-line bg-surface">

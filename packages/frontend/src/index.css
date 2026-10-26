@@ -13,8 +13,8 @@
   :root {
     --ink: 15 23 42;          /* headings, primary text */
     --body: 51 65 85;         /* body copy */
-    --muted: 100 116 139;     /* secondary text */
-    --faint: 148 163 184;     /* placeholders, disabled */
+    --muted: 82 98 120;     /* secondary text */
+    --faint: 88 105 127;     /* placeholders, disabled */
     --line: 226 232 240;      /* hairlines */
     --line-strong: 203 213 225;
     --canvas: 246 247 249;    /* app background */
@@ -42,7 +42,7 @@
     --ink: 234 240 248;
     --body: 200 211 226;
     --muted: 156 174 197;
-    --faint: 125 145 170;
+    --faint: 150 169 193;
     --line: 47 63 83;
     --line-strong: 70 89 113;
     --canvas: 14 21 32;
@@ -62,7 +62,7 @@
   :root[data-theme="dark"] [data-vendor="fortigate"] { --accent: 255 125 117; --accent-soft: 66 33 38; }
   :root[data-theme="dark"] [data-vendor="paloalto"] { --accent: 255 155 109; --accent-soft: 65 40 32; }
   [data-vendor="fortigate"] { --accent: 200 32 26; --accent-soft: 254 242 241; }
-  [data-vendor="paloalto"] { --accent: 224 77 30; --accent-soft: 255 244 238; }
+  [data-vendor="paloalto"] { --accent: 183 55 17; --accent-soft: 255 244 238; }
 
   html { -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
   body { @apply bg-canvas font-sans text-base text-body; font-feature-settings: "cv11", "ss01"; }
@@ -106,3 +106,7 @@
   :root[data-theme="dark"] select,
   :root[data-theme="dark"] textarea { background-color: rgb(var(--surface)); color: rgb(var(--ink)); }
 }
+
+.skip-link { position:fixed; top:8px; left:8px; z-index:100; transform:translateY(-160%); padding:10px 16px; background:rgb(var(--ink)); color:rgb(var(--canvas)); border-radius:6px; }
+.skip-link:focus { transform:translateY(0); }
+:root[data-theme="dark"] .text-forti-red { color:rgb(var(--accent)); }

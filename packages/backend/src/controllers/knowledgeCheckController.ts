@@ -3,6 +3,13 @@ import { generateKnowledgeCheck } from "../services/nimKnowledgeCheck";
 import { checkAnswer, hideAnswer, shuffleChoices } from "../services/questionStore";
 
 export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
+"dns-resolver-01": {"title": "Approved DNS Resolver", "concept": "Why DNS policy must consider protocol and approved destination, not just a port number."},
+"admin-jump-host-01": {"title": "Restricted Administration Path", "concept": "Restricting forwarded administration to a named source host and destination service."},
+"quarantine-exception-01": {"title": "Quarantine Before Broad Access", "concept": "Why a specific quarantine deny must precede an overlapping allow and log the matching decision."},
+"monitoring-collector-01": {"title": "Monitoring Collector Access", "concept": "One-way telemetry and separate authorized collector administration."},
+"time-service-01": {"title": "Controlled Time Synchronization", "concept": "Protocol and destination restrictions for network time synchronization."},
+"partner-allowlist-01": {"title": "Partner Source Allowlist", "concept": "CIDR boundaries and source allowlists for inbound services."},
+
   // Port Assignment
   "port-assignment-01": {
     title: "Basic Port Assignment",
@@ -85,7 +92,7 @@ export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> =
 
 export const getKnowledgeCheck = async (req: Request, res: Response) => {
   const { taskId } = req.params;
-  const meta = TASK_CONCEPTS[taskId];
+  const meta = Object.prototype.hasOwnProperty.call(TASK_CONCEPTS, taskId) ? TASK_CONCEPTS[taskId] : undefined;
 
   if (!meta) {
     res.status(404).json({ error: `No concept mapping for task: ${taskId}` });

@@ -55,3 +55,15 @@ CI also validates production Compose configuration and builds both production im
 ## College Academy deployment
 
 For parent-owned accounts and progress, use `compose.academy.yml` with `.env.academy.example` and install the parent adapter first. This topology does not mount a local classroom database volume. See [Academy integration](PARENT_LMS_INTEGRATION_GUIDE.md) for the actual college frontend origin, API configuration, framing headers, HTTPS, and installation/acceptance steps.
+
+## Simulator draft storage
+
+Standalone student configurations persist in `simulator_drafts` in the existing account SQLite database; include it in the same consistent backup. Academy users persist configurations only in the parent MySQL `fortisim_simulator_drafts` table. Apply the additive adapter schema and copy `simulator-contract.mjs` with the updated router before enabling autosave there. The authored-content database remains separate and includes published policy exercises and private reference solutions. See [autosave/builder upgrade](AUTOSAVE_AND_EXERCISE_BUILDER.md).
+
+## Operational tools and classroom reporting
+
+Use the [operations runbook](OPERATIONS_RUNBOOK.md) for the shipped SQLite snapshot/restore tool, hidden instructor password recovery, production checking-password guard and release/rollback procedure. Production images include the operational scripts. Group/assignment metadata is part of the content database and must be included in backups. The updated Academy router is required for integrated instructor assignment reports; no local progress copy is used. See [classroom ownership and content transfer](CLASSROOM_AND_CONTENT_TRANSFER.md).
+
+### Development engine changes
+
+`npm run backend:dev` and the development Compose backend now use `scripts/backend-dev.cjs`. It watches both packages, compiles engine/backend together, and replaces the API only after success. Compiler errors keep the previous API running and are retried on the next source edit. This avoids stale shared declarations taking down `/api/integration/config` when engine exports change. Dependency changes still require rebuilding development images. Production continues to use the built API directly.

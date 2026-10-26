@@ -1,3 +1,4 @@
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 // ============================================================================
 // Service object manager. Visual layout tightened to match Addresses/
 // Firewall Policy: toolbar above the table (Create New / Edit / Delete),
@@ -109,8 +110,9 @@ export function ServicesPage({ session }: ServicesPageProps) {
   })).filter((g) => g.items.length > 0);
 
   return (
+    <DraftWorkspace draft={session.draft}>
     <div className="max-w-3xl">
-      <h1 className="text-lg font-semibold text-forti-dark mb-1">Services</h1>
+      <h1 className="text-lg font-semibold text-ink mb-1">Services</h1>
       <p className="text-muted text-[12.5px] mb-4">
         Service objects define a protocol and port (or port range) — referenced by firewall policies to match traffic type.
       </p>
@@ -180,7 +182,7 @@ export function ServicesPage({ session }: ServicesPageProps) {
                 {group.items.map((s) => (
                   <tr
                     key={s.id}
-                    onClick={() => setSelectedRow(s.id)}
+                    tabIndex={0} aria-selected={selectedRow===s.id} onKeyDown={event=>{if(event.target===event.currentTarget&&(event.key==="Enter"||event.key===" ")){event.preventDefault();setSelectedRow(s.id);}}} onClick={() => setSelectedRow(s.id)}
                     className={`border-b border-line cursor-pointer ${selectedRow === s.id ? "bg-info-soft" : "hover:bg-sunken"}`}
                   >
                     <td className="px-3 py-2 font-medium text-ink">{s.name}</td>
@@ -208,7 +210,7 @@ export function ServicesPage({ session }: ServicesPageProps) {
             <label className="block text-[11px] text-muted mb-1">Name</label>
             <input
               type="text"
-              value={draft.name}
+              aria-label="Service name" value={draft.name}
               onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
               className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]"
               placeholder="e.g. MySQL"
@@ -217,7 +219,7 @@ export function ServicesPage({ session }: ServicesPageProps) {
           <div>
             <label className="block text-[11px] text-muted mb-1">Protocol</label>
             <select
-              value={draft.protocol}
+              aria-label="Service protocol" value={draft.protocol}
               onChange={(e) => setDraft((d) => ({ ...d, protocol: e.target.value as Protocol }))}
               className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]"
             >
@@ -230,7 +232,7 @@ export function ServicesPage({ session }: ServicesPageProps) {
             </label>
             <input
               type="text"
-              value={draft.protocol === "ICMP" ? "" : draft.port ?? ""}
+              aria-label="Service port" value={draft.protocol === "ICMP" ? "" : draft.port ?? ""}
               onChange={(e) => setDraft((d) => ({ ...d, port: e.target.value }))}
               disabled={draft.protocol === "ICMP"}
               className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px] font-mono disabled:bg-sunken disabled:text-faint"
@@ -243,7 +245,7 @@ export function ServicesPage({ session }: ServicesPageProps) {
           <label className="block text-[11px] text-muted mb-1">Comment (optional)</label>
           <input
             type="text"
-            value={draft.comment ?? ""}
+            aria-label="Comment (optional)" value={draft.comment ?? ""}
             onChange={(e) => setDraft((d) => ({ ...d, comment: e.target.value }))}
             className="w-full border border-line-strong rounded px-2 py-1.5 text-[12.5px]"
           />
@@ -267,5 +269,6 @@ export function ServicesPage({ session }: ServicesPageProps) {
         </div>
       </div>
     </div>
+    </DraftWorkspace>
   );
 }

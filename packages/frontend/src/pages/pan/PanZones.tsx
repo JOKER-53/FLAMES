@@ -1,3 +1,6 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
 import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
@@ -22,8 +25,9 @@ export function PanZones({ session }: { session: PanSession }) {
   const location = useLocation();
   const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
-  const [zones, setZones] = useState<Zone[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const persisted = useSimulatorDraft<Zone[]>("paloalto", scenario.id, "pan-zones", []);
+  const zones = persisted.value, setZones = persisted.setValue;
+
   const [adding, setAdding] = useState(false);
   const [nz, setNz] = useState<Partial<Zone>>({ name:"", type:"layer3", profile:"none", interfaces:[], logForwarding:false });
   const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
@@ -35,12 +39,12 @@ export function PanZones({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setSceIdx(index);
   }, [location.key]);
-  useEffect(() => { setZones([]); setResults(null); }, [scenario.id]);
+  useEffect(() => { setResults(null); }, [scenario.id, zones, setResults]);
 
   function addZone() {
     if (!nz.name) return;
-    setZones(z=>[...z,{ id:nextId, name:nz.name!, type:nz.type!, profile:nz.profile!, interfaces:nz.interfaces??[], logForwarding:nz.logForwarding??false }]);
-    setNextId(n=>n+1); setAdding(false); setResults(null);
+    setZones(z=>[...z,{ id:Math.max(0, ...zones.map(item => item.id)) + 1, name:nz.name!, type:nz.type!, profile:nz.profile!, interfaces:nz.interfaces??[], logForwarding:nz.logForwarding??false }]);
+     setAdding(false); setResults(null);
     setNz({ name:"", type:"layer3", profile:"none", interfaces:[], logForwarding:false });
   }
   function delZone(id:number){ setZones(z=>z.filter(x=>x.id!==id)); setResults(null); }
@@ -55,11 +59,12 @@ export function PanZones({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.desc} hint={scenario.hint}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
             path={["Network", "Zones"]}
-            actions={<button onClick={() => setAdding(!adding)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add zone</button>}
+            actions={<button onClick={() => setAdding(!adding)} className="btn-accent btn-sm"><Icon name="plus" size={14} />Add zone</button>}
           >
             {zones.length > 0 && (
               <div className="flex flex-wrap items-center gap-2 px-4 py-3 border-b border-line bg-sunken" aria-label="Zone map">
@@ -149,6 +154,7 @@ export function PanZones({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-zones" config={zones}/>
           <Section title="Zone types" bodyClassName="px-5 py-2">
             <dl className="divide-y divide-line">
               {ZONE_TYPES.map(([type, description]) => (
@@ -167,6 +173,7 @@ export function PanZones({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

@@ -94,6 +94,14 @@ export const FORTIGATE_COURSE: Course = {
         fg("port-final-01", "Port Assignment Assessment", "Every port concept on one chassis.", 20, "Advanced", portRoute("port-final-01"), true),
       ],
     },
+    { id: "practice", title: "Operations Practice", icon: "shieldCheck", summary: "Apply least privilege to DNS, monitoring, administration, and partner access.", lessons: [
+      fg("dns-resolver-01", "Approved DNS Resolver", "Permit both DNS transports to one approved resolver.", 15, "Intermediate", policyRoute("dns-resolver-01")),
+      fg("admin-jump-host-01", "Restricted Administration Path", "Restrict server SSH to a single administrator workstation.", 15, "Intermediate", policyRoute("admin-jump-host-01")),
+      fg("quarantine-exception-01", "Quarantine Before Broad Access", "Block and log a quarantined host before broader HTTPS access.", 15, "Intermediate", policyRoute("quarantine-exception-01")),
+      fg("monitoring-collector-01", "Monitoring Collector Access", "Separate one-way telemetry from collector administration.", 15, "Intermediate", policyRoute("monitoring-collector-01")),
+      fg("time-service-01", "Controlled Time Synchronization", "Limit time synchronization to an approved server and protocol.", 15, "Intermediate", policyRoute("time-service-01")),
+      fg("partner-allowlist-01", "Partner Source Allowlist", "Expose HTTPS only to the exact partner source range.", 15, "Intermediate", policyRoute("partner-allowlist-01")),
+    ] },
     {
       id: "routing", title: "Routing", icon: "route",
       summary: "Traffic has to route before policy can allow it.",
@@ -103,6 +111,7 @@ export const FORTIGATE_COURSE: Course = {
     },
   ],
   reference: [
+    { label: "Learning guide", path: "/fortigate/learn", icon: "book" },
     { label: "Hardware & cabling", path: "/fortigate/hardware", icon: "server" },
     { label: "Address objects", path: "/fortigate/policy/addresses", icon: "grid" },
     { label: "Service objects", path: "/fortigate/policy/services", icon: "layers" },
@@ -131,6 +140,11 @@ export const PALOALTO_COURSE: Course = {
         pan("pan-sec-final", "Security Policy Assessment", "A complete rulebase for a multi-zone branch.", 30, "Advanced", "security", true),
       ],
     },
+    { id: "practice", title: "Operations Practice", icon: "shieldCheck", summary: "Design application-specific paths and isolate administration and mail traffic.", lessons: [
+      pan("pan-sec-dns", "DNS-Only Egress", "Trust \u2192 Untrust may use dns only.", 15, "Intermediate", "security"),
+      pan("pan-sec-admin", "Dedicated Administration Zone", "Allow only ssh from Management to Trust and DMZ.", 15, "Intermediate", "security"),
+      pan("pan-sec-mail", "DMZ Mail Relay Isolation", "Allow smtp from Untrust to DMZ and from DMZ to Untrust only.", 15, "Intermediate", "security"),
+    ] },
     {
       id: "zones", title: "Zones", icon: "layers",
       summary: "Group interfaces by trust, and keep HA and management apart.",
@@ -162,6 +176,7 @@ export const PALOALTO_COURSE: Course = {
     },
   ],
   reference: [
+    { label: "Learning guide", path: "/paloalto/learn", icon: "book" },
     { label: "Hardware & cabling", path: "/paloalto/hardware", icon: "server" },
     { label: "App-ID reference", path: "/paloalto/appid", icon: "app" },
   ],

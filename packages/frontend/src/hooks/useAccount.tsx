@@ -1,4 +1,4 @@
-import { apiFetch } from "../api/http";
+import { apiFetch, readApiJson } from "../api/http";
 import { acceptAcademyMessage, notifyAcademy, setIntegration, type IntegrationConfig } from "../integration/academy";
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from "react";
 
@@ -19,8 +19,8 @@ export async function accountRequest<T>(path: string, data?: unknown): Promise<T
     ...(data === undefined ? {} : { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }),
     signal: AbortSignal.timeout(20_000),
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(result.error || "The request failed. Try again.");
+  const result = await readApiJson(response);
+  if (!response.ok) throw new Error(result?.error || "The request failed. Try again.");
   return result;
 }
 const Context = createContext<AccountContext | null>(null);

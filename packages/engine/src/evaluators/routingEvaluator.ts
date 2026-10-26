@@ -59,6 +59,14 @@ export function evaluateRoutingConfiguration(
     if (!Array.isArray(config.staticRoutes) || !Array.isArray(config.sdwanMembers) || !Array.isArray(config.sdwanRules)) {
       return { success: false, message: "Invalid routing configuration." };
     }
+    const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
+    const text = (value: unknown): value is string => typeof value === "string" && value.length > 0 && value.length <= 1000;
+    if (config.staticRoutes.length > 200 || config.sdwanMembers.length > 200 || config.sdwanRules.length > 200 ||
+      config.sdwanMembers.some(member => !record(member) || !text(member.interfaceName) || !text(member.gateway)) ||
+      config.sdwanRules.some(rule => !record(rule) || !text(rule.name) || !text(rule.srcAddress) || !text(rule.dstAddress) || !["best-quality", "lowest-cost", "manual"].includes(rule.strategy) || !Array.isArray(rule.preferredMembers) || rule.preferredMembers.length > 200 || !rule.preferredMembers.every(text)) ||
+      config.ospf && (!record(config.ospf) || !text(config.ospf.routerId) || !Array.isArray(config.ospf.networks) || config.ospf.networks.length > 200 || config.ospf.networks.some(network => !record(network) || !text(network.prefix) || !text(network.area)))) {
+      return { success: false, message: "Invalid routing configuration." };
+    }
     for (const route of config.staticRoutes) {
       parseCidr(route.destination); ipToInt(route.gateway);
       if (!route.interfaceName.trim() || !Number.isInteger(route.distance) || route.distance < 1 || route.distance > 255) {

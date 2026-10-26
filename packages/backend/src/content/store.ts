@@ -1,4 +1,7 @@
-import { randomUUID } from "node:crypto";
+import { migrate, schemaStatus } from "../db/migrations";
+import { CONFIGURATION_FAMILIES, validateConfigurationExercise, gradeConfigurationExercise } from "@fortisim/engine";
+import { validatePolicyExercise, policyScenario } from "./policyExercise";
+import { randomUUID, createHash } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import type { AuthoredModule, AuthoredLesson, ContentDraft, ContentSummary, CatalogModule, PublicLesson } from "@fortisim/engine";
@@ -23,12 +26,25 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
   const ids = new Set<string>();
   for (const lesson of module.lessons) {
     requireValue(!!lesson && typeof lesson === "object" && identifier(lesson.id, "custom") && !ids.has(lesson.id), "Every lesson needs a unique valid ID."); ids.add(lesson.id);
+    requireValue(lesson.kind === undefined || ["reading", "policy", "configuration"].includes(lesson.kind), "Invalid lesson kind.");
+    requireValue(lesson.kind !== "policy" || module.vendor === "fortigate", "Policy simulator lessons belong to FortiGate.");
     requireValue(text(lesson.title, 160) && (!publishing || !!lesson.title.trim()), "Every published lesson needs a title.");
     requireValue(text(lesson.summary, 1000) && text(lesson.body, 30000), "Lesson instructions or summary are too long.");
     requireValue(!publishing || !!lesson.body.trim(), `Add instructions to ${lesson.title || "the lesson"}.`);
     requireValue(Number.isInteger(lesson.minutes) && lesson.minutes >= 1 && lesson.minutes <= 240, "Lesson duration must be 1–240 minutes.");
     requireValue(["Foundation", "Intermediate", "Advanced"].includes(lesson.level), "Choose a valid lesson level.");
     requireValue(Array.isArray(lesson.tasks) && lesson.tasks.length <= 20, "A lesson supports up to 20 tasks.");
+    requireValue((lesson.kind !== "policy" && lesson.kind !== "configuration") || lesson.tasks.length === 0, "Policy exercises use packet checks; add question tasks in a separate reading lesson.");
+    if (lesson.kind === "policy") {
+      try { validatePolicyExercise(lesson.policyExercise, publishing); }
+      catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid exercise."); }
+    }
+    if (lesson.kind === "configuration") {
+      try {
+        const exercise = validateConfigurationExercise(lesson.configurationExercise, publishing);
+        requireValue(CONFIGURATION_FAMILIES[exercise.family].vendor === module.vendor, "Exercise family belongs to a different vendor.");
+      } catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid configuration exercise."); }
+    }
     for (const task of lesson.tasks) {
       requireValue(!!task && typeof task === "object" && identifier(task.id, "task") && !ids.has(task.id), "Every task needs a unique valid ID."); ids.add(task.id);
       requireValue(["choice", "answer"].includes(task.type) && text(task.prompt, 2000), "Invalid task type or question.");
@@ -46,24 +62,40 @@ export function validateModule(value: unknown, publishing = false): AuthoredModu
   requireValue(JSON.stringify(value).length <= 200000, "Module content exceeds the size limit. Split it into smaller modules.");
   // Copy only supported fields; discard any extra caller-supplied properties.
   return { id: module.id, vendor: module.vendor, title: module.title.trim(), summary: module.summary.trim(), lessons: module.lessons.map(lesson => ({
+    kind: lesson.kind ?? "reading", ...(lesson.kind === "configuration" ? { configurationExercise: validateConfigurationExercise(lesson.configurationExercise) } : {}), ...(lesson.kind === "policy" ? { policyExercise: lesson.policyExercise } : {}),
     id: lesson.id, title: lesson.title.trim(), summary: lesson.summary.trim(), minutes: lesson.minutes, level: lesson.level, body: lesson.body,
     tasks: lesson.tasks.map(task => ({ id: task.id, type: task.type, prompt: task.prompt, choices: [...task.choices], correctIndex: task.correctIndex, acceptedAnswers: [...task.acceptedAnswers] })),
   })) };
 }
 
 export class ContentStore {
-  private db: any;
+  readonly db: any;
   private cachedCatalog: CatalogModule[] | null = null;
+  private catalogVersion = -1;
   constructor(path: string) {
     if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true, mode: 0o700 });
     this.db = new DatabaseSync(path);
     this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
-      CREATE TABLE IF NOT EXISTS content_modules (
+      `);
+    migrate(this.db, "content", [{version:1,name:"Initial content schema",sql:`CREATE TABLE IF NOT EXISTS content_modules (
         id TEXT PRIMARY KEY, draft_json TEXT NOT NULL, published_json TEXT,
         revision INTEGER NOT NULL, updated_at INTEGER NOT NULL, published_at INTEGER
-      );`);
+      );`},{version:2,name:"Private content revision history",sql:`CREATE TABLE IF NOT EXISTS content_history (module_id TEXT NOT NULL,revision INTEGER NOT NULL,event TEXT NOT NULL,snapshot_json TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(module_id,revision));
+      INSERT OR IGNORE INTO content_history SELECT id,revision,'adopted',draft_json,updated_at FROM content_modules;`},{version:3,name:"Learning guide visibility",sql:`CREATE TABLE IF NOT EXISTS learning_settings (id INTEGER PRIMARY KEY CHECK(id=1), visible INTEGER NOT NULL CHECK(visible IN (0,1)));
+      INSERT OR IGNORE INTO learning_settings VALUES (1,0);`}]);
+  }
+  learningSettings() { return { learningGuideVisible: this.db.prepare("SELECT visible FROM learning_settings WHERE id=1").get()?.visible === 1 }; }
+  setLearningVisibility(visible: unknown) {
+    requireValue(typeof visible === "boolean", "Learning guide visibility must be true or false.");
+    this.db.prepare("UPDATE learning_settings SET visible=? WHERE id=1").run(visible ? 1 : 0);
+    return this.learningSettings();
   }
   close() { this.db.close(); }
+  private write<T>(operation: () => T): T {
+    this.db.exec("BEGIN IMMEDIATE");
+    try { const result = operation(); this.db.exec("COMMIT"); return result; }
+    catch (error) { this.db.exec("ROLLBACK"); throw error; }
+  }
   get(id: string): ContentDraft {
     const row = this.db.prepare("SELECT * FROM content_modules WHERE id=?").get(id);
     if (!row) throw new ContentError(404, "Module not found.");
@@ -72,14 +104,57 @@ export class ContentStore {
   list(): ContentSummary[] {
     return this.db.prepare("SELECT id FROM content_modules ORDER BY updated_at DESC, id").all().map((row: { id: string }) => {
       const draft = this.get(row.id);
-      return { id: row.id, title: draft.module.title, vendor: draft.module.vendor, lessonCount: draft.module.lessons.length, revision: draft.revision, publishedAt: draft.publishedAt, hasUnpublishedChanges: draft.hasUnpublishedChanges };
+      return { id: row.id, title: draft.module.title, vendor: draft.module.vendor, lessonCount: draft.module.lessons.length, revision: draft.revision, summary: draft.module.summary, lessonTitles: draft.module.lessons.map(lesson => lesson.title), publishedAt: draft.publishedAt, hasUnpublishedChanges: draft.hasUnpublishedChanges };
     });
   }
   create(vendor: unknown, title: unknown): ContentDraft {
+    return this.write(() => {
     requireValue(this.list().length < 100, "Content library limit reached (100 modules).");
     const module = validateModule({ id: `module-${randomUUID()}`, vendor, title, summary: "", lessons: [] });
     this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id, JSON.stringify(module), Date.now());
-    return this.get(module.id);
+    return this.record(module.id,"created");
+      });
+  }
+  exportModule(id: string) {
+    return { format: "flames-module", schemaVersion: 1, exportedAt: new Date().toISOString(), assets: "none", module: this.get(id).module };
+  }
+  previewImport(value: unknown) {
+    const data = value as any;
+    requireValue(data?.format === "flames-module" && data.schemaVersion === 1 && data.assets === "none", "Unsupported FLAMES module format, version, or assets. Use a self-contained version 1 export.");
+    const module = validateModule(data.module);
+    // Always mint new identities. Existing progress and published lessons are never reused.
+    const remapped = { ...module, id: `module-${randomUUID()}`, lessons: module.lessons.map(lesson => ({ ...lesson, id: `custom-${randomUUID()}`, tasks: lesson.tasks.map(task => ({ ...task, id: `task-${randomUUID()}` })) })) };
+    return { module: remapped, lessonCount: module.lessons.length, taskCount: module.lessons.reduce((sum, lesson) => sum + lesson.tasks.length, 0), warning: "Imports are private drafts with new IDs. No progress, uploads, or external assets are imported." };
+  }
+  importModule(value: unknown): ContentDraft {
+    return this.write(() => {
+    requireValue(this.list().length < 100, "Content library limit reached (100 modules).");
+    const { module } = this.previewImport(value);
+    this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id, JSON.stringify(module), Date.now());
+    return this.record(module.id,"imported");
+      });
+  }
+  private record(id:string,event:string): ContentDraft {
+    const draft=this.get(id);
+    this.db.prepare("INSERT INTO content_history VALUES (?,?,?,?,?)").run(id,draft.revision,event,JSON.stringify(draft.module),Date.now());
+    this.db.prepare("DELETE FROM content_history WHERE module_id=? AND revision NOT IN (SELECT revision FROM content_history WHERE module_id=? ORDER BY revision DESC LIMIT 50)").run(id,id);
+    return draft;
+  }
+  history(id:string) {
+    this.get(id);return this.db.prepare("SELECT revision,event,created_at AS createdAt FROM content_history WHERE module_id=? ORDER BY revision DESC LIMIT 50").all(id);
+  }
+  historical(id:string,revision:unknown): AuthoredModule {
+    this.get(id);const value=Number(revision);requireValue(Number.isInteger(value)&&value>0,"Choose a valid revision.");
+    const row=this.db.prepare("SELECT snapshot_json FROM content_history WHERE module_id=? AND revision=?").get(id,value);
+    if(!row)throw new ContentError(404,"Revision not found or no longer retained.");return JSON.parse(row.snapshot_json);
+  }
+  duplicate(id:string,revision:unknown):ContentDraft {
+    return this.write(()=>{
+      requireValue(this.list().length<100,"Content library limit reached (100 modules).");const source=this.revision(id,revision);
+      const {module}=this.previewImport(this.exportModule(id));module.title=`Copy of ${source.module.title}`.slice(0,160);
+      this.db.prepare("INSERT INTO content_modules VALUES (?,?,NULL,1,?,NULL)").run(module.id,JSON.stringify(module),Date.now());
+      return this.record(module.id,"duplicated");
+    });
   }
   private revision(id: string, revision: unknown) {
     requireValue(Number.isInteger(revision), "A content revision is required.");
@@ -88,6 +163,7 @@ export class ContentStore {
     return current;
   }
   save(id: string, value: unknown, revision: unknown): ContentDraft {
+    return this.write(() => {
     const current = this.revision(id, revision);
     const module = validateModule(value);
     requireValue(module.id === id && module.vendor === current.module.vendor, "Module identity and vendor cannot change.");
@@ -100,31 +176,41 @@ export class ContentStore {
     }
     requireValue(module.lessons.every(lesson => !otherIds.has(lesson.id)), "A lesson ID already belongs to another module.");
     this.db.prepare("UPDATE content_modules SET draft_json=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(JSON.stringify(module), Date.now(), id, revision);
-    return this.get(id);
+    return this.record(id,"saved");
+      });
   }
   publish(id: string, revision: unknown): ContentDraft {
+    return this.write(() => {
     const current = this.revision(id, revision);
     validateModule(current.module, true);
     const now = Date.now();
     this.db.prepare("UPDATE content_modules SET published_json=draft_json,published_at=?,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(now, now, id, revision);
-    this.cachedCatalog = null; return this.get(id);
+    this.cachedCatalog = null; return this.record(id,"published");
+      });
   }
   unpublish(id: string, revision: unknown): ContentDraft {
+    return this.write(() => {
     this.revision(id, revision);
     this.db.prepare("UPDATE content_modules SET published_json=NULL,published_at=NULL,revision=revision+1,updated_at=? WHERE id=? AND revision=?").run(Date.now(), id, revision);
-    this.cachedCatalog = null; return this.get(id);
+    this.cachedCatalog = null; return this.record(id,"unpublished");
+      });
   }
   delete(id: string, revision: unknown) {
+    return this.write(() => {
     const current = this.revision(id, revision);
     if (current.publishedAt) throw new ContentError(409, "Unpublish the module before deleting it.");
+    this.db.prepare("DELETE FROM content_history WHERE module_id=?").run(id);
     this.db.prepare("DELETE FROM content_modules WHERE id=? AND revision=?").run(id, revision); this.cachedCatalog = null;
+      });
   }
   catalog(): CatalogModule[] {
-    if (this.cachedCatalog) return this.cachedCatalog;
+    const version = Number(this.db.prepare("PRAGMA data_version").get().data_version);
+    if (this.cachedCatalog && this.catalogVersion === version) return this.cachedCatalog;
+    this.catalogVersion = version;
     const rows = this.db.prepare("SELECT published_json FROM content_modules WHERE published_json IS NOT NULL ORDER BY published_at,id").all();
     this.cachedCatalog = rows.map((row: { published_json: string }) => {
       const module = JSON.parse(row.published_json) as AuthoredModule;
-      return { id: module.id, vendor: module.vendor, title: module.title, summary: module.summary, lessons: module.lessons.map(({ body, tasks, ...lesson }) => lesson) };
+      return { id: module.id, vendor: module.vendor, title: module.title, summary: module.summary, lessons: module.lessons.map(lesson => ({ id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, kind: lesson.kind ?? "reading", ...(lesson.kind === "configuration" && lesson.configurationExercise ? { simulatorFamily: lesson.configurationExercise.family, scenarioVersion: createHash("sha256").update(JSON.stringify(lesson.configurationExercise)).digest("hex").slice(0, 24) } : {}), ...(lesson.kind === "policy" && lesson.policyExercise ? { scenarioVersion: createHash("sha256").update(JSON.stringify(lesson.policyExercise)).digest("hex").slice(0, 24) } : {}) })) };
     });
     return this.cachedCatalog!;
   }
@@ -141,10 +227,41 @@ export class ContentStore {
   }
   publicLesson(id: string): PublicLesson {
     const { lesson, module } = this.lesson(id);
-    return { ...lesson, moduleId: module.id, vendor: module.vendor, tasks: lesson.tasks.map(({ id, type, prompt, choices }) => ({ id, type, prompt, choices: type === "choice" ? choices : [] })) };
+    return { id: lesson.id, title: lesson.title, summary: lesson.summary, minutes: lesson.minutes, level: lesson.level, body: lesson.body, kind: lesson.kind ?? "reading", moduleId: module.id, vendor: module.vendor, tasks: lesson.tasks.map(({ id, type, prompt, choices }) => ({ id, type, prompt, choices: type === "choice" ? choices : [] })) };
+  }
+  configurationExercise(id: string) {
+    let item;
+    try { item = this.lesson(id); } catch (error) { if (error instanceof ContentError && error.status === 404) return null; throw error; }
+    const exercise = item.lesson.configurationExercise;
+    if (item.lesson.kind !== "configuration" || !exercise) return null;
+    return { exercise, vendor: item.module.vendor, version: createHash("sha256").update(JSON.stringify(exercise)).digest("hex").slice(0, 24) };
+  }
+  publicConfigurationExercise(id: string) {
+    const data = this.configurationExercise(id);
+    if (!data) throw new ContentError(404, "Configuration exercise is not published.");
+    return { family: data.exercise.family, starterConfig: data.exercise.starterConfig, version: data.version, checks: data.exercise.checks.map(({ id, description }) => ({ id, description })) };
+  }
+  gradeConfiguration(id: string, config: unknown, version: unknown) {
+    const data = this.configurationExercise(id);
+    if (!data) throw new ContentError(404, "Configuration exercise is not published.");
+    if (version !== data.version) throw new ContentError(409, "The exercise changed. Reload it before checking your work.");
+    try { return gradeConfigurationExercise(data.exercise, config); }
+    catch (error) { throw new ContentError(400, error instanceof Error ? error.message : "Invalid configuration."); }
+  }
+  policyExercise(id: string) {
+    let item;
+    try { item = this.lesson(id); } catch (error) { if (error instanceof ContentError && error.status === 404) return null; throw error; }
+    const { lesson } = item;
+    if (lesson.kind !== "policy" || !lesson.policyExercise) return null;
+    return {
+      scenario: policyScenario(lesson.id, lesson.title, lesson.body, lesson.policyExercise),
+      starterPolicies: lesson.policyExercise.starterPolicies,
+      version: createHash("sha256").update(JSON.stringify(lesson.policyExercise)).digest("hex").slice(0, 24),
+    };
   }
   grade(id: string, answers: unknown) {
     const { lesson } = this.lesson(id);
+    requireValue(lesson.kind !== "policy" && lesson.kind !== "configuration", "Use the simulator grading endpoint for this lesson.");
     requireValue(Array.isArray(answers) && answers.length <= 20, "Submit a valid answer list.");
     const entries = answers as { taskId: string; value: unknown }[];
     requireValue(entries.every(answer => !!answer && typeof answer === "object" && lesson.tasks.some(task => task.id === answer.taskId) && (text(answer.value, 2000) || typeof answer.value === "number" && Number.isInteger(answer.value))), "Invalid task answer.");

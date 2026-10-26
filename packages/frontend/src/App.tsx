@@ -1,3 +1,4 @@
+import { useLearningAccess } from "./course/useLearningAccess";
 import { BrowserRouter, Routes, Route, Navigate, useParams } from "react-router-dom";
 import { lazy, Suspense, type ReactNode } from "react";
 import { AccountProvider, useAccount } from "./hooks/useAccount";
@@ -6,6 +7,7 @@ import { ClassroomPage } from "./pages/ClassroomPage";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CourseShell }       from "./components/shell/CourseShell";
 import { CourseCatalogProvider, useCourseCatalog } from "./course/CourseCatalog";
+const LearningPage = lazy(() => import("./pages/course/LearningPage").then(module => ({ default: module.LearningPage })));
 const AdminPage = lazy(() => import("./pages/admin/AdminPage").then(module => ({ default: module.AdminPage })));
 const AuthoredLessonPage = lazy(() => import("./pages/course/AuthoredLessonPage").then(module => ({ default: module.AuthoredLessonPage })));
 import { CourseOverviewPage, ModulePage } from "./pages/course/CoursePages";
@@ -35,6 +37,13 @@ function TrainingAccess({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+function LearningAccess() {
+  const { canView, loading } = useLearningAccess();
+  if (loading) return <p role="status" className="text-muted">Checking learning guide availability…</p>;
+  if (!canView) return <section><h1 className="text-2xl font-semibold text-ink">Learning guide unavailable</h1><p className="mt-3 text-sm text-muted">Your administrator has not opened the learning guide to students.</p></section>;
+  return <LearningPage />;
+}
+
 function ProgressWarning({ error }: { error: string | null }) {
   return error ? <p className="lab-sync-warning" role="status">Progress saving failed: {error} Reopen the lab to retry.</p> : null;
 }
@@ -47,6 +56,7 @@ function FortiGateApp() {
       <ProgressWarning error={session.syncError} />
       <Routes>
         <Route path="/"                       element={<CourseOverviewPage course={course} completed={session.completedTaskIds} />} />
+        <Route path="/learn" element={<LearningAccess />} />
         <Route path="/modules/:moduleId"      element={<ModulePage course={course} completed={session.completedTaskIds} />} />
         <Route path="/lessons/:lessonId" element={<AuthoredLessonPage complete={session.markTaskComplete} />} />
         <Route path="/hardware"               element={<FortiGateHardwarePage session={session} />} />
@@ -73,6 +83,7 @@ function PaloAltoApp() {
       <ProgressWarning error={session.syncError} />
       <Routes>
         <Route path="/"                  element={<CourseOverviewPage course={course} completed={session.completedTaskIds} />} />
+        <Route path="/learn" element={<LearningAccess />} />
         <Route path="/modules/:moduleId" element={<ModulePage course={course} completed={session.completedTaskIds} />} />
         <Route path="/lessons/:lessonId" element={<AuthoredLessonPage complete={session.markTaskComplete} />} />
         <Route path="/hardware"          element={<PanHardwarePage session={session} />} />

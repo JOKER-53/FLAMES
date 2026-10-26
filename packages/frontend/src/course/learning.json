@@ -1,0 +1,767 @@
+{
+  "title": "FLAMES learning handbook",
+  "chapters": [
+    {
+      "id": "foundations",
+      "title": "Start here: packets, addresses, and trust",
+      "intro": "A firewall decision describes one attempted flow: where it enters, where it is going, the source and destination, and the requested service or application. Translate the written requirement into those fields before opening a rule editor. A zone groups networks by trust and purpose; its name does not grant permission.",
+      "terms": [
+        "LAN / Trust: internal users; WAN / Untrust: external networks; DMZ: exposed services with limited internal reach.",
+        "A /32 IPv4 prefix describes one address. A /24 has 256 addresses; usable host conventions depend on the subnet type. A /28 spans 16 addresses, aligned on multiples of 16.",
+        "TCP and UDP are different protocols. TCP/53 and UDP/53 are separate service matches. A port is not proof of an application.",
+        "Ingress means incoming interface or zone; egress means outgoing interface or zone. A reply in an established real firewall session differs from a new reverse-initiated connection."
+      ],
+      "steps": [
+        "Write the source, destination, direction, protocol, and port/application for each requirement.",
+        "Draw each trust boundary and label endpoint addresses.",
+        "Make a two-column traffic matrix: flows to allow and flows to deny.",
+        "Check an intended host, a neighboring address outside the prefix, another service, and the reverse direction."
+      ],
+      "example": "Example: 192.0.2.32/28 covers 192.0.2.32–192.0.2.47. A packet from 192.0.2.50 is outside that object. If only a single partner host is trusted, use its /32 rather than enlarging the subnet. Documentation example addresses are not deployment settings.",
+      "flow": [
+        "Read requirement",
+        "Identify endpoints and zones",
+        "Choose exact address and service scope",
+        "List positive and negative tests"
+      ],
+      "mistakes": [
+        "Treating every host in the same zone as equally trusted.",
+        "Assuming a host address with /24 matches only that host.",
+        "Assuming a reverse-direction test represents reply traffic. FLAMES tests independent flows, not a complete stateful session table."
+      ],
+      "review": "Explain why an HTTPS allow to one host must not authorize SSH to that host or HTTPS to a neighboring host.",
+      "reviewAnswer": "A rule permitting one destination and one service matches only that combination. A different destination or service fails the match. Include both dimensions in negative tests; do not infer application identity solely from a port.",
+      "exampleCases": [
+        {
+          "input": "192.0.2.35 against 192.0.2.32/28",
+          "result": "Inside the range",
+          "reason": "The /28 spans .32 through .47."
+        },
+        {
+          "input": "192.0.2.50 against the same object",
+          "result": "Outside the range",
+          "reason": "It belongs to a neighboring range."
+        },
+        {
+          "input": "TCP/53 against a UDP/53 service",
+          "result": "No match",
+          "reason": "Transport protocol is part of a service match."
+        }
+      ]
+    },
+    {
+      "id": "policy",
+      "title": "FortiGate policy and first-match evaluation",
+      "intro": "FLAMES evaluates enabled rules from the top. A rule must match the direction, source object, destination object, and service. The first matching action wins. An unmatched packet is denied. Start with narrow permissions, then add any exceptions above overlapping broad rules.",
+      "terms": [
+        "Multiple selected source objects are alternatives; source and destination conditions must both match.",
+        "An enabled deny above a broad allow can implement a quarantine exception. A disabled rule has no effect.",
+        "Logging is checked on the rule that actually matches, including an explicit deny when denial logging is required.",
+        "Web filtering in FLAMES uses supplied test-domain metadata. It does not implement browser DNS, TLS decryption, or live URL inspection."
+      ],
+      "steps": [
+        "Create or inspect the address and service objects before referencing them.",
+        "Click Create New and enter a descriptive rule name.",
+        "Choose the incoming and outgoing interfaces, exact address objects, and required services.",
+        "Set the action and logging requirement. Add the rule.",
+        "Select and move rules when a specific exception needs to precede a broader rule.",
+        "Run test packets, inspect Trace packet flow and Network view, then Check my work."
+      ],
+      "example": "Worked example on a separate practice network: deny the quarantined host 192.0.2.44/32 before allowing Office 192.0.2.0/24 to WAN on HTTPS. Test .44/443 (deny), .45/443 (allow), and .45/22 (deny). Moving the deny below the broad allow changes the first result.",
+      "flow": [
+        "Receive independent test packet",
+        "Find next enabled rule",
+        "Do direction, addresses, and service all match?",
+        "No: inspect next rule; none left: deny",
+        "Yes: apply action and matching-rule logging",
+        "Apply modeled filter if configured; report result"
+      ],
+      "mistakes": [
+        "Putting a quarantine deny below an overlapping allow.",
+        "Selecting all services because the destination is already narrow.",
+        "Logging a rule that never matches rather than the effective rule.",
+        "Treating the finite packet test set as proof of a production security policy."
+      ],
+      "review": "Trace one allowed packet and one denied packet by hand. Identify the exact first matching rule or implicit deny.",
+      "reviewAnswer": "Walk from the first enabled rule until every matching field is satisfied. Stop at that rule and inspect its action and logging. If no rule matches, FLAMES denies the flow. A later rule cannot repair an earlier overly broad permission.",
+      "exampleCases": [
+        {
+          "input": "Quarantined .44 → WAN TCP/443",
+          "result": "Deny",
+          "reason": "Specific deny precedes the office allow."
+        },
+        {
+          "input": "Office .45 → WAN TCP/443",
+          "result": "Allow",
+          "reason": "Matches the approved office HTTPS path."
+        },
+        {
+          "input": "Office .45 → WAN TCP/22",
+          "result": "Deny",
+          "reason": "No SSH permission is present."
+        }
+      ]
+    },
+    {
+      "id": "addressing",
+      "title": "Interfaces, CIDR, and administrative access",
+      "intro": "An interface connects the firewall to a network. Its address and mask define a connected subnet. A role is an organizational label; management protocols expose the firewall itself and need separate limits. Avoid overlapping routed interface networks.",
+      "terms": [
+        "192.0.2.65/26 belongs to the 192.0.2.64–127 range.",
+        "HTTPS/SSH administrative access targets the firewall; an ordinary security rule forwards a connection to another host.",
+        "Do not enable HTTP or Telnet for convenience when the requirement permits only encrypted administration.",
+        "Role, link mode, zone membership, and IP addressing are separate settings."
+      ],
+      "steps": [
+        "List the required network and gateway address for every interface.",
+        "Determine each prefix boundary and verify that routed networks do not overlap.",
+        "Set the interface address, netmask, and role as requested.",
+        "Enable only the listed administrative protocols.",
+        "Check every interface, including ones that should have no administrative access."
+      ],
+      "example": "Example branch plan: internal gateway 192.0.2.1/26 and server gateway 192.0.2.65/26 use distinct subnets. Assigning 192.0.2.2/24 to a second routed interface would overlap the first. HTTPS on the internal interface does not automatically grant SSH to a server behind it.",
+      "flow": [
+        "Read address plan",
+        "Calculate network boundaries",
+        "Check for overlap",
+        "Set address and role",
+        "Limit administrative protocols",
+        "Validate all interfaces"
+      ],
+      "mistakes": [
+        "Entering a network address where a host interface address is needed.",
+        "Choosing a role and assuming it changes access permissions.",
+        "Leaving management protocols enabled on an external interface."
+      ],
+      "review": "Given two proposed interface prefixes, show whether they overlap and name which management protocols the requirement actually needs.",
+      "reviewAnswer": "Compute each network range using the prefix length and compare the intervals. Any common address means overlap. Enable only the administration protocols explicitly required for the interface; an interface role does not grant access.",
+      "exampleCases": [
+        {
+          "input": "192.0.2.1/26 and 192.0.2.65/26",
+          "result": "Non-overlapping",
+          "reason": "They belong to .0–63 and .64–127."
+        },
+        {
+          "input": "192.0.2.2/24 with 192.0.2.1/26",
+          "result": "Overlapping",
+          "reason": "The /24 contains the smaller network."
+        },
+        {
+          "input": "Internal HTTPS administrative access",
+          "result": "Firewall administration only",
+          "reason": "It does not automatically permit SSH to a downstream server."
+        }
+      ]
+    },
+    {
+      "id": "ports",
+      "title": "Hardware, cabling, and physical assignment",
+      "intro": "Trace the connected endpoint before assigning a port. The same physical position can serve different purposes in different deployments. Hardware Explore mode explains components; Cable mode offers keyboard-selectable cables and sockets. A connected cable alone does not create an IP configuration or permission.",
+      "terms": [
+        "WAN uplink: provider-facing path; LAN: internal users; DMZ: exposed server segment.",
+        "Dual WAN requires routing and failover design beyond assigning two links.",
+        "HA synchronization and management links have separate purposes from ordinary production traffic.",
+        "Unused ports should remain unused when the exercise requires spare capacity."
+      ],
+      "steps": [
+        "Read the endpoint inventory and inspect the hardware reference.",
+        "Map each cable or listed connection to its endpoint and intended zone.",
+        "Assign ports from that inventory, not from memorized chassis position.",
+        "Check spare ports and any HA or management links.",
+        "Submit the assignment and inspect feedback for swapped endpoints."
+      ],
+      "example": "Example: if port 4 is cabled to a public server and port 1 to an office switch, their assignments follow those endpoints. Reversing the labels because port 1 is usually WAN creates the wrong trust boundary.",
+      "flow": [
+        "Identify endpoint",
+        "Trace cable to physical socket",
+        "Assign intended role or zone",
+        "Check unused and special-purpose ports",
+        "Validate mapping"
+      ],
+      "mistakes": [
+        "Assuming a familiar port number always means WAN.",
+        "Placing a public-facing server on the employee segment.",
+        "Claiming automatic failover after labeling a second WAN connection."
+      ],
+      "review": "Explain what remains to configure after the correct cable is connected: addressing, routes, security policy, and any required NAT.",
+      "reviewAnswer": "A cable establishes the physical connection. A usable service path also needs compatible interface configuration, reachability, security permission, and any translation required by the design. Redundant provider links need an explicit failover mechanism.",
+      "exampleCases": [
+        {
+          "input": "Port 4 connected to an exposed service",
+          "result": "Evaluate as the server-facing connection",
+          "reason": "Use the actual connected endpoint."
+        },
+        {
+          "input": "Port 1 connected to the office switch",
+          "result": "Evaluate as the internal connection",
+          "reason": "A port number alone does not determine trust."
+        },
+        {
+          "input": "Second provider cable connected",
+          "result": "Physical redundancy only",
+          "reason": "Routes and failover behavior still need configuration."
+        }
+      ]
+    },
+    {
+      "id": "routing",
+      "title": "Routing and the default path",
+      "intro": "A policy permission cannot make an unreachable destination reachable. A route selects a next hop and outgoing interface. FLAMES has a separate route exercise; the policy simulator receives its incoming and outgoing interfaces from the test packet and does not perform full route lookup.",
+      "terms": [
+        "0.0.0.0/0 is the default IPv4 route. More specific destination prefixes normally take precedence.",
+        "A gateway must be reachable using the selected outgoing network.",
+        "Administrative distance distinguishes competing routes; it is not a substitute for a more specific prefix."
+      ],
+      "steps": [
+        "Identify the ISP-facing interface and its connected subnet.",
+        "Choose the required destination prefix, next-hop address, and outgoing interface.",
+        "Add the default route when external destinations have no more specific route.",
+        "Check the gateway, prefix, and administrative distance against the exercise.",
+        "Troubleshoot routing separately from policy, addressing, and translation."
+      ],
+      "example": "Example: a WAN interface at 198.51.100.2/30 can use a reachable next hop at 198.51.100.1. A default route points to that next hop; it does not authorize internal clients to use every service.",
+      "flow": [
+        "Destination IP",
+        "Select most specific applicable route",
+        "Resolve next hop on outgoing interface",
+        "Evaluate separate security permission",
+        "Deliver or diagnose the failed layer"
+      ],
+      "mistakes": [
+        "Using an unreachable gateway on another subnet.",
+        "Adding an allow rule to repair a missing route.",
+        "Assuming the policy packet animation validates the routing table."
+      ],
+      "review": "Name three independent causes of failed internet access even when an allow rule looks correct.",
+      "reviewAnswer": "Possible causes include a missing route, an unreachable next hop, incorrect interface addressing, missing required NAT, and a blocked return path. An allow rule only addresses one layer of that diagnosis.",
+      "exampleCases": [
+        {
+          "input": "WAN 198.51.100.2/30, next hop .1",
+          "result": "Gateway is in the same connected range",
+          "reason": "The /30 covers .0–3."
+        },
+        {
+          "input": "Default destination 0.0.0.0/0",
+          "result": "Fallback route candidate",
+          "reason": "A more specific applicable route takes precedence."
+        },
+        {
+          "input": "Policy permits HTTPS but no usable route exists",
+          "result": "Connectivity still fails",
+          "reason": "Security permission does not create reachability."
+        }
+      ]
+    },
+    {
+      "id": "pan-security",
+      "title": "Palo Alto security policy and App-ID",
+      "intro": "The FLAMES Palo Alto security model matches source zone, destination zone, and a supplied application label. Rules are ordered and unmatched traffic is denied in this simulator. App-ID exercises teach application scope; they do not run a live signature engine.",
+      "terms": [
+        "Trust, Untrust, DMZ, and Management name distinct security contexts.",
+        "web-browsing, ssl, dns, ssh, and smtp are separate application choices.",
+        "Real PAN-OS default intra-zone/inter-zone behavior, application dependencies, service constraints, and session handling require vendor-specific configuration. The simulator uses a simplified default deny.",
+        "Authorizing Management to initiate SSH does not authorize Trust to initiate a new connection to Management."
+      ],
+      "steps": [
+        "Convert each requirement into a source-zone, destination-zone, application, and action row.",
+        "Add a rule with only the requested applications.",
+        "Place explicit risky-application blocks before overlapping allows when required.",
+        "Add the explicit catch-all deny when the task asks for it.",
+        "Run application packets and inspect the first matching rule.",
+        "Test reverse initiation and non-approved applications before submitting."
+      ],
+      "example": "Worked example: Management → DMZ, application ssh, allow; then any → any, application any, deny. A Management→DMZ ssh packet matches the first rule. A DMZ→Management ssh packet reaches the final deny. This example deliberately grants no web or mail application.",
+      "flow": [
+        "Read supplied source zone, destination zone, and application",
+        "Inspect security rules top to bottom",
+        "First complete match?",
+        "Yes: allow or deny by that rule",
+        "No match: simulator denies"
+      ],
+      "mistakes": [
+        "Allowing any application to simplify an approved list.",
+        "Putting an explicit application block after an overlapping allow.",
+        "Assuming that a zone name implements asymmetric trust automatically."
+      ],
+      "review": "Explain why identifying an application and authorizing that application are separate jobs.",
+      "reviewAnswer": "Application identification tells the policy which application a flow represents. Authorization still depends on the matching rule and zone direction. FLAMES receives an application label; it does not identify applications from live packet payloads.",
+      "exampleCases": [
+        {
+          "input": "Management → DMZ application ssh",
+          "result": "Allow in the worked example",
+          "reason": "Matches the narrow administration rule."
+        },
+        {
+          "input": "DMZ → Management application ssh",
+          "result": "Deny in the worked example",
+          "reason": "Reverse initiation has no allow rule."
+        },
+        {
+          "input": "Management → DMZ application smtp",
+          "result": "Deny in the worked example",
+          "reason": "The permission is limited to ssh."
+        }
+      ]
+    },
+    {
+      "id": "pan-zones",
+      "title": "Palo Alto zones and interface ownership",
+      "intro": "Zone configuration groups interfaces into intended trust boundaries. FLAMES includes Layer 3, Layer 2, tap, HA, and management teaching choices. Treat the special HA and management zone choices as simulator abstractions; real dedicated management and HA configuration must follow the device documentation.",
+      "terms": [
+        "Layer 3 interfaces route using IP addresses. Layer 2 and virtual-wire designs have different forwarding models.",
+        "An interface must not be assigned to multiple zones in the same exercise.",
+        "Zone protection profiles and log forwarding settings are distinct from ordinary security-policy permission."
+      ],
+      "steps": [
+        "List each interface and its intended network or special purpose.",
+        "Create the required zone names and types.",
+        "Assign each interface to its intended zone once.",
+        "Apply the protection and log-forwarding settings stated in the task.",
+        "Inspect ownership across the complete zone list before submitting."
+      ],
+      "example": "Example inventory: provider link → Untrust, office switch → Trust, exposed services → DMZ. Keep synchronization and administrative paths separate; do not place them in a production zone merely to make a data policy match.",
+      "flow": [
+        "Inventory interface purpose",
+        "Choose zone and compatible type",
+        "Assign interface once",
+        "Apply requested profiles and logs",
+        "Validate complete ownership"
+      ],
+      "mistakes": [
+        "Assigning one interface to two zones.",
+        "Treating a zone-protection profile as a service allow rule.",
+        "Copying simulator management/HA abstractions directly into real appliance configuration."
+      ],
+      "review": "Describe the difference between zone membership, zone protection, and a security rule.",
+      "reviewAnswer": "Membership associates interfaces with a trust context. Protection profiles provide separate zone-level controls. Security rules authorize specified flows between contexts. Correctly configuring one does not automatically configure the other two.",
+      "exampleCases": [
+        {
+          "input": "Provider interface",
+          "result": "Untrust in the example inventory",
+          "reason": "The endpoint is external connectivity."
+        },
+        {
+          "input": "One interface listed under two zones",
+          "result": "Invalid ownership in the exercise",
+          "reason": "Each interface must have one intended zone owner."
+        },
+        {
+          "input": "A correctly named Management zone without required logging",
+          "result": "Incomplete task configuration",
+          "reason": "The name does not apply log forwarding."
+        }
+      ]
+    },
+    {
+      "id": "nat",
+      "title": "Source NAT, destination NAT, and static mappings",
+      "intro": "NAT changes addresses; security policy decides permission. Inbound destination translation may send a public address toward a private DMZ address. The FLAMES NAT exercise checks mappings separately from the security exercise. A successful translation in Network view does not imply an allowed connection.",
+      "terms": [
+        "Source NAT changes a source address. The interface choice models outbound interface-address sharing.",
+        "Destination NAT redirects an original public destination to an internal service.",
+        "NAT policy uses original-packet zone matching. Real PAN-OS security policy uses original addresses and post-NAT destination zones.",
+        "Static mappings are simplified in FLAMES. On real PAN-OS, reverse behavior depends on the configured bidirectional settings and rule applicability; static NAT alone is not a universal automatic inbound permission."
+      ],
+      "steps": [
+        "Write an original-packet tuple and the intended translated address.",
+        "Choose source, destination, or static translation for the requirement.",
+        "For the inbound FLAMES DNAT example, select the required original Untrust → Untrust zone pair.",
+        "Enter exact original and translated addresses; do not use an unrelated rule to satisfy half the mapping.",
+        "Order specific mappings ahead of broader overlapping rules.",
+        "Validate the NAT task, then reason about the separate security permission needed for the translated path."
+      ],
+      "example": "Worked example: public 203.0.113.80 translates to a server at 192.0.2.80 in DMZ. NAT matching considers the original path. The real security rule refers to the original destination 203.0.113.80 and the destination zone after translation, DMZ. FLAMES security rules model zones and application only, so they cannot reproduce that full address match.",
+      "flow": [
+        "Original packet and original zones",
+        "First matching NAT rule",
+        "Determine translated destination and resulting route zone",
+        "Separate security decision",
+        "Translation alone does not authorize traffic"
+      ],
+      "mistakes": [
+        "Treating NAT as an allow rule.",
+        "Selecting a post-NAT DMZ zone in an original-packet NAT rule where Untrust is required.",
+        "Assuming every static mapping enables reverse sessions without further configuration."
+      ],
+      "review": "Explain what each rule matches before and after destination translation, then explain which parts FLAMES simplifies.",
+      "reviewAnswer": "The NAT match describes the original packet and zones. For real destination NAT, security matching keeps the original addresses but uses the resulting destination zone. FLAMES models the NAT mapping separately and its security exercise checks zones and application, not the full real-device address match.",
+      "exampleCases": [
+        {
+          "input": "Original public destination 203.0.113.80",
+          "result": "Matched by the original-packet NAT rule",
+          "reason": "The private translated address is not the original destination."
+        },
+        {
+          "input": "Translation to 192.0.2.80 in DMZ",
+          "result": "Separate security decision still needed",
+          "reason": "Address translation grants no permission."
+        },
+        {
+          "input": "Real security rule for this DNAT flow",
+          "result": "Original public address and post-NAT DMZ zone",
+          "reason": "Original address matching and zone selection are different dimensions."
+        }
+      ]
+    },
+    {
+      "id": "operations",
+      "title": "DNS, monitoring, quarantine, and restricted services",
+      "intro": "Operational access should have a named consumer, a named provider, and a narrow service. Logging supports diagnosis but does not change permission. The added practice tasks combine protocol selection, address boundaries, rule order, and directionality.",
+      "terms": [
+        "DNS can use both UDP and TCP; an approved resolver rule should follow the task’s stated transports.",
+        "NTP normally uses UDP/123. The exercise checks protocol and a particular destination server.",
+        "Syslog in this exercise is UDP/514; real logging deployments can use other transports and security controls.",
+        "A quarantined host deny needs to precede a broader subnet allow if both match."
+      ],
+      "steps": [
+        "Identify which endpoint initiates each operational flow.",
+        "Restrict the consumer subnet or host and the provider host.",
+        "Choose the exact protocol/service and required logging.",
+        "Add a logged quarantine exception ahead of broad access if required.",
+        "Test an adjacent source, another provider, the wrong protocol, and reverse initiation."
+      ],
+      "example": "Worked example: a collector at 192.0.2.60 accepts UDP/514 from one server at 192.0.2.70. That telemetry permission does not authorize collector→office SSH. A separate administrator HTTPS path needs its own source and destination scope.",
+      "flow": [
+        "Identify authorized initiator",
+        "Restrict provider and protocol",
+        "Check exception order",
+        "Enable required matching-rule logs",
+        "Test approved and unwanted flows"
+      ],
+      "mistakes": [
+        "Allowing every resolver or every time server.",
+        "Granting administration rights because a host receives telemetry.",
+        "Relying on implicit deny when the task requires a logged explicit denial."
+      ],
+      "review": "For each operational rule, name one packet that should pass and three similar packets that should fail.",
+      "reviewAnswer": "For a restricted operational service, allow the named consumer to the named provider using the exact protocol and service. Reject another source, another provider, another service, and reverse initiation unless separately required. Check matching-rule logging where specified.",
+      "exampleCases": [
+        {
+          "input": "Named server → collector UDP/514",
+          "result": "Eligible for narrow telemetry permission",
+          "reason": "Consumer, provider, transport, and service match."
+        },
+        {
+          "input": "Collector → office SSH",
+          "result": "Separate authorization needed",
+          "reason": "Sending telemetry does not grant reverse access."
+        },
+        {
+          "input": "Quarantined host matches a broad office allow first",
+          "result": "Unexpected allow",
+          "reason": "Move the narrow deny before the overlapping allow."
+        }
+      ]
+    },
+    {
+      "id": "workflow",
+      "title": "How to practice, troubleshoot, and finish assessments",
+      "intro": "Use the guide for concepts, the scenario for exact requirements, packet tools for your current configuration, and grading for completion. Read examples before attempting a task, then explain a decision without the guide. Existing drafts save automatically; they are not proof of successful completion.",
+      "terms": [
+        "Run test packets and Network view are exploratory; Check my work performs the graded validation.",
+        "A knowledge check is an alternate concept-based completion route where offered. Bank and AI labels describe the question source.",
+        "Assessments unlock after the non-final lessons in their module. The separate Operations Practice module does not change existing assessment prerequisites.",
+        "Course progress belongs to your signed-in account or connected Academy deployment. Guest drafts remain local and are not a substitute for account progress."
+      ],
+      "steps": [
+        "Read the brief and prepare a traffic matrix or configuration inventory.",
+        "Study the relevant chapter and its worked example.",
+        "Build your own configuration from the task’s addresses and requirements.",
+        "Run positive and negative tests, then trace the first unexpected result.",
+        "Change one cause at a time: scope, direction, order, protocol, route, or translation.",
+        "Submit grading; inspect every failed requirement and repeat.",
+        "Record the final reasoning and test evidence before moving to an assessment."
+      ],
+      "example": "Troubleshooting example: HTTPS fails. First verify the packet’s supplied direction, then the destination object, then TCP/443, then earlier rules, then logging requirements. A NAT-only result cannot prove authorization. For a real deployment, separately inspect route reachability, session state, and return path.",
+      "flow": [
+        "Read brief and study",
+        "Plan allowed and denied cases",
+        "Configure and save draft",
+        "Run packets and trace",
+        "Unexpected result? Revise one cause and retry",
+        "Grade, explain, and continue"
+      ],
+      "mistakes": [
+        "Submitting without testing a denied case.",
+        "Resetting a useful draft before understanding the failed check.",
+        "Copying a worked example’s addresses instead of reading the task.",
+        "Treating a passed finite exercise as production validation."
+      ],
+      "review": "Can you reconstruct the design, explain every permission, and predict a new negative test without copying a saved rulebase?",
+      "reviewAnswer": "A strong explanation names the permitted initiator, destination, service, relevant rule order, and test evidence. Predict another packet outside the intended scope and explain which rule or implicit denial will block it. If you cannot predict that outcome, return to the traffic matrix.",
+      "exampleCases": [
+        {
+          "input": "Run test packets shows a result",
+          "result": "Exploratory evidence",
+          "reason": "It is not graded completion."
+        },
+        {
+          "input": "Check my work reports a failed logging requirement",
+          "result": "Inspect the effective matching rule",
+          "reason": "An unrelated logged rule cannot satisfy the flow."
+        },
+        {
+          "input": "A previously untested negative case passes",
+          "result": "Revisit scope and order",
+          "reason": "The finite successful tests did not establish the intended boundary."
+        }
+      ]
+    }
+  ],
+  "tasks": {
+    "web-server-access-01": {
+      "chapter": "policy",
+      "approach": "Separate public HTTPS exposure from other WAN services.",
+      "verify": "Test SSH, plain HTTP, and another DMZ destination, not only the intended web server."
+    },
+    "db-lockdown-01": {
+      "chapter": "policy",
+      "approach": "Express the permitted client subnet and database service independently.",
+      "verify": "Try a client outside the allowed subnet and a non-database service."
+    },
+    "dmz-multi-service-01": {
+      "chapter": "policy",
+      "approach": "Select each approved inbound service without widening all services.",
+      "verify": "Test an unlisted service and a newly initiated DMZ-to-LAN connection."
+    },
+    "inter-zone-trust-01": {
+      "chapter": "policy",
+      "approach": "Write the allowed initiation direction separately from the reverse direction.",
+      "verify": "Do not add a reverse allow merely to model reply packets."
+    },
+    "full-network-policy-01": {
+      "chapter": "policy",
+      "approach": "Prepare one matrix covering every zone pair before adding rules.",
+      "verify": "Check broad rules for unintended matches and test all denied directions."
+    },
+    "multi-system-block-01": {
+      "chapter": "policy",
+      "approach": "Identify the narrow blocked host and the overlapping allowed subnet.",
+      "verify": "Trace the blocked host through the complete rule order."
+    },
+    "web-filter-instagram-01": {
+      "chapter": "policy",
+      "approach": "Distinguish transport permission from a supplied-domain filter decision.",
+      "verify": "Test both an allowed domain and a blocked domain using the permitted transport."
+    },
+    "server-segmentation-01": {
+      "chapter": "policy",
+      "approach": "Calculate the two /25 ranges before selecting source and destination objects.",
+      "verify": "Test server-initiated access back to workstations and the wrong service."
+    },
+    "guest-isolation-01": {
+      "chapter": "policy",
+      "approach": "Notice that the guest range overlaps the larger corporate object in the exercise.",
+      "verify": "Protect the guest exception before broader matches and test both local directions."
+    },
+    "multi-dmz-access-01": {
+      "chapter": "policy",
+      "approach": "Create a service exposure matrix for web, mail, and administration.",
+      "verify": "Test public SSH to the management server and DMZ-to-LAN initiation."
+    },
+    "firewall-final-01": {
+      "chapter": "workflow",
+      "approach": "Combine directions, object boundaries, ordering, filtering, and required logs.",
+      "verify": "Review every failed diagnostic rather than assuming one successful packet proves the design."
+    },
+    "interface-ip-01": {
+      "chapter": "addressing",
+      "approach": "Calculate each connected subnet from the supplied address and mask.",
+      "verify": "Check every interface, not only the first one."
+    },
+    "interface-access-01": {
+      "chapter": "addressing",
+      "approach": "Inventory management protocols for each interface separately.",
+      "verify": "Remove unrequested administration instead of only enabling missing protocols."
+    },
+    "interface-custom-01": {
+      "chapter": "addressing",
+      "approach": "Use the custom branch plan rather than the default example ranges.",
+      "verify": "Calculate smaller subnet boundaries and check for overlap."
+    },
+    "interface-full-01": {
+      "chapter": "addressing",
+      "approach": "Build a complete address, role, and management-access inventory.",
+      "verify": "Inspect the external interface for unnecessary management exposure."
+    },
+    "port-assignment-01": {
+      "chapter": "ports",
+      "approach": "Map the small-office endpoint inventory to WAN, LAN, and DMZ.",
+      "verify": "Trace each endpoint before relying on a remembered port label."
+    },
+    "port-multi-dmz-01": {
+      "chapter": "ports",
+      "approach": "Distinguish the two server connections from user and provider links.",
+      "verify": "Check both server assignments and the remaining ports."
+    },
+    "port-redundant-wan-01": {
+      "chapter": "ports",
+      "approach": "Identify both independent provider uplinks.",
+      "verify": "Explain why the assignment itself does not implement routing failover."
+    },
+    "port-large-office-01": {
+      "chapter": "ports",
+      "approach": "Inventory office expansion and spare ports before assigning the chassis.",
+      "verify": "Verify that ports intended to remain unused were not added to LAN."
+    },
+    "port-position-trap-01": {
+      "chapter": "ports",
+      "approach": "Ignore expected physical order and read the connected-system descriptions.",
+      "verify": "Check the endpoint behind every unusual port position."
+    },
+    "port-final-01": {
+      "chapter": "ports",
+      "approach": "Reconstruct the entire chassis inventory without positional assumptions.",
+      "verify": "Validate WAN, office, exposed-server, and unused connections."
+    },
+    "routing-static-01": {
+      "chapter": "routing",
+      "approach": "Identify the required default destination and ISP next hop.",
+      "verify": "Verify the outgoing interface and gateway independently of policy permission."
+    },
+    "pan-sec-01": {
+      "chapter": "pan-security",
+      "approach": "List the approved outbound applications and add the required terminal deny.",
+      "verify": "Try an unapproved application and a reverse-zone flow."
+    },
+    "pan-sec-02": {
+      "chapter": "pan-security",
+      "approach": "Separate external DMZ exposure from internal DMZ use.",
+      "verify": "Verify that DMZ cannot initiate a new Trust connection."
+    },
+    "pan-sec-03": {
+      "chapter": "pan-security",
+      "approach": "Place explicit risky-application denies before overlapping web allows.",
+      "verify": "Check both rule position and actual application outcomes."
+    },
+    "pan-sec-04": {
+      "chapter": "pan-security",
+      "approach": "Construct a named approved application list.",
+      "verify": "An any application rule defeats the purpose even when a web packet passes."
+    },
+    "pan-sec-05": {
+      "chapter": "pan-security",
+      "approach": "Draw each permitted arrow between Management, Trust, DMZ, and Untrust.",
+      "verify": "Reverse each arrow to check asymmetric boundaries."
+    },
+    "pan-sec-final": {
+      "chapter": "workflow",
+      "approach": "Compose application filtering, administration, outbound access, and zone isolation.",
+      "verify": "Check the entire ordered rulebase and every required blocked path."
+    },
+    "pan-zone-01": {
+      "chapter": "pan-zones",
+      "approach": "Create the required data zones with correct Layer 3 interface ownership.",
+      "verify": "Check for absent or duplicated interface assignments."
+    },
+    "pan-zone-02": {
+      "chapter": "pan-zones",
+      "approach": "Separate HA synchronization from production data in the teaching model.",
+      "verify": "Review special-link ownership before ordinary security rules."
+    },
+    "pan-zone-03": {
+      "chapter": "pan-zones",
+      "approach": "Give administration its required isolated ownership and logging settings.",
+      "verify": "Do not assume a zone name automatically turns on log forwarding."
+    },
+    "pan-zone-final": {
+      "chapter": "pan-zones",
+      "approach": "Build the complete data, HA, and management zone inventory.",
+      "verify": "Inspect types, interface ownership, profiles, and log settings together."
+    },
+    "pan-nat-01": {
+      "chapter": "nat",
+      "approach": "Identify the source translation needed for outbound private clients.",
+      "verify": "Separate translation success from security permission."
+    },
+    "pan-nat-02": {
+      "chapter": "nat",
+      "approach": "Record the original public destination and translated internal host.",
+      "verify": "Use the required original-packet zones, not the translated destination zone."
+    },
+    "pan-nat-03": {
+      "chapter": "nat",
+      "approach": "Describe the exact one-to-one address pair in the simulator.",
+      "verify": "Do not treat the simplified static mapping as universal real-device bidirectional behavior."
+    },
+    "pan-nat-final": {
+      "chapter": "nat",
+      "approach": "Combine specific static mappings with source and destination translation.",
+      "verify": "Inspect overlap and order before broader source rules hide a specific mapping."
+    },
+    "pan-iface-01": {
+      "chapter": "addressing",
+      "approach": "Match interface mode, addressing, and zone to the endpoint purpose.",
+      "verify": "A tap or Layer 2 design is not configured as a routed Layer 3 gateway."
+    },
+    "pan-port-01": {
+      "chapter": "ports",
+      "approach": "Trace provider and trusted-office cables on the PA-220.",
+      "verify": "Physical socket position does not establish the intended trust level."
+    },
+    "pan-port-02": {
+      "chapter": "ports",
+      "approach": "Distinguish exposed-server connectivity from HA synchronization.",
+      "verify": "Check special-purpose links separately from ordinary data ports."
+    },
+    "dns-resolver-01": {
+      "chapter": "operations",
+      "approach": "Office clients (10.20.0.0/24) may query only Resolver (10.30.0.53) in DMZ using UDP/53 and TCP/53. Deny DNS to public resolvers, other DMZ hosts, and resolver-initiated traffic to LAN. Log both approved DNS services.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "admin-jump-host-01": {
+      "chapter": "operations",
+      "approach": "Only Admin-PC (10.20.0.10) may SSH to App-Server (10.30.0.10) in DMZ. Log that access. Other office clients, WAN sources, other DMZ destinations, and other services must be denied. This is forwarded server administration, not firewall management access.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "quarantine-exception-01": {
+      "chapter": "operations",
+      "approach": "Office clients may reach WAN on HTTPS, except Quarantined-PC (10.20.0.99), which must be explicitly denied and logged. Place its deny above the broader office allow. Log allowed HTTPS too. Deny HTTP and DMZ access.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "monitoring-collector-01": {
+      "chapter": "operations",
+      "approach": "App-Server (10.30.0.10) may send UDP/514 syslog only to Collector (10.30.0.60), within DMZ. Admin-PC may reach Collector on HTTPS from LAN. Log both allowed flows. Deny collector-initiated LAN access, other senders, and other collector services.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "time-service-01": {
+      "chapter": "operations",
+      "approach": "Office clients may reach only public time server 203.0.113.123 on UDP/123 through WAN. Log approved synchronization. Deny TCP/123, other time servers, web access, and unsolicited inbound NTP.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "partner-allowlist-01": {
+      "chapter": "operations",
+      "approach": "Only partner network 198.51.100.0/28 may reach App-Server (10.30.0.10) in DMZ on HTTPS from WAN. Log approved access. Deny an adjacent partner subnet, other services, other DMZ hosts, and DMZ-initiated connections to the partner.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "pan-sec-dns": {
+      "chapter": "pan-security",
+      "approach": "Trust → Untrust may use dns only. Deny every other supported application in that direction; deny Untrust → Trust. Finish with an explicit any/any/any deny rule.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "pan-sec-admin": {
+      "chapter": "pan-security",
+      "approach": "Allow only ssh from Management to Trust and DMZ. Deny other supported applications on those two paths, all traffic from Trust/DMZ/Untrust to Management, and Management → Untrust. Finish with an explicit catch-all deny.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    },
+    "pan-sec-mail": {
+      "chapter": "pan-security",
+      "approach": "Allow smtp from Untrust to DMZ and from DMZ to Untrust only. Deny all other supported applications on these paths and all DMZ → Trust/Management traffic. Finish with an explicit catch-all deny.",
+      "verify": "Test every allowed path, a wrong service or application, a neighboring endpoint when modeled, and reverse initiation. Check required logging and rule order."
+    }
+  },
+  "sources": [
+    {
+      "title": "Fortinet: firewall policy",
+      "url": "https://docs.fortinet.com/document/fortigate/7.6.3/administration-guide/656084/firewall-policy"
+    },
+    {
+      "title": "Palo Alto Networks: NAT policy rules",
+      "url": "https://docs.paloaltonetworks.com/ngfw/networking/nat/nat-policy-rules"
+    },
+    {
+      "title": "Palo Alto Networks: destination NAT example",
+      "url": "https://docs.paloaltonetworks.com/ngfw/networking/nat/destination-nat-exampleone-to-one-mapping"
+    }
+  ]
+}

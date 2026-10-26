@@ -14,6 +14,16 @@ export interface HardQuestion {
 }
 
 export const HARD_QUESTIONS: Record<string, HardQuestion> = {
+"dns-resolver-01": {"question": "Why can a DNS rule matching only UDP fail a legitimate request using TCP?", "choices": ["Protocol is part of the match; a TCP query needs an appropriate permitted TCP path.", "All DNS traffic uses UDP exclusively.", "Logging changes UDP into TCP.", "The destination address selects the protocol automatically."], "correctIndex": 0},
+"admin-jump-host-01": {"question": "What distinguishes a server SSH policy from interface administrative access?", "choices": ["One permits forwarded traffic to a server; the other controls access to the firewall itself.", "Both always change the same setting.", "A server SSH policy enables all WAN administration.", "Interface roles automatically authorize server SSH."], "correctIndex": 0},
+"quarantine-exception-01": {"question": "A broad allow precedes a narrower deny. What happens to a packet matching both?", "choices": ["The earlier allow wins; move the exception before it.", "The deny always overrides the allow.", "The rules cancel each other.", "The firewall merges their services."], "correctIndex": 0},
+"monitoring-collector-01": {"question": "Why separate telemetry from collector administration?", "choices": ["Different sources, directions, and services need independent authorization.", "Sending logs grants administrative access.", "A collector needs unrestricted LAN access.", "Logging disables policy evaluation."], "correctIndex": 0},
+"time-service-01": {"question": "What must match in a restricted time synchronization rule?", "choices": ["The intended source, destination, direction, and UDP service.", "Only the rule name.", "Any service on the time server.", "TCP and UDP are interchangeable."], "correctIndex": 0},
+"partner-allowlist-01": {"question": "What risk follows from broadening a partner CIDR prefix?", "choices": ["It can authorize hosts outside the intended partner range.", "It changes HTTPS encryption strength.", "It restricts the service to fewer ports.", "It makes rule order irrelevant."], "correctIndex": 0},
+"pan-sec-dns": {"question": "Why use a named DNS application allow with a catch-all deny?", "choices": ["It authorizes the intended application while leaving unrelated applications blocked.", "It permits every application on the same zone pair.", "It configures source NAT automatically.", "It bypasses inbound policy."], "correctIndex": 0},
+"pan-sec-admin": {"question": "Does allowing Management to initiate SSH authorize Trust to initiate SSH back?", "choices": ["No; reverse initiation needs its own policy decision.", "Yes; all zone permissions are symmetric.", "Yes; an SSH application always bypasses zone checks.", "Yes; management zone names automatically authorize both paths."], "correctIndex": 0},
+"pan-sec-mail": {"question": "Why does permitting mail relay traffic not require DMZ-to-Trust access?", "choices": ["The relay paths and internal lateral paths are different authorization decisions.", "SMTP always requires full LAN access.", "A DMZ zone automatically trusts internal servers.", "NAT grants lateral access."], "correctIndex": 0},
+
   // ---------------- Port Assignment track ----------------
   "port-assignment-01": {
     question:

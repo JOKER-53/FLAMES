@@ -1,3 +1,6 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { apiFetch } from "../../api/http";
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
@@ -35,7 +38,8 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
   const [activeIfaceScenarioId, setActiveIfaceScenarioId] = useState<string>(
     urlTrack === "interface" && urlScenario ? urlScenario : ALL_INTERFACE_SCENARIOS[0].id
   );
-  const [interfaces, setInterfaces] = useState<InterfaceConfig[]>([]);
+  const ifaceDraft = useSimulatorDraft<InterfaceConfig[]>("fortigate", activeIfaceScenarioId, "interfaces", ALL_INTERFACE_SCENARIOS_AND_FINAL.find(s => s.id === activeIfaceScenarioId)?.starterInterfaces ?? [], "1", track === "interface");
+  const interfaces = ifaceDraft.value, setInterfaces = ifaceDraft.setValue;
   const [ifaceGrading, setIfaceGrading] = useState(false);
   const [ifaceReport, setIfaceReport] = useState<InterfaceGradingReport | null>(null);
   const [ifaceAiRemark, setIfaceAiRemark] = useState<string | null>(null);
@@ -46,9 +50,8 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
     urlTrack === "port" && urlScenario ? urlScenario : ALL_PORT_SCENARIOS[0].id
   );
   const portScenario = ALL_PORT_SCENARIOS_AND_FINAL.find((s) => s.id === activePortScenarioId);
-  const [portAssignments, setPortAssignments] = useState<PortAssignment[]>(
-    portScenario ? portScenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })) : []
-  );
+  const portDraft = useSimulatorDraft<PortAssignment[]>("fortigate", activePortScenarioId, "ports", portScenario ? portScenario.ports.map(p => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })) : [], "1", track === "port");
+  const portAssignments = portDraft.value, setPortAssignments = portDraft.setValue;
   const [portGrading, setPortGrading] = useState(false);
   const [portReport, setPortReport] = useState<PortGradingReport | null>(null);
   const [portAiRemark, setPortAiRemark] = useState<string | null>(null);
@@ -75,25 +78,6 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
     if (urlTrack === "port") setActivePortScenarioId(urlScenario);
     else setActiveIfaceScenarioId(urlScenario);
   }, [urlTrack, urlScenario]);
-
-  useEffect(() => {
-    const scenario = ALL_INTERFACE_SCENARIOS_AND_FINAL.find((s) => s.id === activeIfaceScenarioId);
-    if (scenario) {
-      setInterfaces(scenario.starterInterfaces.map((i) => ({ ...i, adminAccess: [...i.adminAccess] })));
-      setIfaceReport(null);
-      setIfaceAiRemark(null);
-      setIfaceError(null);
-    }
-  }, [activeIfaceScenarioId]);
-
-  useEffect(() => {
-    const scenario = ALL_PORT_SCENARIOS_AND_FINAL.find((s) => s.id === activePortScenarioId);
-    if (scenario) {
-      setPortAssignments(scenario.ports.map((p) => ({ portId: p.portId, label: p.label, zone: "unassigned" as PortZone, locked: p.locked })));
-      setPortReport(null);
-      setPortError(null);
-    }
-  }, [activePortScenarioId]);
 
   function updateField(name: string, field: keyof InterfaceConfig, value: string | string[]) {
     setInterfaces((prev) => prev.map((i) => i.name === name ? { ...i, [field]: value } : i));
@@ -177,6 +161,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
   return (
     <LessonFrame title={lessonScenario?.title.replace(/^\W+\s*/, "") ?? "Interfaces"} brief={lessonScenario?.description}>
+      <DraftWorkspace draft={track === "port" ? portDraft.controls : ifaceDraft.controls}>
       {track === "interface" && (
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
           <div className="min-w-0 space-y-6">
@@ -249,6 +234,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
 
       {track === "port" && (
         <div className="space-y-6">
+          <TaskTopology vendor="fortigate" family="ports" config={portAssignments}/>
           <ConsoleFrame path={["Network", "Physical ports"]}>
             <div className="p-4">
               <CableDragDiagram ports={portAssignments} onChange={handlePortChange} fullHeight />
@@ -266,6 +252,7 @@ export function InterfacesPage({ session }: InterfacesPageProps) {
           </div>
         </div>
       )}
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

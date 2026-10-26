@@ -12,6 +12,7 @@ RUN npm ci
 
 COPY packages/engine packages/engine
 COPY packages/frontend packages/frontend
+COPY scripts/prepare-hardware.cjs scripts/prepare-hardware.cjs
 RUN npm run build --workspace=@fortisim/engine
 
 WORKDIR /app/packages/frontend

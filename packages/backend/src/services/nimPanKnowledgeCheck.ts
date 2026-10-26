@@ -1,3 +1,4 @@
+import { validateGeneratedQuestion } from "./questionStore";
 import { sendLLMRequest, getStaticFallbackQuestion } from "./llmClient";
 
 // ============================================================================
@@ -26,6 +27,10 @@ interface GeneratedQuestion {
 }
 
 export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
+"pan-sec-dns": {"title": "DNS-Only Egress", "concept": "App-ID allowlists and explicit default deny for outbound DNS."},
+"pan-sec-admin": {"title": "Dedicated Administration Zone", "concept": "Asymmetric administration trust with a separate management zone."},
+"pan-sec-mail": {"title": "DMZ Mail Relay Isolation", "concept": "Bidirectional named application paths without lateral access to trusted networks."},
+
   // Security Policy
   "pan-sec-01": { title:"Basic Outbound Access", concept:"Why App-ID is more precise than port-based service matching, and why a deny-all rule must sit at the bottom of a PAN-OS policy." },
   "pan-sec-02": { title:"DMZ Web Server",        concept:"Zone directionality in PAN-OS security policy — why a rule allowing Untrust→DMZ does NOT automatically allow DMZ→Trust, and the semi-trusted zone model." },
@@ -202,7 +207,7 @@ const PAN_STATIC_FALLBACKS: Record<string, GeneratedQuestion> = {
 };
 
 export async function generatePanKnowledgeCheck(taskId: string): Promise<GeneratedQuestion> {
-  const meta = TASK_CONCEPTS[taskId];
+  const meta = Object.prototype.hasOwnProperty.call(TASK_CONCEPTS, taskId) ? TASK_CONCEPTS[taskId] : undefined;
   if (!meta) throw new Error(`No concept mapping for PAN task: ${taskId}`);
 
   const userContent = `Task: ${meta.title}\nConcept to test: ${meta.concept}\n\nGenerate a hard multiple-choice question. Wrong answers should be plausible misconceptions a student might actually hold.`;
@@ -222,6 +227,7 @@ export async function generatePanKnowledgeCheck(taskId: string): Promise<Generat
     const parsed = JSON.parse(jsonMatch[0]);
     if (!parsed.question || !Array.isArray(parsed.choices) || parsed.choices.length !== 4 || typeof parsed.correctIndex !== "number")
       throw new Error("Invalid shape");
+    validateGeneratedQuestion(parsed);
     return { question: parsed.question, choices: parsed.choices, correctIndex: parsed.correctIndex, source: "ai" };
   } catch (err) {
     console.warn(`[PanKnowledgeCheck] LLM generation failed for ${taskId} (${(err as Error).message}). Using static fallback.`);

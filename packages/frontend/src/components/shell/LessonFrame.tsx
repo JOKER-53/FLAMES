@@ -1,7 +1,9 @@
+import { useLearningAccess } from "../../course/useLearningAccess";
 // ============================================================================
 // Standard lesson layout: header, scenario brief, the vendor workspace, and
 // previous/next navigation. Pages provide the brief and the workspace only.
 // ============================================================================
+import { isCompletionTask } from "@fortisim/engine";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Icon } from "../ui/Icon";
@@ -21,6 +23,7 @@ interface LessonFrameProps {
 
 export function LessonFrame({ brief, hint, title, children }: LessonFrameProps) {
   const { course, completed } = useCourse();
+  const { canView: canViewLearning } = useLearningAccess();
   const location = useLocation();
   const [showHint, setShowHint] = useState(false);
   const match = lessonForLocation(course, location.pathname, location.search);
@@ -33,38 +36,27 @@ export function LessonFrame({ brief, hint, title, children }: LessonFrameProps) 
 
   return (
     <article>
-      <header className="mb-5">
-        {module && lesson && (
-          <div className="eyebrow mb-2 flex flex-wrap items-center gap-x-2">
-            <Link to={`${course.base}/modules/${module.id}`} className="hover:text-ink">{module.title}</Link>
-            <span className="text-faint">·</span>
-            <span>{lesson.final ? "Module assessment" : `Lesson ${index + 1} of ${module.lessons.filter(l => !l.final).length}`}</span>
+      <header className="mb-3 space-y-3" aria-label="Lesson introduction">
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+          <h1 className="text-2xl font-semibold text-ink leading-tight tracking-tight">{lesson?.title ?? title}</h1>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted">
+            {module && lesson && <span>{lesson.final ? "Module assessment" : `Lesson ${index + 1} of ${module.lessons.filter(l => !l.final).length}`}</span>}
+            {lesson && <><span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} />{lesson.minutes} min</span><LevelBadge level={lesson.level} /></>}
+            {canViewLearning && lesson && isCompletionTask(course.vendor, lesson.id) && <Link className="text-accent underline underline-offset-4" to={`${course.base}/learn?task=${lesson.id}`}>Study this task</Link>}
+            {done && <span className="inline-flex items-center gap-1.5 text-success"><Icon name="check" size={13} strokeWidth={2.25} />Completed</span>}
           </div>
-        )}
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h1 className="text-2xl font-semibold">{lesson?.title ?? title}</h1>
-          {done && <span className="badge h-6 px-2 bg-success-soft text-success text-xs"><Icon name="check" size={13} strokeWidth={2.25} />Completed</span>}
         </div>
-        {lesson && (
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-muted">
-            <span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} className="text-faint" />{lesson.minutes} min</span>
-            <LevelBadge level={lesson.level} />
+        <section className="rounded-r-md border-l-2 border-accent bg-surface px-3 py-3 sm:px-4" aria-label="Scenario">
+          <div className="flex flex-col sm:flex-row gap-x-4 gap-y-1">
+            <h2 className="shrink-0 text-xs font-semibold text-ink leading-[22px]">Scenario</h2>
+            <div className="min-w-0 text-sm text-body leading-[22px] [overflow-wrap:anywhere]">{brief}</div>
           </div>
-        )}
+          {hint && <div className="mt-2 sm:ml-[68px]">
+            <button className="inline-flex items-center gap-1.5 text-xs font-medium text-muted hover:text-ink" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}><Icon name="lightbulb" size={14} />{showHint ? "Hide hint" : "Show a hint"}</button>
+            {showHint && <div className="mt-2 max-w-[85ch] rounded-md bg-warn-soft px-3.5 py-2.5 text-sm text-body leading-relaxed">{hint}</div>}
+          </div>}
+        </section>
       </header>
-
-      <section className="card mb-6 p-5 border-l-[3px] border-l-accent" aria-label="Scenario">
-        <div className="flex items-center gap-2 text-sm font-semibold text-ink mb-1.5"><Icon name="target" size={16} className="text-accent" />Scenario</div>
-        <div className="text-body leading-relaxed max-w-4xl">{brief}</div>
-        {hint && (
-          <div className="mt-3">
-            <button className="inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-ink" aria-expanded={showHint} onClick={() => setShowHint(!showHint)}>
-              <Icon name="lightbulb" size={15} />{showHint ? "Hide hint" : "Show a hint"}
-            </button>
-            {showHint && <div className="mt-2 rounded-md bg-warn-soft px-3.5 py-2.5 text-sm text-body">{hint}</div>}
-          </div>
-        )}
-      </section>
 
       {children}
 

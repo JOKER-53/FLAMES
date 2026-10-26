@@ -14,12 +14,25 @@
     "build": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm run build --workspace=@fortisim/frontend",
     "test": "npm run build --workspace=@fortisim/engine && npm test --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm test --workspace=@fortisim/backend && npm test --workspace=@fortisim/frontend",
     "verify": "npm test && npm run build --workspace=@fortisim/frontend",
+    "docs:learning": "node scripts/prepare-learning.cjs",
     "engine:demo": "npm run demo --workspace=@fortisim/engine",
-    "backend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/backend",
+    "backend:dev": "node scripts/backend-dev.cjs",
     "frontend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/frontend",
-    "admin:create": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && node scripts/create-admin.cjs"
+    "admin:create": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && node scripts/create-admin.cjs",
+    "data:backup": "node scripts/data-backup.cjs backup",
+    "data:restore": "node scripts/data-backup.cjs restore",
+    "test:browser": "playwright test"
   },
   "allowScripts": {
     "esbuild@0.21.5": true
+  },
+  "overrides": {
+    "postcss-selector-parser": "$postcss-selector-parser"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
+    "@playwright/test": "^1.64.1",
+    "postcss-selector-parser": "^7.1.7",
+    "sharp": "^0.35.5"
   }
 }

@@ -1,0 +1,15 @@
+# API diagnostics and database migrations
+
+Every API response includes a server-generated `X-Request-ID`. JSON errors also include `requestId`; use it to correlate a reported failure with the server's JSON log. Logs include method, parameterized route, status and duration. Server failures and rate limits are logged automatically. `LOG_HTTP_REQUESTS=true` enables successful-request logging too. Bodies, cookies, bearer tokens, email addresses, query strings and raw exception messages are excluded. Logs are process stdout, ready for the host's log collector; retention/alerts belong to the operator.
+
+An authenticated content administrator can read `GET /api/admin/diagnostics` for process uptime, request/server-error totals, account/tutor rate-limit counters and database migration records. Anonymous/student requests are rejected. Counters are per process and reset on restart; they are not a persistent or cross-replica monitoring system. Health remains a minimal public liveness endpoint.
+
+SQLite stores use the append-only `schema_migrations` ledger, scoped to platform/content/classroom components. Each record contains version, name, SQL checksum and application timestamp. Existing tables are adopted through idempotent baseline migrations, preserving rows. New versions run within `BEGIN IMMEDIATE`; failures roll back DDL and the ledger together. Startup rejects changed historical SQL or a database version ahead of this application. Do not edit an applied migration: append the next sequential version.
+
+Before upgrading, make and validate a database backup using the operations runbook. Review the pending migration and its compatibility with the preceding release. Start the new binary against an isolated restored snapshot, check the protected diagnostics endpoint and verify accounts, content and drafts. Then upgrade during the planned write-maintenance window. For an incompatible rollback, restore the matched backup and old application into new volumes; do not delete ledger rows to force an older binary to run. Academy's MySQL schema is managed separately by Academy and its deployment process.
+
+Backend regressions cover old-data adoption, repeated startup, checksum/future-version rejection, failed-migration rollback, administrator authorization, request correlation and secret-free rate-limit logging.
+
+Content migration 2 adds private revision snapshots and adopts each existing module's current draft as its first historical baseline. It leaves `published_json`, completion, task identities and answers unchanged. The legacy-content regression verifies adoption, publication and private answer preservation across a reopen. Before rolling back to a binary without migration 2, use the matched pre-upgrade database backup; its schema is deliberately rejected by the earlier binary's future-version guard.
+
+Content migration 3 adds the single platform-wide learning-guide visibility setting, initialized to hidden. It preserves course content and revision history. A rollback to a release that does not understand content version 3 requires the corresponding pre-upgrade backup.

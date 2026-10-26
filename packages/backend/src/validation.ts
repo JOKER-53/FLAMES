@@ -10,6 +10,7 @@ function requireArray(record: Record<string, unknown>, key: string): unknown[] {
   return record[key];
 }
 
+function oneOf(value: unknown, choices: readonly string[]): boolean { return typeof value === "string" && choices.includes(value); }
 function text(value: unknown): value is string { return typeof value === "string" && value.length <= 1000; }
 function strings(value: unknown): boolean { return Array.isArray(value) && value.length <= 200 && value.every(text); }
 function records(entries: unknown[], field: string): Record<string, unknown>[] {
@@ -34,10 +35,10 @@ export function parseStudentSubmission(body: unknown): StudentSubmission {
   }
   const addressRecords = records(addresses, "address"), serviceRecords = records(services, "service"), policyRecords = records(policies, "policy");
   unique(addressRecords, "id"); unique(serviceRecords, "id"); unique(policyRecords, "id");
-  requireFields(addressRecords.every(a => text(a.name) && ["subnet", "range"].includes(String(a.type)) && text(a.value)), "address");
-  requireFields(serviceRecords.every(s => text(s.name) && ["TCP", "UDP", "ICMP"].includes(String(s.protocol)) && (s.port === undefined || text(s.port))), "service");
-  requireFields(policyRecords.every(p => text(p.name) && ["WAN", "LAN", "DMZ"].includes(String(p.srcIntf)) && ["WAN", "LAN", "DMZ"].includes(String(p.dstIntf)) &&
-    strings(p.srcAddrIds) && strings(p.dstAddrIds) && strings(p.serviceIds) && ["ACCEPT", "DENY"].includes(String(p.action)) &&
+  requireFields(addressRecords.every(a => text(a.name) && oneOf(a.type, ["subnet", "range"]) && text(a.value)), "address");
+  requireFields(serviceRecords.every(s => text(s.name) && oneOf(s.protocol, ["TCP", "UDP", "ICMP"]) && (s.port === undefined || text(s.port))), "service");
+  requireFields(policyRecords.every(p => text(p.name) && oneOf(p.srcIntf, ["WAN", "LAN", "DMZ"]) && oneOf(p.dstIntf, ["WAN", "LAN", "DMZ"]) &&
+    strings(p.srcAddrIds) && strings(p.dstAddrIds) && strings(p.serviceIds) && oneOf(p.action, ["ACCEPT", "DENY"]) &&
     typeof p.enabled === "boolean" && typeof p.log === "boolean" && (p.webFilterProfileId === undefined || text(p.webFilterProfileId))), "policy");
   if (body.webFilterProfiles !== undefined) {
     const profiles = records(requireArray(body, "webFilterProfiles"), "web filter");
@@ -52,7 +53,7 @@ export function parseInterfaceSubmission(body: unknown): InterfaceSubmission {
   const interfaces = requireArray(body, "interfaces");
   if (typeof body.scenarioId !== "string") throw new Error('"scenarioId" must be a string');
   const entries = records(interfaces, "interface"); unique(entries, "name");
-  requireFields(entries.every(i => text(i.ip) && text(i.subnet) && ["WAN", "LAN", "DMZ"].includes(String(i.role)) &&
+  requireFields(entries.every(i => text(i.ip) && text(i.subnet) && oneOf(i.role, ["WAN", "LAN", "DMZ"]) &&
     strings(i.adminAccess) && (i.adminAccess as string[]).every(access => ["PING", "HTTPS", "SSH", "HTTP"].includes(access))), "interface");
   return { scenarioId: body.scenarioId, interfaces } as InterfaceSubmission;
 }
@@ -62,7 +63,7 @@ export function parsePortSubmission(body: unknown): PortSubmission {
   const assignments = requireArray(body, "assignments");
   if (typeof body.scenarioId !== "string") throw new Error('"scenarioId" must be a string');
   const entries = records(assignments, "port assignment"); unique(entries, "portId");
-  requireFields(entries.every(a => ["WAN", "LAN", "DMZ", "unassigned"].includes(String(a.zone))), "port assignment");
+  requireFields(entries.every(a => oneOf(a.zone, ["WAN", "LAN", "DMZ", "unassigned"])), "port assignment");
   return { scenarioId: body.scenarioId, assignments } as PortSubmission;
 }
 

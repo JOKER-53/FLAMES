@@ -40,3 +40,9 @@ it('returns a failure for invalid routing inputs', () => {
   expect(checkRoutes([{ ...required, destination: 'invalid' }]).success).toBe(false);
   expect(checkRoutes([{ ...required, gateway: '999.0.0.1' }]).success).toBe(false);
 });
+
+it('rejects malformed nested OSPF and SD-WAN data without throwing', () => {
+ const base={staticRoutes:[],sdwanMembers:[],sdwanRules:[]};
+ const bad=[{...base,ospf:{routerId:'1.2.3.4',networks:null}},{...base,ospf:{routerId:'1.2.3.4',networks:[null]}},{...base,sdwanMembers:[null]},{...base,sdwanRules:[{name:'rule',srcAddress:'any',dstAddress:'any',strategy:'manual',preferredMembers:null}]}];
+ for(const config of bad){expect(()=>evaluateRoutingConfiguration(config as any,{ospf:{routerId:'1.2.3.4',networks:[{prefix:'10.0.0.0/24',area:'0'}]}})).not.toThrow();expect(evaluateRoutingConfiguration(config as any,{}).success).toBe(false);}
+});

@@ -1,393 +1,84 @@
-import { useEffect, useRef, useCallback } from "react";
-import type { AddressObject, TestPacket, PolicyTraceEntry } from "@fortisim/engine";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import type { AddressObject, PolicyTraceEntry } from "@fortisim/engine";
+import { Icon } from "../ui/Icon";
+interface SimTrace { packet:{id:string;description:string;srcIntf:string;dstIntf:string;srcIp:string;dstIp:string;protocol:string;port?:number}; trace:PolicyTraceEntry[]; finalAction:"ACCEPT"|"DENY"|"TRANSLATED"|"UNCHANGED"; }
+interface NetworkSimCanvasProps { addresses:AddressObject[]; traces:SimTrace[]; onClose:()=>void; vendor?:"fortigate"|"paloalto"; note?:string; }
+interface Device { id:string;zone:string;ip:string;name:string;x:number;y:number; }
+const DURATION=2000;
+const zoneColor=(zone:string)=>zone==="WAN"?"text-warn":zone==="DMZ"?"text-info":"text-success";
 
-interface SimTrace {
-  packet: TestPacket;
-  trace: PolicyTraceEntry[];
-  finalAction: "ACCEPT" | "DENY";
-}
-
-interface NetworkSimCanvasProps {
-  addresses: AddressObject[];
-  traces: SimTrace[];
-  onClose: () => void;
-}
-
-interface Node {
-  x: number; y: number;
-  label: string; sub: string;
-  type: "fw" | "cloud" | "server" | "pc";
-  color: string; bg: string;
-  zone: "WAN" | "LAN" | "DMZ";
-}
-
-type NodeMap = Record<string, Node>;
-
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
-function ease(t: number) { return t < 0.5 ? 2*t*t : 1 - Math.pow(-2*t+2,2)/2; }
-
-function inferZone(addr: AddressObject): "WAN" | "LAN" | "DMZ" {
-  const v = addr.value.toLowerCase();
-  if (v.startsWith("10.0.2") || addr.name.toLowerCase().includes("dmz")) return "DMZ";
-  if (v.startsWith("10.0.1") || addr.name.toLowerCase().includes("lan")) return "LAN";
-  return "WAN";
-}
-
-const ZONE_COLORS: Record<string, string> = { WAN: "#f97316", LAN: "#10b981", DMZ: "#3b82f6" };
-const ZONE_BG: Record<string, string> = { WAN: "#fff7ed", LAN: "#ecfdf5", DMZ: "#eff6ff" };
-
-export function NetworkSimCanvas({ addresses, traces, onClose }: NetworkSimCanvasProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animRef = useRef<number>(0);
-  const packetsRef = useRef<any[]>([]);
-  const nodesRef = useRef<NodeMap>({});
-  const logRef = useRef<HTMLDivElement>(null);
-
-  function buildNodes(W: number, H: number): NodeMap {
-    const cx = W / 2, cy = H / 2;
-    const nodes: NodeMap = {
-      fw: { x: cx, y: cy, label: "FortiGate", sub: "6000F (Simulated)", type: "fw", color: "#DA291C", bg: "#fee2e2", zone: "LAN" },
-    };
-    const validAddrs = addresses.filter((a) => a.value !== "0.0.0.0/0" && a.value.toLowerCase() !== "all");
-    const byZone: Record<string, AddressObject[]> = { WAN: [], LAN: [], DMZ: [] };
-    validAddrs.forEach((a) => byZone[inferZone(a)].push(a));
-
-    const zonePos: Record<string, { bx: number; by: number }> = {
-      WAN: { bx: cx - W * 0.36, by: cy },
-      DMZ: { bx: cx + W * 0.36, by: cy - H * 0.15 },
-      LAN: { bx: cx + W * 0.36, by: cy + H * 0.15 },
-    };
-
-    Object.entries(byZone).forEach(([zone, addrs]) => {
-      addrs.forEach((addr, i) => {
-        const spread = (i - (addrs.length - 1) / 2) * 64;
-        nodes[addr.id] = {
-          x: zonePos[zone].bx,
-          y: zonePos[zone].by + spread,
-          label: addr.name,
-          sub: addr.value.split("/")[0],
-          type: zone === "WAN" ? "cloud" : addr.name.toLowerCase().includes("server") ? "server" : "pc",
-          color: ZONE_COLORS[zone],
-          bg: ZONE_BG[zone],
-          zone: zone as "WAN" | "LAN" | "DMZ",
-        };
-      });
-    });
-    return nodes;
-  }
-
-  function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
-    ctx.beginPath();
-    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
-  }
-
-  function drawDevice(ctx: CanvasRenderingContext2D, n: Node, highlight: boolean) {
-    const { x, y, label, sub, type, color, bg } = n;
-    ctx.save();
-    if (highlight) { ctx.shadowColor = color; ctx.shadowBlur = 20; }
-    if (type === "fw") {
-      ctx.fillStyle = "#1a1a2e"; ctx.strokeStyle = highlight ? "#ff4444" : "#DA291C";
-      ctx.lineWidth = highlight ? 3 : 2;
-      roundRect(ctx, x-46, y-28, 92, 56, 12); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#DA291C"; ctx.font = "bold 11px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText("🛡 " + label, x, y - 5);
-      ctx.fillStyle = "#888"; ctx.font = "9px monospace"; ctx.fillText(sub, x, y + 10);
-    } else if (type === "cloud") {
-      ctx.fillStyle = highlight ? "#fde68a" : "#f8fafc";
-      ctx.strokeStyle = highlight ? "#f59e0b" : "#94a3b8"; ctx.lineWidth = highlight ? 2 : 1.5;
-      ctx.beginPath();
-      ctx.ellipse(x, y, 38, 24, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(x-22, y+8, 22, 16, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.beginPath(); ctx.ellipse(x+20, y+6, 20, 15, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = highlight ? "#92400e" : "#475569";
-      ctx.font = "bold 10px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText(label, x, y + 44);
-      ctx.fillStyle = "#94a3b8"; ctx.font = "9px monospace"; ctx.fillText(sub, x, y + 56);
-    } else if (type === "server") {
-      ctx.fillStyle = "#1e293b"; ctx.strokeStyle = highlight ? color : "#475569";
-      ctx.lineWidth = highlight ? 2.5 : 1.5;
-      roundRect(ctx, x-32, y-28, 64, 56, 8); ctx.fill(); ctx.stroke();
-      [y-14, y-2, y+10].forEach((ry) => {
-        ctx.fillStyle = "#334155"; ctx.fillRect(x-22, ry-4, 44, 8);
-        ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x+14, ry, 3, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = "#10b981"; ctx.beginPath(); ctx.arc(x+8, ry, 2, 0, Math.PI*2); ctx.fill();
-      });
-      ctx.fillStyle = highlight ? color : "#94a3b8";
-      ctx.font = "bold 9.5px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText(label, x, y + 40);
-      ctx.fillStyle = "#64748b"; ctx.font = "9px monospace"; ctx.fillText(sub, x, y + 51);
-    } else {
-      ctx.fillStyle = "#1e293b"; ctx.strokeStyle = highlight ? color : "#475569";
-      ctx.lineWidth = highlight ? 2.5 : 1.5;
-      roundRect(ctx, x-30, y-24, 60, 48, 8); ctx.fill(); ctx.stroke();
-      ctx.fillStyle = "#334155"; roundRect(ctx, x-20, y-16, 40, 26, 4); ctx.fill();
-      ctx.fillStyle = "#38bdf8"; ctx.fillRect(x-18, y-14, 36, 22);
-      ctx.fillStyle = "#475569"; ctx.fillRect(x-4, y+10, 8, 6); ctx.fillRect(x-12, y+16, 24, 3);
-      ctx.fillStyle = highlight ? color : "#94a3b8";
-      ctx.font = "bold 9.5px sans-serif"; ctx.textAlign = "center";
-      ctx.fillText(label, x, y + 36);
-      ctx.fillStyle = "#64748b"; ctx.font = "9px monospace"; ctx.fillText(sub, x, y + 47);
+/** SVG inherits FLAMES theme tokens; devices are actual packet endpoints, not inferred cabling. */
+export function NetworkSimCanvas({addresses,traces,onClose,vendor="fortigate",note}:NetworkSimCanvasProps) {
+  const paloalto=vendor==="paloalto";const nat=traces.some(item=>item.finalAction==="TRANSLATED"||item.finalAction==="UNCHANGED");
+  const dialog=useRef<HTMLDivElement>(null);const closeButton=useRef<HTMLButtonElement>(null);const titleId=useId();const descriptionId=useId();const graphId=useId().replace(/:/g,"");
+  const [replay,setReplay]=useState(0);const [elapsed,setElapsed]=useState(0);
+  const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const {devices,height}=useMemo(()=>{
+    const endpoints=new Map<string,{zone:string;ip:string;name:string}>();
+    for(const {packet} of traces) for(const [zone,ip] of [[packet.srcIntf,packet.srcIp],[packet.dstIntf,packet.dstIp]]) {
+      const name=addresses.find(address=>address.value.split("/")[0]===ip)?.name??(zone==="WAN"?"Internet host":`${zone} host`);
+      endpoints.set(`${zone}:${ip}`,{zone,ip,name});
     }
-    ctx.restore();
-  }
-
-  function drawCable(ctx: CanvasRenderingContext2D, from: Node, to: Node, color: string, active: boolean) {
-    ctx.save();
-    ctx.beginPath(); ctx.moveTo(from.x, from.y);
-    const mx = (from.x+to.x)/2, my = (from.y+to.y)/2 - 18;
-    ctx.quadraticCurveTo(mx, my, to.x, to.y);
-    ctx.strokeStyle = active ? color : color + "44";
-    ctx.lineWidth = active ? 2 : 1.5;
-    if (active) { ctx.shadowColor = color; ctx.shadowBlur = 6; }
-    ctx.stroke();
-    [from, to].forEach((pt) => {
-      ctx.fillStyle = active ? color : color + "88";
-      ctx.beginPath(); ctx.arc(pt.x, pt.y, 4, 0, Math.PI*2); ctx.fill();
-    });
-    ctx.restore();
-  }
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    const dpr = window.devicePixelRatio || 1;
-    const W = canvas.width / dpr;
-    const H = canvas.height / dpr;
-    const nodes = nodesRef.current;
-    const fw = nodes["fw"];
-    if (!fw) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "#0f172a";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Grid
-    ctx.save();
-    ctx.strokeStyle = "rgba(148,163,184,0.06)"; ctx.lineWidth = 1;
-    for (let x=0; x<W*dpr; x+=20*dpr) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H*dpr); ctx.stroke(); }
-    for (let y=0; y<H*dpr; y+=20*dpr) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W*dpr,y); ctx.stroke(); }
-    ctx.restore();
-
-    // Zone labels
-    const zoneGroups: Record<string, Node[]> = { WAN:[], LAN:[], DMZ:[] };
-    Object.entries(nodes).forEach(([k,n]) => { if (k!=="fw") zoneGroups[n.zone]?.push(n); });
-    Object.entries(zoneGroups).forEach(([zone, ns]) => {
-      if (!ns.length) return;
-      const avgX = ns.reduce((s,n)=>s+n.x,0)/ns.length;
-      const minY = Math.min(...ns.map(n=>n.y)) - 55;
-      ctx.save();
-      ctx.font = "bold 10px monospace"; ctx.textAlign = "center";
-      ctx.fillStyle = ZONE_COLORS[zone] + "99";
-      ctx.fillText("── " + zone + " ──", avgX, minY);
-      ctx.restore();
-    });
-
-    // Active packet nodes for cable highlighting
-    const activeNodes = new Set(packetsRef.current.filter(p=>!p.done).map(p=>p.activeNode));
-
-    // Cables
-    Object.entries(nodes).forEach(([k, n]) => {
-      if (k === "fw") return;
-      const active = activeNodes.has(k) || activeNodes.has("fw");
-      drawCable(ctx, fw, n, ZONE_COLORS[n.zone], active);
-    });
-
-    // Packets
-    packetsRef.current.forEach((p) => {
-      if (!p.done) {
-        ctx.save();
-        ctx.shadowColor = p.color; ctx.shadowBlur = 12;
-        ctx.fillStyle = p.color;
-        ctx.beginPath(); ctx.arc(p.px*dpr, p.py*dpr, 7*dpr, 0, Math.PI*2); ctx.fill();
-        ctx.restore();
-        ctx.save();
-        ctx.font = `bold ${9*dpr}px monospace`; ctx.fillStyle = "#fff"; ctx.textAlign = "center";
-        ctx.fillText(p.svc, p.px*dpr, (p.py-14)*dpr);
-        ctx.restore();
-      } else if (p.fade > 0) {
-        ctx.save();
-        ctx.globalAlpha = Math.min(1, p.fade);
-        ctx.shadowColor = p.color; ctx.shadowBlur = 16;
-        ctx.font = `bold ${20*dpr}px sans-serif`; ctx.fillStyle = p.color; ctx.textAlign = "center";
-        ctx.fillText(p.finalAction === "ACCEPT" ? "✓" : "✕", p.px*dpr, p.py*dpr);
-        ctx.restore();
+    const zones=[...new Set([...endpoints.values()].map(endpoint=>endpoint.zone))];
+    const left=zones.includes("WAN")?["WAN"]:zones.slice(0,1);const right=zones.filter(zone=>!left.includes(zone));
+    const columns=[left,right];const maxRows=Math.max(1,...columns.map(zones=>[...endpoints.values()].filter(endpoint=>zones.includes(endpoint.zone)).length));
+    const height=Math.max(360,maxRows*98+64);
+    const devices:Device[]=[];
+    columns.forEach((zones,column)=>{
+      const entries=[...endpoints.entries()].filter(([,endpoint])=>zones.includes(endpoint.zone)).sort((a,b)=>a[1].zone.localeCompare(b[1].zone));
+      entries.forEach(([id,endpoint],index)=>devices.push({...endpoint,id,x:column===0?150:810,y:height/2+(index-(entries.length-1)/2)*98}));
+    });return{devices,height};
+  },[addresses,traces]);
+  useEffect(()=>{
+    const previous=document.activeElement as HTMLElement|null;const overflow=document.body.style.overflow;document.body.style.overflow="hidden";closeButton.current?.focus();
+    const key=(event:KeyboardEvent)=>{
+      if(event.key==="Escape"){event.preventDefault();onClose();}
+      if(event.key==="Tab"){
+        const nodes=dialog.current?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex="0"]');if(!nodes?.length)return;
+        const first=nodes[0],last=nodes[nodes.length-1];
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
       }
-    });
-
-    // Devices
-    ctx.save(); ctx.scale(dpr, dpr);
-    Object.entries(nodes).forEach(([k, n]) => {
-      const hl = packetsRef.current.some(p => p.activeNode === k && !p.done);
-      drawDevice(ctx, n, hl);
-    });
-    ctx.restore();
-  }, []);
-
-  function addLog(msg: string, color: string) {
-    if (!logRef.current) return;
-    const d = document.createElement("div");
-    d.style.color = color; d.style.padding = "1px 0";
-    d.textContent = "› " + msg;
-    logRef.current.appendChild(d);
-    logRef.current.scrollTop = logRef.current.scrollHeight;
-  }
-
-  function startAnimLoop() {
-    function frame() {
-      let anyActive = false;
-      const nodes = nodesRef.current;
-      const fw = nodes["fw"];
-      packetsRef.current.forEach((p) => {
-        if (p.done) {
-          if (p.fade > 0) { p.fade -= 0.016; anyActive = true; }
-          return;
-        }
-        anyActive = true;
-        if (!p.atFW) {
-          p.t += 0.02;
-          if (p.t >= 1) {
-            p.t = 1; p.atFW = true;
-            p.px = fw.x; p.py = fw.y; p.activeNode = "fw";
-            addLog(p.svc + " → FortiGate: evaluating...", "#f59e0b");
-            setTimeout(() => { p.phase2 = true; }, 500);
-          } else {
-            p.px = lerp(p.fx, fw.x, ease(p.t));
-            p.py = lerp(p.fy, fw.y, ease(p.t));
-            p.activeNode = null;
-          }
-        } else if (p.phase2) {
-          if (p.finalAction === "ACCEPT") {
-            p.t2 += 0.02;
-            if (p.t2 >= 1) {
-              p.done = true; p.fade = 2.5; p.px = p.tx; p.py = p.ty;
-              addLog("✓ ACCEPTED — " + p.svc, "#10b981");
-            } else {
-              p.px = lerp(fw.x, p.tx, ease(p.t2));
-              p.py = lerp(fw.y, p.ty, ease(p.t2));
-              p.activeNode = "fw";
-            }
-          } else {
-            p.t2 += 0.028;
-            p.px = fw.x + Math.sin(p.t2*15)*9*Math.max(0,1-p.t2);
-            p.py = fw.y + Math.cos(p.t2*10)*5*Math.max(0,1-p.t2);
-            p.activeNode = "fw";
-            if (p.t2 >= 1) {
-              p.done = true; p.fade = 2.5; p.px = fw.x; p.py = fw.y;
-              addLog("✕ DENIED — " + p.svc, "#ef4444");
-            }
-          }
-        }
-      });
-      draw();
-      if (anyActive) animRef.current = requestAnimationFrame(frame);
-    }
-    cancelAnimationFrame(animRef.current);
-    animRef.current = requestAnimationFrame(frame);
-  }
-
-  function runSimulation() {
-    cancelAnimationFrame(animRef.current);
-    packetsRef.current = [];
-    if (logRef.current) logRef.current.innerHTML = "";
-    addLog(`Starting simulation — ${traces.length} test packets`, "#94a3b8");
-    const nodes = nodesRef.current;
-
-    traces.forEach((trace, i) => {
-      setTimeout(() => {
-        const pkt = trace.packet;
-        const srcNode = Object.values(nodes).find(n => n.sub === pkt.srcIp) ||
-          Object.values(nodes).find(n => n.zone === pkt.srcIntf && n.type === "cloud") ||
-          nodes["fw"];
-        const dstNode = Object.values(nodes).find(n => n.sub === pkt.dstIp) || nodes["fw"];
-        const color = trace.finalAction === "ACCEPT" ? "#10b981" : "#ef4444";
-        const svc = pkt.protocol + (pkt.port ? `/${pkt.port}` : "") + (pkt.domain ? ` [${pkt.domain}]` : "");
-        addLog(`Pkt ${i+1}: ${pkt.description}`, "#64748b");
-        packetsRef.current.push({
-          svc, color, finalAction: trace.finalAction,
-          fx: srcNode.x, fy: srcNode.y, tx: dstNode.x, ty: dstNode.y,
-          px: srcNode.x, py: srcNode.y,
-          t: 0, atFW: false, phase2: false, t2: 0,
-          done: false, fade: 0, activeNode: null,
-        });
-        startAnimLoop();
-      }, i * 1300);
-    });
-  }
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const dpr = window.devicePixelRatio || 1;
-    function resize() {
-      if (!canvas || !canvas.parentElement) return;
-      const rect = canvas.parentElement!.getBoundingClientRect();
-      const W = rect.width;
-      const H = Math.max(340, W * 0.5);
-      canvas.width = W * dpr; canvas.height = H * dpr;
-      canvas.style.width = W + "px"; canvas.style.height = H + "px";
-      nodesRef.current = buildNodes(W, H);
-      draw();
-    }
-    resize();
-    window.addEventListener("resize", resize);
-    return () => window.removeEventListener("resize", resize);
-  }, [addresses, draw]);
-
-  useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    if (traces.length > 0) {
-      timer = setTimeout(() => runSimulation(), 300);
-    }
-    return () => {
-      clearTimeout(timer);
-      cancelAnimationFrame(animRef.current);
     };
-  }, [traces]);
-
-  return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-5xl overflow-hidden flex flex-col" style={{ maxHeight: "92vh" }}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-700">
-          <div className="flex items-center gap-3">
-            <div className="flex gap-1.5">
-              <div className="w-3 h-3 rounded-full bg-red-500"></div>
-              <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-              <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse"></div>
-            </div>
-            <span className="text-[13px] font-semibold text-gray-200">FLAMES — Network Simulation</span>
-            <span className="text-[10px] text-muted font-mono">FortiGate-6000F (Simulated)</span>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-gray-200 text-xl leading-none px-1 transition-colors">×</button>
-        </div>
-
-        <canvas ref={canvasRef} className="block w-full" />
-
-        <div
-          ref={logRef}
-          className="px-4 py-2 font-mono text-[11px] overflow-y-auto"
-          style={{ minHeight: 72, maxHeight: 100, background: "#020617", color: "rgb(var(--muted))" }}
-        />
-
-        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-700 bg-gray-800">
-          <div className="flex items-center gap-4 text-[11px] text-muted">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>ACCEPT</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500 inline-block"></span>DENY</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block"></span>WAN</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>LAN</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>DMZ</span>
-          </div>
-          <button
-            onClick={runSimulation}
-            className="px-4 py-1.5 bg-forti-red text-white rounded-sm text-[12px] hover:bg-forti-red/90 font-medium"
-          >
-            ▶ Replay
-          </button>
-        </div>
+    document.addEventListener("keydown",key);return()=>{document.body.style.overflow=overflow;document.removeEventListener("keydown",key);previous?.focus();};
+  },[onClose]);
+  useEffect(()=>{
+    const total=traces.length*DURATION;
+    if(reduced){setElapsed(total);return;}
+    let frame=0;const start=performance.now();setElapsed(0);
+    const tick=(now:number)=>{const next=Math.min(total,now-start);setElapsed(next);if(next<total)frame=requestAnimationFrame(tick);};
+    frame=requestAnimationFrame(tick);return()=>cancelAnimationFrame(frame);
+  },[traces,replay,reduced]);
+  const finished=elapsed>=traces.length*DURATION;
+  const index=Math.min(Math.floor(elapsed/DURATION),traces.length-1);const current=traces[index];const phase=(elapsed%DURATION)/DURATION;
+  const source=current&&devices.find(device=>device.id===`${current.packet.srcIntf}:${current.packet.srcIp}`);const destination=current&&devices.find(device=>device.id===`${current.packet.dstIntf}:${current.packet.dstIp}`);
+  const firewall={x:480,y:height/2};
+  let packet=firewall;
+  if(source&&destination){if(phase<0.4){const t=phase/0.4;packet={x:source.x+(firewall.x-source.x)*t,y:source.y+(firewall.y-source.y)*t};}else if(phase>0.6&&current.finalAction!=="DENY"){const t=(phase-0.6)/0.4;packet={x:firewall.x+(destination.x-firewall.x)*t,y:firewall.y+(destination.y-firewall.y)*t};}}
+  const outcome=nat?"text-info":current?.finalAction==="ACCEPT"?"text-success":"text-danger";
+  const accepted=traces.filter(trace=>trace.finalAction==="ACCEPT").length;
+  return createPortal(<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 sm:p-6" onMouseDown={event=>{if(event.target===event.currentTarget)onClose();}}>
+    <div ref={dialog} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId} data-vendor={vendor} className="w-full max-w-[1120px] max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden rounded-lg border border-line-strong bg-surface text-body shadow-2xl">
+      <header className="shrink-0 px-5 sm:px-6 py-4 border-b border-line flex items-start justify-between gap-4">
+        <div className="flex items-start gap-3"><span className="rounded-md bg-sunken text-accent p-2"><Icon name="network" size={20}/></span><div><h2 id={titleId} className="text-lg font-semibold text-ink">Network view</h2><p className="text-xs text-muted mt-1">{paloalto?"PA-220":"FortiGate 60F"} · Simulated packet paths</p></div></div>
+        <button ref={closeButton} onClick={onClose} aria-label="Close network view" className="btn-ghost btn-sm p-2"><Icon name="x" size={18}/></button>
+      </header>
+      <div className="px-5 sm:px-6 py-3 bg-sunken border-b border-line flex flex-wrap items-center justify-between gap-3 shrink-0"><p id={descriptionId} className="text-sm text-muted">{note??"Follow test traffic through your current policies. Grading is separate."}</p><span className="badge bg-surface text-muted">{traces.length} test packets</span></div>
+      <p className="sm:hidden shrink-0 bg-canvas px-5 pt-3 text-xs text-muted">Swipe the diagram sideways to see every endpoint.</p>
+      <div className="overflow-auto min-h-0 bg-canvas" tabIndex={0} aria-label="Network diagram. Scroll to explore on smaller screens.">
+        <svg role="img" aria-label={`Packet endpoints connected through the simulated ${paloalto?"PA-220":"FortiGate 60F"}`} viewBox={`0 0 960 ${height}`} className="block w-full min-w-[840px]" style={{maxHeight:"48dvh",minHeight:300}}>
+          <defs><pattern id={graphId} width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="0.8" className="text-line-strong" fill="currentColor" opacity="0.55"/></pattern></defs><rect width="960" height={height} fill={`url(#${graphId})`}/>
+          {devices.map(device=><path key={device.id} d={`M ${device.x} ${device.y} L ${firewall.x} ${firewall.y}`} fill="none" className={current&&(device.id===source?.id||device.id===destination?.id)?zoneColor(device.zone):"text-line-strong"} stroke="currentColor" strokeWidth={current&&(device.id===source?.id||device.id===destination?.id)?2:1.5} opacity={finished?0.6:1}/>)}
+          {devices.map(device=><g key={device.id} transform={`translate(${device.x-100},${device.y-34})`}><title>{device.name} · {device.ip} · {device.zone}</title><rect width="200" height="68" rx="6" className="text-surface" fill="currentColor"/><rect width="200" height="68" rx="6" className="text-line-strong" stroke="currentColor" fill="none"/><rect x="0" y="0" width="3" height="68" rx="1" className={zoneColor(device.zone)} fill="currentColor"/><text x="14" y="18" className={`${zoneColor(device.zone)} font-semibold`} fill="currentColor" fontSize="10">{device.zone}</text><text x="14" y="36" className="text-ink font-semibold" fill="currentColor" fontSize="12">{device.name.length>24?`${device.name.slice(0,23)}…`:device.name}</text><text x="14" y="53" className="text-muted font-mono" fill="currentColor" fontSize="11">{device.ip}</text></g>)}
+          <g transform={`translate(${firewall.x-76},${firewall.y-43})`}><rect width="152" height="86" rx="8" className="text-surface" fill="currentColor"/><rect width="152" height="86" rx="8" className="text-accent" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M24 17l9 4v7c0 6-9 10-9 10s-9-4-9-10v-7z" className="text-accent" stroke="currentColor" fill="none" strokeWidth="1.7"/><text x="42" y="32" className="text-ink font-semibold" fill="currentColor" fontSize="14">{paloalto?"Palo Alto":"FortiGate"}</text><text x="76" y="54" textAnchor="middle" className="text-muted" fill="currentColor" fontSize="12">{paloalto?"PA-220":"60F"} · Simulated</text><text x="76" y="72" textAnchor="middle" className="text-muted" fill="currentColor" fontSize="10">{nat?"NAT evaluation":"Policy evaluation"}</text></g>
+          {!finished&&current&&<g className={outcome}><circle cx={packet.x} cy={packet.y} r="7" fill="currentColor"/><circle cx={packet.x} cy={packet.y} r="12" fill="currentColor" opacity="0.15"/><rect x={packet.x-44} y={packet.y-31} width="88" height="20" rx="4" className="text-surface" fill="currentColor"/><text x={packet.x} y={packet.y-17} textAnchor="middle" className="font-mono" fill="currentColor" fontSize="11">{current.packet.protocol}/{current.packet.port??"any"}</text></g>}
+        </svg>
       </div>
+      <section className="border-t border-line min-h-0 overflow-auto px-5 sm:px-6 py-4" aria-label="Packet activity">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3"><h3 className="font-semibold text-sm text-ink">Packet activity</h3><p role="status" className="text-xs text-muted">{!traces.length?"No packets to replay":finished?nat?"Replay complete · NAT only; security not evaluated":`Replay complete · ${accepted} accepted · ${traces.length-accepted} denied`:`Packet ${index+1} of ${traces.length} · ${phase<0.4?"Travelling to firewall":phase<0.6?"Evaluating policy":"Applying decision"}`}</p></div>
+        <ol className="divide-y divide-line">{traces.map((trace,i)=>{const complete=finished||elapsed>=(i+1)*DURATION;const active=!finished&&i===index;return <li key={trace.packet.id} className="flex items-start justify-between gap-4 py-2 text-sm"><div className="min-w-0"><p className={active?"text-ink font-medium":"text-body"}>{trace.packet.description}</p><p className="font-mono text-xs text-muted mt-1 break-all">{trace.packet.srcIp} → {trace.packet.dstIp} · {trace.packet.protocol}{trace.packet.port?`/${trace.packet.port}`:""}</p></div><span className={`badge shrink-0 ${complete?nat?"bg-info-soft text-info":trace.finalAction==="ACCEPT"?"bg-success-soft text-success":"bg-danger-soft text-danger":"bg-sunken text-muted"}`}>{complete?trace.finalAction==="TRANSLATED"?"Translated":trace.finalAction==="UNCHANGED"?"Unchanged":trace.finalAction==="ACCEPT"?"Accepted":"Denied":active?"In transit":"Waiting"}</span></li>;})}</ol>
+      </section>
+      <footer className="shrink-0 px-5 sm:px-6 py-3 border-t border-line bg-sunken flex items-center justify-between gap-3"><p className="text-xs text-muted">{nat?"Translation does not grant security permission.":reduced?"Reduced motion: results shown without animation.":"Packet colors indicate the decision made by your rules."}</p><button className="btn-primary btn-sm shrink-0" disabled={!traces.length} onClick={()=>setReplay(value=>value+1)}><Icon name="refresh" size={14}/>Replay packets</button></footer>
     </div>
-  );
+  </div>,document.body);
 }

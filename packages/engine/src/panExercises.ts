@@ -1,3 +1,4 @@
+import { ipMatchesAddressValue } from "./matching";
 /** Simplified teaching models, not a complete PAN-OS dataplane or configuration schema. */
 export interface PanSecurityRule { id: number; name: string; srcZone: string; dstZone: string; apps: string[]; action: "allow" | "deny"; }
 export interface PanZone { id: number; name: string; type: "layer3" | "layer2" | "tap" | "ha" | "management"; profile: "none" | "default" | "strict"; interfaces: string[]; logForwarding: boolean; }
@@ -40,12 +41,16 @@ function exercise<T>(id: string, title: string, description: string, checks: Che
 }
 
 export const PAN_SECURITY_SCENARIOS = [
+
   exercise("pan-sec-01", "Basic Outbound Access", "Allow Trust → Untrust web-browsing, ssl, and dns. Deny all other applications and finish with an explicit any/any/any deny rule.", [...outbound, ...["ssh", "ftp", "smtp", "rdp", "bittorrent", "unknown-tcp"].map(app => traffic("Trust", "Untrust", app, "deny")), denyBottom]),
   exercise("pan-sec-02", "DMZ Web Server Access", "Allow Untrust → DMZ ssl and Trust → DMZ web-browsing + ssl. DMZ must not initiate traffic to Trust.", dmz),
   exercise("pan-sec-03", "App-ID Enforcement", "Explicitly deny bittorrent and rdp across all zones before allow rules. Allow Trust → Untrust web-browsing and ssl.", [...risky, blockBeforeAllow, ...outbound.slice(0, 2)]),
   exercise("pan-sec-04", "Approved Application Whitelist", "Trust → Untrust may use only web-browsing, ssl, dns, and smtp. Deny ssh, ftp, rdp, bittorrent, and unknown-tcp.", [...outbound, traffic("Trust", "Untrust", "smtp", "allow"), ...["ssh", "ftp", "rdp", "bittorrent", "unknown-tcp"].map(app => traffic("Trust", "Untrust", app, "deny"))]),
   exercise("pan-sec-05", "Inter-Zone Trust Hierarchy", "Allow Management → Trust/DMZ ssh; Trust → DMZ web-browsing + ssl; Untrust → DMZ ssl only. Isolate Trust/DMZ from Management, DMZ from Trust, and Untrust from Trust/Management.", hierarchy),
   exercise("pan-sec-final", "Security Policy Final", "Combine the outbound and DMZ exercises with Management SSH access and zone isolation. Explicitly block bittorrent and rdp before allow rules; end with any/any/any deny.", [...outbound, ...hierarchy, ...risky, blockBeforeAllow, denyBottom]),
+  exercise("pan-sec-dns", "DNS-Only Egress", "Trust \u2192 Untrust may use dns only. Deny every other supported application in that direction; deny Untrust \u2192 Trust. Finish with an explicit any/any/any deny rule.", [traffic("Trust", "Untrust", "dns", "allow"), ...apps.filter(app => app !== "dns").map(app => traffic("Trust", "Untrust", app, "deny")), blockDirection("Untrust", "Trust"), denyBottom]),
+  exercise("pan-sec-admin", "Dedicated Administration Zone", "Allow only ssh from Management to Trust and DMZ. Deny other supported applications on those two paths, all traffic from Trust/DMZ/Untrust to Management, and Management \u2192 Untrust. Finish with an explicit catch-all deny.", [...(["Trust", "DMZ"].flatMap(dst => apps.map(app => traffic("Management", dst, app, app === "ssh" ? "allow" : "deny")))), ...["Trust", "DMZ", "Untrust"].map(src => blockDirection(src, "Management")), blockDirection("Management", "Untrust"), denyBottom]),
+  exercise("pan-sec-mail", "DMZ Mail Relay Isolation", "Allow smtp from Untrust to DMZ and from DMZ to Untrust only. Deny all other supported applications on these paths and all DMZ \u2192 Trust/Management traffic. Finish with an explicit catch-all deny.", [...([ ["Untrust", "DMZ"], ["DMZ", "Untrust"] ].flatMap(([src, dst]) => apps.map(app => traffic(src, dst, app, app === "smtp" ? "allow" : "deny")))), blockDirection("DMZ", "Trust"), blockDirection("DMZ", "Management"), denyBottom]),
 ];
 
 const zone = (name: string, type: PanZone["type"], iface: string, profile?: PanZone["profile"], logging = false): Check<PanZone> => ({
@@ -67,14 +72,38 @@ export const PAN_ZONE_SCENARIOS = [
   exercise("pan-zone-final", "Zone Design Final", "Combine Trust, Untrust (strict), DMZ, HA on ethernet1/6 + ethernet1/7, and Management with log forwarding on ethernet1/8. Every interface belongs to only one zone.", [...basicZones, ...haZones, ...managementZones, uniqueZones]),
 ];
 
-const snat: Check<PanNatRule> = { desc: "Coherent outbound source translation", fn: rules => rules.some(rule => rule.type === "source" && rule.srcZone === "Trust" && rule.dstZone === "Untrust" && rule.translated.trim().toLowerCase() === "interface") };
-const dnat = (publicIp: string, internalIp: string, service: string): Check<PanNatRule> => ({ desc: `${service}: coherent destination translation`, fn: rules => rules.some(rule => rule.type === "destination" && rule.srcZone === "Untrust" && rule.dstZone === "Untrust" && rule.dstAddr.trim() === publicIp && [internalIp, `${internalIp}:443`].includes(rule.translated.trim())) });
-const staticNat = (publicIp: string, internalIp: string): Check<PanNatRule> => ({ desc: "Exact static one-to-one mapping", fn: rules => rules.some(rule => rule.type === "static" && rule.dstAddr.trim() === publicIp && rule.translated.trim() === internalIp) });
+/** First matching original-packet rule; translation never grants security permission. */
+export function evaluatePanNat(rules: PanNatRule[], srcZone: string, dstZone: string, destination: string): PanNatRule | null {
+  return rules.find(rule => {
+    if (rule.srcZone !== "any" && rule.srcZone !== srcZone || rule.dstZone !== "any" && rule.dstZone !== dstZone) return false;
+    const address = rule.dstAddr.trim();
+    if (["any", "all"].includes(address.toLowerCase())) return true;
+    try { return address.includes("/") ? ipMatchesAddressValue(destination, "subnet", address) : address === destination; }
+    catch { return false; }
+  }) ?? null;
+}
+const snat: Check<PanNatRule> = { desc: "Coherent outbound source translation", fn: rules => {
+  const rule = evaluatePanNat(rules, "Trust", "Untrust", "198.51.100.10");
+  return !!rule && rule.type === "source" && rule.srcZone === "Trust" && rule.dstZone === "Untrust" && ["any", "all"].includes(rule.dstAddr.trim().toLowerCase()) && rule.translated.trim().toLowerCase() === "interface";
+} };
+const dnat = (publicIp: string, internalIp: string, service: string): Check<PanNatRule> => ({ desc: `${service}: coherent destination translation`, fn: rules => {
+  const rule = evaluatePanNat(rules, "Untrust", "Untrust", publicIp);
+  return !!rule && rule.type === "destination" && rule.srcZone === "Untrust" && rule.dstZone === "Untrust" && rule.dstAddr.trim() === publicIp && [internalIp, `${internalIp}:443`].includes(rule.translated.trim());
+} });
+const staticNat = (publicIp: string, internalIp: string): Check<PanNatRule> => ({ desc: "Effective static one-to-one mapping", fn: rules => rules.some(rule => {
+  if (rule.type !== "static" || rule.dstAddr.trim() !== publicIp || rule.translated.trim() !== internalIp) return false;
+  const sources = rule.srcZone === "any" ? zones : [rule.srcZone];
+  const destinations = rule.dstZone === "any" ? zones : [rule.dstZone];
+  return sources.every(src => destinations.every(dst => {
+    const effective = evaluatePanNat(rules, src, dst, publicIp);
+    return effective?.type === "static" && effective.dstAddr.trim() === publicIp && effective.translated.trim() === internalIp;
+  }));
+}) });
 export const PAN_NAT_SCENARIOS = [
   exercise("pan-nat-01", "Outbound SNAT", "Create a source NAT rule: Trust → Untrust, translated address 'interface'.", [snat]),
   exercise("pan-nat-02", "Web Server DNAT", "Create destination NAT using pre-NAT Untrust → Untrust zones: original destination 203.0.113.10, translated destination 10.0.1.10 in DMZ (or 10.0.1.10:443). Ports are simplified in this lab.", [dnat("203.0.113.10", "10.0.1.10", "Web server")]),
   exercise("pan-nat-03", "Static NAT", "Create a static mapping with original address 203.0.113.20 and translated address 10.0.1.20.", [staticNat("203.0.113.20", "10.0.1.20")]),
-  exercise("pan-nat-final", "NAT Policy Final", "Combine Trust → Untrust source NAT to 'interface', pre-NAT Untrust → Untrust destination NAT 203.0.113.10 → 10.0.1.10 in DMZ, and static NAT 203.0.113.20 → 10.0.1.20.", [snat, dnat("203.0.113.10", "10.0.1.10", "Web server"), staticNat("203.0.113.20", "10.0.1.20")]),
+  exercise("pan-nat-final", "NAT Policy Final", "Combine Trust → Untrust source NAT to 'interface', pre-NAT Untrust → Untrust destination NAT 203.0.113.10 → 10.0.1.10 in DMZ, and static NAT 203.0.113.20 → 10.0.1.20. Put specific static mappings before broader source rules that would otherwise match the same original packet.", [snat, dnat("203.0.113.10", "10.0.1.10", "Web server"), staticNat("203.0.113.20", "10.0.1.20")]),
 ];
 
 export function gradePanExercise(taskId: string, config: unknown) {

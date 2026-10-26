@@ -6,7 +6,7 @@
 2. Open the course overview at `/fortigate` or `/paloalto`.
 3. Choose a module, then a lesson. Curriculum metadata defines lesson order, prerequisites, duration, and final assessments. FortiGate lesson URLs select exercises with `scenario` (plus `track` for interfaces/ports); Palo Alto URLs use `task`.
 4. Read the scenario, configure the simulated device, and check the work. Available knowledge checks provide an additional practice path. Optional tutoring returns AI guidance or labelled offline hints when no provider is available.
-5. Completion updates the course outline and module navigation. Unfinished configuration drafts remain in memory and are not saved across reloads.
+5. Completion updates the course outline and module navigation. Applied simulator configurations autosave per lesson and identity, with saved status, retry, and version/conflict recovery.
 
 Guests can practice by default. `/account` provides registration and sign-in; signed-in users synchronize completion through the API. `AUTH_REQUIRED=true` redirects anonymous training users to sign-in and protects training API routes. `ALLOW_REGISTRATION=false` disables registration. `/classroom` shows all registered students to instructors; this is a shared classroom rather than separate institutional tenants.
 
@@ -51,3 +51,15 @@ Every shared header provides a light/dark toggle. A first visit uses the system 
 ## Authored modules
 
 `/admin` lets authorized instructors/Academy admins create draft modules, lessons, and multiple-choice or short-answer tasks. Publishing adds them to the vendor course outline. Student routes are `/fortigate/lessons/:lessonId` and `/paloalto/lessons/:lessonId`; grading occurs on the API, and completion follows the existing progress flow. Reading-only lessons can be marked as read. Drafts and answer keys are never exposed through the published catalog. See [administration](ADMIN_CONTENT.md).
+
+See [autosave and visual policy authoring](AUTOSAVE_AND_EXERCISE_BUILDER.md) for guest/account/Academy storage, reset behavior, and custom exercise publishing.
+
+Configuration lessons: administrator selects a family, edits starter/reference rows and checks, tests the reference and publishes. The student lesson loads only public starters/check descriptions, resumes its native-family draft, and submits the configuration with the published version for private server grading. Decision traces show the student’s own rows; packet explorers do not grant completion. See [expanded builder](CONFIGURATION_EXERCISE_BUILDER.md) and [packet explanations](PACKET_EXPLANATIONS.md).
+
+## Learning and operations practice
+
+Both course sidebars expose **Learning guide** (`/fortigate/learn`, `/paloalto/learn`). The ten chapters include concept definitions, step-by-step procedures, worked examples, predicted-result tables, accessible flow diagrams, mistakes, and self-check explanations. `?task=<built-in ID>` opens the task’s study plan; **Study this task** links there from native lessons. The 48 study plans and shareable [handbook](LEARNING_HANDBOOK.md) use `packages/frontend/src/course/learning.json`; regenerate Markdown with `npm run docs:learning`. Reading does not grant completion.
+
+Operations Practice adds six FortiGate policy tasks and three Palo Alto security tasks, with existing autosave, grading, topology/packet tools, and progress whitelists. These are separate classroom assignment modules, preserving original policy-assessment prerequisites and existing assignment scopes. The Academy lesson manifest includes the new IDs; update the adapter alongside FLAMES when integrating this version.
+
+The learning guide is hidden from students by default. Admin dashboard controls its shared visibility across both vendors; administrators retain preview access. Course navigation, study links, and direct guide routes use the setting returned with the public catalog. Visible tabs recheck on focus and every 30 seconds. Content migration 3 persists this flag; tasks and completion are independent of guide availability.

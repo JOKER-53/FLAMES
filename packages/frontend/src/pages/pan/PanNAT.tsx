@@ -1,3 +1,8 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
+import { PacketExplorer } from "../../components/configuration/PacketExplorer";
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
 import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
@@ -15,11 +20,14 @@ interface NATRule { id:number; name:string; type:NATType; srcZone:string; dstZon
 
 
 export function PanNAT({ session }: { session: PanSession }) {
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  function showTraceRow(id: string) { setHighlightedRow(id); focusConfigurationRow("nat-row", id); }
   const location = useLocation();
   const [scenIdx, setSceIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenIdx];
-  const [rules, setRules] = useState<NATRule[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const persisted = useSimulatorDraft<NATRule[]>("paloalto", scenario.id, "pan-nat", []);
+  const rules = persisted.value, setRules = persisted.setValue;
+
   const [adding, setAdding] = useState(false);
   const [nr, setNr] = useState<Partial<NATRule>>({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
@@ -30,12 +38,12 @@ export function PanNAT({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setSceIdx(index);
   }, [location.key]);
-  useEffect(() => { setRules([]); setResults(null); }, [scenario.id]);
+  useEffect(() => { setHighlightedRow(null); setResults(null); }, [scenario.id, rules, setResults]);
 
   function addRule() {
     if (!nr.name||!nr.translated) return;
-    setRules(r=>[...r,{ id:nextId, name:nr.name!, type:nr.type!, srcZone:nr.srcZone!, dstZone:nr.dstZone!, dstAddr:nr.dstAddr||"any", translated:nr.translated! }]);
-    setNextId(n=>n+1); setAdding(false); setResults(null);
+    setRules(r=>[...r,{ id:Math.max(0, ...rules.map(item => item.id)) + 1, name:nr.name!, type:nr.type!, srcZone:nr.srcZone!, dstZone:nr.dstZone!, dstAddr:nr.dstAddr||"any", translated:nr.translated! }]);
+     setAdding(false); setResults(null);
     setNr({ name:"", type:"source", srcZone:"Trust", dstZone:"Untrust", dstAddr:"any", translated:"" });
   }
 
@@ -53,11 +61,12 @@ export function PanNAT({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.desc} hint={scenario.hint}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
             path={["Policies", "NAT"]}
-            actions={<button onClick={() => setAdding(!adding)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add rule</button>}
+            actions={<button onClick={() => setAdding(!adding)} className="btn-accent btn-sm"><Icon name="plus" size={14} />Add rule</button>}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
@@ -69,7 +78,7 @@ export function PanNAT({ session }: { session: PanSession }) {
                 <tbody>
                   {rules.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-muted">No NAT rules yet. Use “Add rule” to create one.</td></tr>}
                   {rules.map((r, i) => (
-                    <tr key={r.id} className="border-b border-line hover:bg-sunken/60">
+                    <tr key={r.id} id={`nat-row-${encodeURIComponent(String(r.id))}`} tabIndex={-1} className={`border-b border-line ${highlightedRow===String(r.id)?"bg-info-soft":"hover:bg-sunken/60"}`}>
                       <td className="px-3 py-2 text-muted tabular-nums">{i + 1}</td>
                       <td className="px-3 py-2 font-medium text-ink">{r.name}</td>
                       <td className="px-3 py-2"><span className={`badge ${TYPE_BADGE[r.type]}`}>{r.type}</span></td>
@@ -110,6 +119,7 @@ export function PanNAT({ session }: { session: PanSession }) {
             )}
           </ConsoleFrame>
 
+        <PacketExplorer family="pan-nat" config={rules} onShowRow={showTraceRow}/>
           <CheckYourWork
             onSubmit={grade}
             grading={grading}
@@ -122,6 +132,7 @@ export function PanNAT({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-nat" config={rules}/>
           <Section title="NAT types" bodyClassName="px-5 py-2">
             <dl className="divide-y divide-line">
               {([["source", "Translate the source address of outbound traffic"], ["destination", "Redirect inbound traffic to an internal server"], ["static", "1:1 mapping that works in both directions"]] as [NATType, string][]).map(([type, text]) => (
@@ -137,6 +148,7 @@ export function PanNAT({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

@@ -1,3 +1,6 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { PanSession } from "../../hooks/usePanSession";
@@ -55,8 +58,11 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
     if (index >= 0) { setScenarioIdx(index); setResults(null); }
   }, [requested]);
   const scenario = SCENARIOS[scenarioIdx];
-  const [ports, setPorts] = useState<PPA[]>(INIT_PORTS);
+  const persisted = useSimulatorDraft<PPA[]>("paloalto", scenario.id, "pan-ports", INIT_PORTS);
+  const ports = persisted.value, setPorts = persisted.setValue;
   const [results, setResults] = useState<{desc:string; pass:boolean}[]|null>(null);
+
+  useEffect(() => { setResults(null); }, [ports]);
 
   const passed = results?.filter(r => r.pass).length ?? 0;
   const total = scenario.checks.length;
@@ -76,6 +82,7 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.description}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame path={["Device", "Physical ports"]}>
@@ -90,7 +97,8 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
           />
         </div>
 
-        <aside className="min-w-0">
+        <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="ports" config={ports}/>
           <Section
             title="Zone assignments"
             actions={<button onClick={() => { setPorts(INIT_PORTS); setResults(null); }} className="btn-ghost btn-sm"><Icon name="refresh" size={14} />Reset</button>}
@@ -113,6 +121,7 @@ export function PanPortAssignment({ session }: { session: PanSession }) {
           </Section>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

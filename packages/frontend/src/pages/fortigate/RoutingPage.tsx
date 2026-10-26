@@ -1,4 +1,10 @@
-import { useState } from "react";
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
+import { PacketExplorer } from "../../components/configuration/PacketExplorer";
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
+import { contentId } from "../../utils/id";
+import { useEffect, useState } from "react";
 import { useScenarioSession } from "../../hooks/useScenarioSession";
 import { StaticRoute, evaluateRoutingConfiguration, staticRoutingScenario, type RoutingEvaluationResult } from "@fortisim/engine";
 import { LessonFrame } from "../../components/shell/LessonFrame";
@@ -6,7 +12,10 @@ import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts
 import { Icon } from "../../components/ui/Icon";
 
 export function RoutingPage({ session }: { session: ReturnType<typeof useScenarioSession> }) {
-  const [routes, setRoutes] = useState<StaticRoute[]>([]);
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  function showTraceRow(id: string) { setHighlightedRow(id); focusConfigurationRow("route-row", id); }
+  const persisted = useSimulatorDraft<StaticRoute[]>("fortigate", staticRoutingScenario.id, "routing", []);
+  const routes = persisted.value, setRoutes = persisted.setValue;
   const [newDest, setNewDest] = useState("");
   const [newGw, setNewGw] = useState("");
   const [newIface, setNewIface] = useState("port1");
@@ -15,6 +24,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
   const [error, setError] = useState<string | null>(null);
   
   const scenarioId = staticRoutingScenario.id;
+  useEffect(() => { setHighlightedRow(null); setResults(null); }, [routes]);
 
   function addRoute() {
     const ipv4 = (value: string) => /^\d{1,3}(\.\d{1,3}){3}$/.test(value) && value.split(".").every(octet => Number(octet) <= 255);
@@ -24,7 +34,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
       setError("Enter an IPv4 destination with a /0–/32 prefix and a valid gateway."); return;
     }
     if (!Number.isInteger(distance) || distance < 1 || distance > 255) { setError("Administrative distance must be a whole number from 1 to 255."); return; }
-    setRoutes(prev => [...prev, { id: crypto.randomUUID(), destination: newDest.trim(), gateway: newGw.trim(), interfaceName: newIface, distance }]);
+    setRoutes(prev => [...prev, { id: contentId(), destination: newDest.trim(), gateway: newGw.trim(), interfaceName: newIface, distance }]);
     setResults(null); setError(null);
     setNewDest(""); setNewGw("");
   }
@@ -37,6 +47,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
 
   return (
     <LessonFrame title={staticRoutingScenario.title} brief={staticRoutingScenario.description}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="space-y-6">
         <ConsoleFrame path={["Network", "Static Routes"]}>
           <div className="overflow-x-auto">
@@ -49,7 +60,7 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
               <tbody>
                 {routes.length === 0 && <tr><td colSpan={5} className="px-3 py-8 text-center text-muted">No static routes yet. Add one below.</td></tr>}
                 {routes.map(r => (
-                  <tr key={r.id} className="border-b border-line">
+                  <tr key={r.id} id={`route-row-${encodeURIComponent(r.id)}`} tabIndex={-1} className={`border-b border-line ${highlightedRow===r.id?"bg-info-soft":""}`}>
                     <td className="px-3 py-2 font-mono">{r.destination}</td>
                     <td className="px-3 py-2 font-mono">{r.gateway}</td>
                     <td className="px-3 py-2">{r.interfaceName}</td>
@@ -75,8 +86,11 @@ export function RoutingPage({ session }: { session: ReturnType<typeof useScenari
           </div>
         </ConsoleFrame>
 
+        <TaskTopology vendor="fortigate" family="routing" config={routes}/>
+        <PacketExplorer family="routing" config={routes} onShowRow={showTraceRow}/>
         <CheckYourWork onSubmit={grade} result={results && { passed: results.success, checks: [{ label: results.message, passed: results.success }] }} />
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

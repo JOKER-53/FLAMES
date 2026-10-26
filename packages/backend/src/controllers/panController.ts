@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { getPanFeedback } from "../services/nimPanFeedback";
-import { generatePanKnowledgeCheck } from "../services/nimPanKnowledgeCheck";
+import { generatePanKnowledgeCheck, TASK_CONCEPTS } from "../services/nimPanKnowledgeCheck";
 import { checkAnswer, hideAnswer, shuffleChoices } from "../services/questionStore";
 
 export const panFeedback = async (req: Request, res: Response) => {
@@ -15,6 +15,7 @@ export const panFeedback = async (req: Request, res: Response) => {
 };
 
 export const panKnowledgeCheck = async (req: Request, res: Response) => {
+  if (!Object.prototype.hasOwnProperty.call(TASK_CONCEPTS, req.params.taskId)) { res.status(404).json({ error: "Unknown PAN knowledge-check task." }); return; }
   try {
     const question = await generatePanKnowledgeCheck(req.params.taskId);
     res.json({ ...hideAnswer(shuffleChoices(question)), source: question.source ?? "ai" });

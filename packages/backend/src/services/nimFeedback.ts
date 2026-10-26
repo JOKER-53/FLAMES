@@ -15,5 +15,5 @@ export function getFeedbackForReport(scenarioTitle: string, report: GradingRepor
         : d.webFiltered ? " (blocked by a web filter profile)" : d.matchedPolicyId ? ` (matched policy ${d.matchedPolicyId})` : " (no policy matched, so the implicit deny applied)")
     ),
   ].join("\n");
-  return tutorHint("fortigate-policy", SYSTEM_PROMPT, userContent, failing.map((d) => d.description));
+  return tutorHint("fortigate-policy", SYSTEM_PROMPT, userContent, failing.map((d) => `${d.description}: ${d.studentAction === d.expectedAction ? "logging" : !d.matchedPolicyId ? "no policy matched" : "rule order and packet scope"}`));
 }

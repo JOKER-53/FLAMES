@@ -1,3 +1,8 @@
+import { TaskTopology } from "../../components/policyObjects/TaskTopology";
+import { PacketExplorer } from "../../components/configuration/PacketExplorer";
+import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
+import { useSimulatorDraft } from "../../drafts/useSimulatorDraft";
+import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { LessonFrame } from "../../components/shell/LessonFrame";
 import { CheckYourWork, ConsoleFrame } from "../../components/lesson/LessonParts";
 import { KnowledgeCheckCard } from "../../components/HardQuestionCard";
@@ -38,11 +43,14 @@ interface Rule {
 
 import { PanSession } from "../../hooks/usePanSession";
 export function PanSecurityPolicy({ session }: { session: PanSession }) {
+  const [highlightedRow, setHighlightedRow] = useState<string | null>(null);
+  function showTraceRow(id: string) { setHighlightedRow(id); focusConfigurationRow("security-row", id); }
   const location = useLocation();
   const [scenarioIdx, setScenarioIdx] = useState(() => Math.max(0, SCENARIOS.findIndex(scenario => scenario.id === (location.state?.taskId ?? new URLSearchParams(location.search).get("task")))));
   const scenario = SCENARIOS[scenarioIdx];
-  const [rules, setRules] = useState<Rule[]>([]);
-  const [nextId, setNextId] = useState(1);
+  const persisted = useSimulatorDraft<Rule[]>("paloalto", scenario.id, "pan-security", []);
+  const rules = persisted.value, setRules = persisted.setValue;
+
   const [showNew, setShowNew] = useState(false);
   const [newRule, setNewRule] = useState<Partial<Rule>>({ srcZone:"Trust", dstZone:"Untrust", apps:[], action:"allow", name:"" });
   const { results, setResults, aiFeedback, aiSource, loadingFeedback, grading, gradeError, grade: submitGrade } = usePanGrading(scenario.id, scenario.title, session.markTaskComplete);
@@ -53,12 +61,12 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
     const index = SCENARIOS.findIndex(scenario => scenario.id === id);
     if (index >= 0) setScenarioIdx(index);
   }, [location.key]);
-  useEffect(() => { setRules([]); setResults(null); }, [scenario.id]);
+  useEffect(() => { setHighlightedRow(null); setResults(null); }, [scenario.id, rules, setResults]);
 
   function addRule() {
     if (!newRule.name || !newRule.apps?.length) return;
-    setRules(r => [...r, { id:nextId, name:newRule.name!, srcZone:newRule.srcZone!, dstZone:newRule.dstZone!, apps:newRule.apps!, action:newRule.action! }]);
-    setNextId(n=>n+1);
+    setRules(r => [...r, { id:Math.max(0, ...rules.map(item => item.id)) + 1, name:newRule.name!, srcZone:newRule.srcZone!, dstZone:newRule.dstZone!, apps:newRule.apps!, action:newRule.action! }]);
+
     setNewRule({ srcZone:"Trust", dstZone:"Untrust", apps:[], action:"allow", name:"" });
     setShowNew(false);
     setResults(null);
@@ -82,11 +90,12 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
 
   return (
     <LessonFrame title={scenario.title} brief={scenario.description} hint={scenario.hint}>
+      <DraftWorkspace draft={persisted.controls}>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-6">
           <ConsoleFrame
             path={["Policies", "Security"]}
-            actions={<button onClick={() => setShowNew(!showNew)} className="btn-sm btn bg-accent text-white hover:bg-accent/90"><Icon name="plus" size={14} />Add rule</button>}
+            actions={<button onClick={() => setShowNew(!showNew)} className="btn-accent btn-sm"><Icon name="plus" size={14} />Add rule</button>}
           >
             <div className="overflow-x-auto">
               <table className="w-full text-[12.5px]">
@@ -100,7 +109,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
                     <tr><td colSpan={8} className="px-3 py-8 text-center text-muted">No rules yet. Use “Add rule” to create your first security rule.</td></tr>
                   )}
                   {rules.map((r, i) => (
-                    <tr key={r.id} className="border-b border-line hover:bg-sunken/60">
+                    <tr key={r.id} id={`security-row-${encodeURIComponent(String(r.id))}`} tabIndex={-1} className={`border-b border-line ${highlightedRow===String(r.id)?"bg-info-soft":"hover:bg-sunken/60"}`}>
                       <td className="pl-3 py-2 w-6">
                         <div className="flex flex-col">
                           <button aria-label={`Move ${r.name} up`} onClick={() => moveUp(i)} disabled={i === 0} className="text-faint hover:text-ink disabled:opacity-30"><Icon name="chevronDown" size={13} className="rotate-180" /></button>
@@ -168,6 +177,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
             )}
           </ConsoleFrame>
 
+        <PacketExplorer family="pan-security" config={rules} onShowRow={showTraceRow}/>
           <CheckYourWork
             onSubmit={grade}
             grading={grading}
@@ -180,6 +190,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
         </div>
 
         <aside className="min-w-0 space-y-4">
+          <TaskTopology vendor="paloalto" family="pan-security" config={rules}/>
           <Section title="App-ID reference" bodyClassName="px-5 py-2">
             <ul className="divide-y divide-line">
               {APP_OPTIONS.filter(a => a.id !== "any").map(a => (
@@ -195,6 +206,7 @@ export function PanSecurityPolicy({ session }: { session: PanSession }) {
           </Callout>
         </aside>
       </div>
+    </DraftWorkspace>
     </LessonFrame>
   );
 }

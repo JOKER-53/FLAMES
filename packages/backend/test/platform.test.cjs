@@ -83,7 +83,7 @@ test("classroom access is instructor-only and never returns credentials", async 
   assert.equal((await request("/api/account/classroom", undefined, aliceCookie)).status, 403);
   const result = await request("/api/account/classroom", undefined, instructorCookie);
   assert.equal(result.status, 200);
-  assert.equal(result.body.students.length, 2);
+  assert.equal(result.body.students.length, 0); // No group membership grants this instructor roster access yet.
   assert.match(result.body.provenance, /Student-reported/);
   assert.equal(JSON.stringify(result.body).includes("password"), false);
 });

@@ -2,7 +2,7 @@ import { Router, type RequestHandler } from "express";
 import { PlatformStore } from "./store";
 import { hashPassword, verifyPassword, requestUser, sessionToken, startSession, clearSession } from "./auth";
 
-export function platformRouter(store: PlatformStore) {
+export function platformRouter(store: PlatformStore, visibleStudents: (ownerId: string) => string[] = () => []) {
   const router = Router();
   const attempts = new Map<string, { count: number; until: number }>();
   const limit: RequestHandler = (req, res, next) => {
@@ -18,6 +18,7 @@ export function platformRouter(store: PlatformStore) {
     const entries = keys.map(([key, max]) => ({ key, max, entry: attempts.get(key) ?? { count: 0, until: now + 15 * 60_000 } }));
     if (entries.some(({ max, entry }) => entry.count >= max)) {
       const until = Math.max(...entries.filter(({ max, entry }) => entry.count >= max).map(({ entry }) => entry.until));
+      res.locals.rateLimit="account";
       res.setHeader("Retry-After", String(Math.max(1, Math.ceil((until - now) / 1000))));
       res.status(429).json({ error: "Too many account attempts. Try again in 15 minutes." }); return;
     }
@@ -70,7 +71,7 @@ export function platformRouter(store: PlatformStore) {
     const user = requestUser(req, store);
     if (!user) { res.status(401).json({ error: "Sign in to view your classroom." }); return; }
     if (user.role !== "instructor") { res.status(403).json({ error: "Instructor access required." }); return; }
-    res.json({ students: store.roster(), provenance: "Student-reported completion; not an exam certification." });
+    res.json({ students: store.roster().filter(student => visibleStudents(user.id).includes(student.id)), provenance: "Student-reported completion; not an exam certification." });
   });
   router.use("/progress/:platform", (req, res, next) => {
     if (!["fortigate", "paloalto"].includes(req.params.platform)) { res.status(400).json({ error: "Unknown platform." }); return; }

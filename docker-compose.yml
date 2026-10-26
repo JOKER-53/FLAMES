@@ -1,6 +1,6 @@
 services:
   backend:
-    command: ["npm", "--prefix", "/app", "run", "backend:dev"]
+    command: ["node", "/app/scripts/backend-dev.cjs"]
     build:
       context: .
       dockerfile: packages/backend/Dockerfile
@@ -12,6 +12,7 @@ services:
       FRONTEND_ORIGIN: http://localhost:5173
       DATABASE_PATH: /app/data/fortisim.sqlite
     volumes:
+      - ./scripts/backend-dev.cjs:/app/scripts/backend-dev.cjs:ro
       - ./packages/backend/src:/app/packages/backend/src
       - ./packages/engine/src:/app/packages/engine/src
       - classroom-data:/app/data

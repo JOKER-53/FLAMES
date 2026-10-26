@@ -105,7 +105,7 @@ The content studio supports:
 
 Authored content persists in a separate SQLite content database. In Academy mode, it contains teaching material and answer keys; student identity and saved completion remain in Academy.
 
-The studio authors instructional lessons and question tasks. New firewall simulator behavior and packet-based scenario types still require engine/UI development; a visual simulator exercise builder is proposed in [TODO.md](TODO.md).
+The studio authors instructional lessons, question tasks, and visual FortiGate policy exercises with a checked reference solution. Additional simulator builder families remain future work.
 
 ### Set up your own local administrator
 
@@ -133,7 +133,7 @@ See [administrator guide](docs/ADMIN_CONTENT.md) and [authoring verification](do
 6. Guests use device-local completion; standalone accounts synchronize through SQLite; Academy mode saves through the parent platform.
 7. Administrators manage custom content through `/admin`.
 
-Configuration drafts for the built-in simulated devices are still temporary; persistent lab autosave is planned. Completion is student-reported practice progress, not certified exam evidence.
+Applied configurations across all nine existing simulator families now autosave, with guest/account isolation, server persistence, and Academy-owned draft storage. Completion is student-reported practice progress, not certified exam evidence.
 
 ## 8. Verification
 
@@ -142,9 +142,9 @@ Latest `npm run verify` result:
 | Package | Passing tests |
 | --- | ---: |
 | Engine | 39 |
-| Backend | 45 |
-| Frontend | 23 |
-| **Total** | **107** |
+| Backend | 57 |
+| Frontend | 24 |
+| **Total** | **120** |
 
 Also passed:
 
@@ -161,4 +161,218 @@ Live college authentication, MySQL migration, real multi-user college deployment
 
 ## 9. Next work
 
-Use [TODO.md](TODO.md) as the action plan. The recommended order is college integration acceptance, configuration autosave, and the visual simulator exercise builder, followed by targeted hints, instructor assignments, and content import/export.
+Use [TODO.md](TODO.md) as the action plan. Autosave and the FortiGate visual policy builder are implemented. The next work is college integration acceptance, targeted hints, instructor assignments, and content import/export.
+
+## 10. Simulator autosave and visual policy builder
+
+- Applied configurations now autosave across FortiGate policies, interfaces, ports, and routing, plus Palo Alto security, zones, NAT, interfaces, and ports.
+- Standalone accounts resume through SQLite; guests use per-lesson device storage; Academy keeps drafts in the parent MySQL table through the upgraded adapter.
+- Versioned snapshots, owner checks, revision conflicts, reset tombstones, status/retry controls, and expired-session handling protect configuration ownership and prevent stale overwrites.
+- The admin studio now includes visual FortiGate policy authoring: starter addresses/services/profiles/rules, packet checks, expected actions/logging, and ordered reference policies.
+- Reference validation blocks publication of invalid, over-permissive, or failing exercises. Student APIs omit reference policies and expected outcomes; student grading reports omit expected-action fields.
+- Custom published exercises open in the normal FortiGate console, contribute to progress, and use autosave with scenario-version invalidation.
+- Browser checks passed all nine guest restorations, real saves/resets, cross-context account resume, account isolation, stale-device conflicts, corrupt/blocked storage recovery, retry, expired sessions, custom exercise grading, changed-version reset, and dark/mobile builder layouts.
+- Academy needs the updated router, generated simulator contract, and additive draft-table migration installed before parent-side autosave is available there. No college deployment was changed.
+
+See [the feature guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md) and [verification record](docs/AUTOSAVE_BUILDER_VERIFICATION_2026-10-23.md).
+
+
+## 11. Operations, targeted guidance, assignments and content transfer
+
+- Added `data:backup` / `data:restore`: WAL-aware SQLite snapshots, integrity/foreign-key checks, SHA-256 manifests, private file permissions, isolated restore and overwrite rejection. A snapshot of the actual local Docker data was restored successfully; its private copy is ignored under `.backups/verified-2026-10-23`.
+- Added instructor recovery through `admin:create -- --reset-password`, preserving identity/progress and revoking existing sessions. Production startup refuses the local checking password. The requested checking account remains available in development; permanent credentials must be selected before public use.
+- Added an operator release/rollback runbook. College MySQL backup, production restore/rollback and authenticated deployment acceptance remain operator work, not claimed completed.
+- Added deterministic staged hints across simulator checks for rule ordering, CIDR scope, services, route selection, zones, NAT, logging and management access. These work offline and reset with the report/lesson.
+- Added instructor-owned groups, invitation-based authenticated enrollment, module assignments with deadline/required count snapshots, assigned/started/completed/overdue views, authorized name/status filters and CSV export. The old global roster endpoint now respects group ownership.
+- Group teaching metadata is stored in the FLAMES content database; integrated identities/progress remain in Academy. The supplied Academy adapter now has a validated admin-only classroom progress endpoint. It still needs installation on the college server.
+- Added versioned, admin-only module export, import validation/preview and explicit private-draft import. Every imported module/lesson/question gets new IDs; ordering, keys and policy definitions are retained, while unrelated progress is never transferred. HTML-looking instructions render as text, with no remote asset loading.
+- Replaced the retired local NVIDIA model with `nvidia/nemotron-3.5-lightning-30b-a3b`, verified actual app hints and knowledge questions, and retained labelled offline fallback. Tutor AI now receives vetted concept guidance rather than raw answer-bearing scenario/check text; concrete value/prescription and unsupported NAT guards reject unsuitable responses.
+- Restyled the network view to match FLAMES surfaces, light/dark tokens, typography, buttons and badges. Added a responsive SVG, actual packet endpoints, correct FortiGate 60F branding, keyboard dialog behavior and reduced-motion results; replay remains available.
+
+Guides: [operations and recovery](docs/OPERATIONS_RUNBOOK.md), [classrooms/content transfer/hints](docs/CLASSROOM_AND_CONTENT_TRANSFER.md).
+
+Verification: 131 automated checks (39 engine, 68 backend, 24 frontend) and production frontend build and final verification passed. Real local browser checks covered group creation/enrollment, assignment start/completion, CSV download, content preview/import/export/publication, escaped script text, staged hints, and light/dark/mobile network playback, Escape and focus restoration. Temporary browser content, groups and student accounts were removed. No new commit/push or college deployment is implied.
+
+## 12. Dependency remediation — 2026-10-24
+
+Patched the Express body-parser dependency and Vitest packages, upgraded React Router to 7.18.4, and pinned the shared PostCSS selector parser to a patched release through a direct tooling dependency/override. `npm audit` reports zero vulnerabilities. `npm run verify` passed (131 tests plus frontend production build). Advisory references: [React Router](https://github.com/advisories/GHSA-wrjc-x8rr-h8h6), [selector parser](https://github.com/advisories/GHSA-rj75-hqrm-r3gf).
+
+## 13. AI question fallback fix — 2026-10-24
+
+Both vendors now validate question text, answer bounds, choice types/uniqueness and length inside the generation fallback boundary. Previously a malformed successful provider response could escape generation and fail at answer hiding, producing an error instead of a bank question. Shared validation keeps the public endpoint and generator consistent. Regression fixtures cover out-of-range answer indexes, duplicate/null choices and empty/oversized questions; the two focused recovery tests passed.
+
+## 14. Content consistency fix — 2026-10-24
+
+Content mutations now begin an immediate SQLite transaction before reading revisions, identity collisions or module limits. This prevents separate processes from passing stale checks before writing. The public catalog checks SQLite's data version so another connection's publication/unpublication is visible without a restart. Two focused multi-connection regressions passed, including stale save/publish/unpublish/delete rejection and private-draft visibility.
+
+## 15. Preserve assignment credit after publication changes — 2026-10-24
+
+Assignment reports now read historical completion markers, including withdrawn custom lessons, while normal course catalogs/totals still filter to current published lessons. Previously unpublishing a module could change an already completed assignment back to incomplete/overdue. The Academy adapter's owned progress read supports `includeArchived=true`, and its admin report retains historical custom IDs. Nineteen focused classroom/adapter checks passed. Install the updated parent adapter before integrated reports use this contract.
+
+## 16. Strict API and exercise schema validation — 2026-10-24
+
+Firewall/interface/port enum fields now require actual strings instead of accepting arrays through string coercion. Policy exercises require explicit object/profile/policy lists, bounded packet IDs and integer ports in range, including draft and ICMP packets. This prevents malformed persisted drafts from reaching editors and evaluators. Two focused regressions cover the enum families, missing lists, and invalid packet ports.
+
+## 17. Accurate completion messaging — 2026-10-24
+
+Passing a grader no longer unconditionally displays “your progress has been saved.” That claim was shown even when account synchronization failed. The result now reports passed checks, while the existing sync warning reports persistence failures separately. The frontend render regression passed.
+
+## 18. Routing failure containment — 2026-10-24
+
+The routing evaluator validates nested OSPF and SD-WAN lists, object fields and bounds before evaluating them. Previously null/missing nested lists could throw outside the static-route catch and crash the caller. The new malformed-input regression passed with the engine suite.
+
+## 19. Effective NAT grading — 2026-10-24
+
+Outbound source and inbound destination NAT checks now evaluate the first matching original-packet rule instead of accepting any later correct-looking row. Source translation also requires the intended unrestricted destination scope. Regressions reject shadowed translations and an overly narrow source rule while preserving satisfiable exercises. The 41-test engine suite passed. This remains the documented simplified NAT model, not a full PAN-OS dataplane.
+
+## 20. AI provider credential isolation — 2026-10-24
+
+The LLM client now selects credentials, URL and model from one provider namespace rather than mixing OPENAI/LLM/NVIDIA values. Mixed environment settings previously could send one provider's key to another configured endpoint. Provider redirects are rejected, malformed credential-bearing URLs are rejected, and echoed keys are redacted from bounded error text. Three focused recovery tests passed, including namespace selection and key redaction. The environment example documents precedence.
+
+## 21. Catalog refresh ordering — 2026-10-24
+
+A generation guard now prevents a slower initial catalog request from overwriting a newer publication refresh, or setting errors/loading state after a newer request or unmount. An intercepted browser regression holds the initial response, publishes a module, then releases the stale response and verifies the new module remains in the course. The browser workflow suite passed.
+
+## 22. Draft row identity validation — 2026-10-24
+
+Saved simulator configurations now reject duplicate/empty row identities (including interface names and physical port IDs) before restoration. Duplicate IDs previously could make editing/deleting one row affect several rows or produce duplicate React keys. Optional filter references must also have the expected string shape, and unknown simulator kinds explicitly fail validation. The Academy contract was regenerated. The 42-test engine suite passed.
+
+## 23. Unknown knowledge task lookup — 2026-10-24
+
+Knowledge-check metadata and fallback lookups now require own properties. Prototype names such as `constructor`, `toString` and `__proto__` previously reached the generation/error path instead of being rejected as unknown tasks. Both vendor endpoints return 404 before generation. A focused route regression covers unknown and prototype-named IDs.
+
+## 24. Browser regressions in CI — 2026-10-24
+
+Added an isolated Playwright test server with temporary databases and no AI credentials. Five workflows cover instructor publication, student registration/reading completion and cross-device isolation, theme persistence, mobile/reduced-motion keyboard dialog behavior, guest autosave/account separation, stale catalog responses, and failed completion synchronization. All five passed locally using Chromium; GitHub Actions now installs Chromium and runs the suite. Browser artifacts are ignored. Both local production images built successfully. AWS deployment is pending; the unavailable college deployment was not modified.
+
+## 25. Private build-context exclusions — 2026-10-24
+
+Docker build contexts now exclude whole operational backup/release directories and browser recordings, in addition to existing environment/database exclusions. This avoids transferring private auxiliary artifacts or recordings into the builder context. Runtime data and secrets remain outside Git and production images.
+
+## 26. Static NAT shadowing correction — 2026-10-24
+
+Static mappings now also must be effective for every source/destination zone pair in their configured scope. A later correct mapping no longer passes when an earlier broad or partially overlapping rule changes that traffic. The final exercise instructions explain the required ordering, and the reference fixture puts specific static mappings before broad source translation. A regression covers complete/partial shadowing and a satisfiable final configuration; all 43 engine tests passed.
+
+## 27. Academy identity validation — 2026-10-24
+
+Administrative access now requires a valid upstream identity with a nonempty bounded username and a positive safe numeric ID or bounded identifier string. Empty IDs, non-finite/negative numeric IDs and malformed types previously passed the loose type-only check. Invalid profiles fail with 502 before administrative routes, while unknown roles remain least-privilege students. The integration regression suite covers a malformed admin profile and valid role normalization.
+
+## 28. Final audit verification — 2026-10-24
+
+The [code audit report](docs/CODE_AUDIT_2026-10-24.md) records the reproduced failures and individual fix commits. Final verification: 146 unit/API/render tests, five isolated Chromium workflows, zero npm audit findings, production image builds, isolated read-only production startup/health/auth checks, valid standalone/Academy Compose configuration, and clean diff checks. College/AWS deployment and unchecked new features remain explicitly pending in TODO.md.
+
+## 29. Lesson header layout — 2026-10-24
+
+Combined lesson title, metadata and scenario into one compact themed header, changed healthy autosave status to a slim toolbar, and slightly widened lesson workspaces. Warning/retry states remain prominent. The frontend production build and five browser workflows passed; desktop light/dark and mobile screenshots were captured and the mobile page has no horizontal overflow.
+
+## 30. Expanded configuration authoring — 2026-10-24
+
+Added visual builders and student consoles for FortiGate interfaces/static routing and Palo Alto security/NAT/zones. Definitions are versioned and private; validation/reference testing gates publication, expected values stay out of public serializers, grading is bound to the published version, and native account/Academy/guest autosave is reused. Updated module transfer/catalog metadata and the supplied Academy draft adapter. All five author/publish/student solve/resume/wrong-answer browser flows passed; server regressions cover privacy, version/vendor isolation, invalid references and effective policy/route/NAT behavior. See [the builder guide](docs/CONFIGURATION_EXERCISE_BUILDER.md).
+
+## 31. Recover development API after shared-engine changes — 2026-10-24
+
+The Docker API had stopped compiling after new engine exports were added while its shared declarations remained stale. Rebuilt the engine and restored the real port-5173 settings endpoint. Development now watches engine/backend sources, builds both before swapping API processes, keeps the previous API available if compilation fails, and retries after a source fix. Compose mounts the supervisor directly so an existing development image uses it. A supervisor integration test covers rebuild, failed-build availability, recovery and queued edits. Real FortiGate/Palo Alto overview pages and settings endpoint were verified after restart.
+
+## 32. Readable account recovery after proxy failures — 2026-10-24
+
+Empty/non-JSON proxy errors are normalized to readable API errors; account JSON decoding also handles malformed successful responses without exposing parser diagnostics. Account progress has a Retry action and clears stale errors after a successful reload. Three HTTP regressions and a browser outage/retry workflow passed. The real port-5173 checking account displayed both course progress bars without an alert; its temporary verification session was logged out.
+
+## 33. Decision explanations and row highlighting — 2026-10-24
+
+Added expected-value-free route/PAN security/PAN NAT packet explorers, shared with configuration grading, and detailed authored check explanations. The FortiGate policy panel now shows disabled rules, interface/address/service criteria and actual filter decisions with clear routing/NAT/TLS limits. Row links highlight/focus the responsible policy, route or custom configuration row; configuration edits clear stale results and reduced-motion scrolling is respected. New engine and browser regressions verify effective decisions, privacy, all-five-family highlighting and stale clearing. See [packet explanations](docs/PACKET_EXPLANATIONS.md).
+
+## 34. Learning update verification — 2026-10-24
+
+Final checks passed: 162 engine/API/frontend tests, nine isolated browser workflows, frontend production build, both production image builds, read-only production startup/health/auth smoke checks, development/standalone/Academy Compose configuration, clean diff checks, and zero npm audit findings. The real port-5173 settings endpoint and both course overviews were verified, plus checking-account progress after recovery. Screenshots of the new header and representative studio/student/mobile views were reviewed. AWS/remote Academy deployment remains pending; the supplied parent adapter must be updated before integrated use of new authored families.
+
+## 35. Palo Alto network replay
+
+- Added Network view to native and authored Palo Alto Security and NAT packet explorers using the existing FLAMES themed dialog.
+- Security replays the current allow/deny decision. NAT shows translated/unchanged outcomes without implying a security decision; unspecified endpoints are labelled illustrative.
+- Preserved FortiGate replay, keyboard dismissal, focus restoration and reduced-motion support.
+- Verified frontend production build and three targeted browser workflows covering FortiGate trace behavior, translated NAT, and Palo Alto security/NAT dialog behavior.
+
+## 36. FortiGate knowledge check placement
+
+Moved the built-in firewall policy knowledge check from the topology sidebar into the main lesson column, directly after Test your policy and before Check your work. Custom policy exercises retain their existing behavior. Verified frontend type checking and production build.
+
+## 37. Policy editor opens on demand
+
+FortiGate policy lessons initially show the policy table without the editor. Create New opens a fresh form; Edit opens the selected policy. Saving or cancelling closes the form, and changing lessons clears the editor. Updated the empty-table instruction to point to Create New above. Frontend production build and the browser create/cancel/add/edit/save/trace workflow passed.
+
+## 38. Sidebar topology fits multiple servers
+
+Replaced the unbounded endpoint row with a wrapping two-column layout inside the topology card. Devices now display their address-object names and readable wrapping IP labels. Verified production build and a browser layout check confirming all five multi-DMZ endpoints remain within the card at desktop and mobile widths.
+
+## 39. Topology coverage for every simulator task
+
+- Audited all 39 built-in task routes: 22 FortiGate and 17 Palo Alto, including assessments.
+- Added topology panels for FortiGate routing/port assignment and every Palo Alto task family; retained the existing FortiGate interface and policy diagrams.
+- Added the shared configuration topology to all five authored configuration families; authored policy exercises already use the policy diagram.
+- Panels reflect current student configuration, update on edits and show an explicit empty state. NAT never implies security permission; physical cabling is not inferred.
+- Replaced FortiGate policy IP-prefix zone guesses with public test-packet evidence, labelling unspecified or multi-zone address objects explicitly.
+- Made the existing interface topology wrap on narrow viewports and documented coverage by family.
+- Verified frontend type checking/production build and all 51 browser workflows. Curriculum-driven coverage checks every built-in task at desktop and mobile widths; authored-family and live rule-add/delete workflows also passed.
+
+## 40. Less crowded lesson introduction
+
+Replaced the stacked, bordered title/scenario header with a plain lesson heading, one metadata row, and a separate scenario block with a restrained vendor accent. Removed repeated module context already available in the breadcrumb and constrained paragraph reading width. Scenario hints and completion metadata remain available. Shared section actions now wrap instead of squeezing text and overflowing on narrow screens.
+
+Verified frontend production build and two browser workflows covering both vendors, light/dark themes, desktop/mobile layout, hint expansion and policy editing/tracing. Reviewed generated desktop and mobile screenshots.
+
+## 41. Wider course and module pages
+
+Removed the 1280px cap from course overview and module-list pages so they use the content area beside the navigation. Refined module headings to match the lesson hierarchy and separated lesson rows with more padding and vertical space. Progress, Start/Review links and assessment locks retain their existing behavior.
+
+Verified production build, course/module content width on 1920px screens, mobile containment, both vendors, and the shared lesson-header workflow. Reviewed desktop light/dark screenshots.
+
+## 42. Desktop lesson fit at normal zoom
+
+Removed the remaining 1440px lesson-width cap so simulator pages use the space beside the sidebar at normal browser zoom. Reduced title/scenario spacing and scenario line height while retaining readable text, responsive wrapping and standard browser zoom behavior. Verified production build and three browser workflows, including both vendors in light/dark themes at 1920px, 1440px, 1366px and mobile widths. Reviewed the normal-scale desktop screenshot.
+
+## 43. Compact lesson header and browser coverage
+
+- Put title and lesson metadata on one wrapping row, and changed the tall scenario card into a compact instruction strip. Full instructions and hints remain available.
+- Fixed the desktop sidebar brand row shrinking when navigation needs space, and made the firewall policy table horizontally scrollable rather than clipped on narrow screens.
+- Added desktop header-height assertions, configurable Firefox workflow execution, and a Firefox CI run alongside Chromium.
+- Updated TODO.md with prioritized non-deployment work: accessibility, 3D performance, operational diagnostics and instructor editing polish. Standalone self-service account recovery and advanced assessment/CLI features remain conditional enhancements.
+
+Verification: frontend production build passed; all 53 browser workflows passed with the local Brave/Chromium executable and all 53 passed in Playwright Firefox. Reviewed Firefox and Chromium desktop screenshots. No Firefox-specific layout failure was reproduced by this coverage; actual-device WebGL/keyboard/assistive-technology acceptance remains separate.
+
+## 44. Operational diagnostics and migrations
+
+Added server-generated request IDs, structured redacted failure/rate-limit logging, protected process counters/schema diagnostics, and transactional checksummed migrations for all SQLite components. Baseline adoption retains existing data; checksum mismatch, future schema and partial failures are rejected safely. Added upgrade/rollback documentation. Backend build and all 90 backend tests passed, including migration and logging regressions. Host log collection and deployment acceptance remain operator tasks.
+
+## 45. Search, duplication and revision comparison
+
+Added module/lesson search and vendor filtering, safe module/lesson duplication with new identities, and administrator-only revision snapshots/comparison against the current editor. History retains the latest 50 versions and never appears in student APIs; copies remain private and never inherit progress. Added content migration 2 with legacy baseline adoption. Backend build and 92 tests, frontend unit tests/build, and the instructor search/duplicate/compare browser workflow passed.
+
+## 46. Accessibility foundations and regressions
+
+Added skip-to-main links, mobile modal focus trapping/Escape/background inertness/focus return, keyboard-selectable policy/address/service rows, named legacy form/reorder controls, and contrast-correct theme text, badges and buttons. Fixed reference-page dark styling and App-ID responsive layout. Added axe checks across representative pages and expanded forms in both themes, plus keyboard focus and policy interaction regressions. Frontend production build and four targeted browser workflows passed. Documented automated coverage and actual assistive-technology acceptance separately.
+
+## 47. Faster hardware loading and rendering
+
+Added a reproducible optimized FortiGate default (391,080 bytes versus 6,909,704) that preserves every geometry buffer and the original asset; reduced its opaque texture decode footprint from ~75 MB to ~23 MB. Added PA-220 gzip transport (1,943,373 versus 7,117,632 bytes), content-hashed URLs, progress/retry/context-loss UI, bounded shared model-buffer caching, deferred parser loading, keyboard component inspection, and visible/on-demand 30fps rendering with reduced-motion support. Fixed sprite/texture cleanup and hardware dark-theme contrast. Build helper and negotiated gzip are wired into Vite and both production configurations.
+
+Frontend tests cover geometry preservation, model byte reduction, shared/failed/bounded downloads and render suspension/cleanup. Software-WebGL workflows verified both models, retry, cache reuse and idle behavior; no-WebGL keyboard/reference fallback passed contrast scans in both themes. Original models remain available unchanged. The remaining Three.js lazy core chunk is documented rather than hidden by a warning-threshold change.
+
+## 48. Integrated four-priority verification
+
+All four requested non-deployment items are implemented in separate commits. Final checks: 46 engine + 93 backend + 34 frontend tests passed; Chromium passed 61 browser workflows; Firefox passed 59 with two intentional real-WebGL skips (those model-render checks passed in Chromium software WebGL). Firefox still ran hardware fallback/keyboard/contrast checks. npm audit reported zero findings. Production images built and isolated read-only containers passed health/auth/migration, SPA and negotiated gzip-model checks with no host ports published.
+
+Verified legacy content migration preserves publication/private answers and does not invent older history. Corrected development generation to use an ignored private cache while public assets remain read-only, with atomic writes; five targeted hardware/studio workflows passed after that correction. Rebuilt/restarted the local development app and verified health plus protected diagnostics reporting platform v1, classroom v1 and content v1/v2. Existing volumes/accounts were retained; the isolated checking-account session was logged out afterwards. AWS, remote Academy acceptance, actual-device/assistive-technology sign-off and publishing remain separate.
+
+## 49. Operations practice and complete learning material
+
+Added six FortiGate operations labs (approved DNS, restricted server administration, quarantine ordering, monitoring collection, approved time service, and partner CIDR access) and three Palo Alto security labs (DNS-only egress, dedicated administration, and isolated mail relay). The native catalog now has 28 FortiGate and 20 Palo Alto tasks. New IDs support native drafts, progress storage, the Academy manifest, offline knowledge checks, and separate Operations Practice classroom assignments. Existing default tasks, original policy assignment scopes, and assessment prerequisite sets are retained.
+
+Added a lazy-loaded Learning guide in both course sidebars and Study this task links in native lessons. Ten chapters cover every built-in task with procedures, worked examples, 30 predicted-result cases, readable flow diagrams, mistakes, troubleshooting, and self-check explanations. Task search, mobile chapter selection, responsive tables, and light/dark accessibility are included. The same source generates the roughly 11,300-word [Markdown handbook](docs/LEARNING_HANDBOOK.md), with Mermaid flowcharts, using `npm run docs:learning`. Material distinguishes simulator behavior from real appliance session handling, NAT, and management/HA configuration; reading does not grant completion. Instructor-authored courses can supply additional material.
+
+Validation: `npm run verify` passed 56 engine, 95 backend, and 37 frontend tests. Final production frontend build passed. Full browser regression suites passed 74 Chromium workflows and 72 Firefox workflows (two real-render GPU cases intentionally skipped on Firefox). Coverage includes all 48 task topologies at desktop/mobile widths, guide navigation/search, light/dark accessibility, new private scenario responses and offline questions, classroom module boundaries, grading restrictions, and retained native defaults. The actual local new-scenario API returned HTTP 200. AWS deployment, remote Academy adapter acceptance, and real-device sign-off remain separate.
+
+## 50. Administrator control of student learning-guide visibility
+
+Added a Student learning guide panel to the admin dashboard with Show learning guide / Hide learning guide controls and administrator preview links for both vendors. The shared setting defaults to hidden and persists in content migration 3. Existing content, revisions, tasks, and progress are preserved. Only existing content administrators can read/change the protected setting. The student catalog supplies the visibility flag; student sidebar links, lesson study links, and direct in-app guide routes honor it. Administrators retain preview access. Visible tabs refresh on focus and every 30 seconds; initial settings failures leave student visibility closed.
+
+Validation: `npm run verify` passed 56 engine, 97 backend, and 37 frontend tests, plus the production frontend build. Eight targeted Chromium checks (including light/dark administrator accessibility) and five Firefox guide/visibility checks passed. Regression coverage verifies default-hidden behavior, strict boolean validation, persistence across database reopen, anonymous/student write rejection, both vendors, hidden direct URLs and study links, retained administrator preview, reload persistence, and an already-open student guide closing after refresh. The actual local catalog reports `learningGuideVisible: false`. Updated administrator instructions, application flow, migration notes, and generated handbook.

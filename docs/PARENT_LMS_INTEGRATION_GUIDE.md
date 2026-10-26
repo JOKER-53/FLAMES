@@ -24,7 +24,7 @@ In Academy mode, FLAMES writes no account/progress database file and no browser 
 
 The reviewable files are in [`integrations/academy`](../integrations/academy/README.md). They are supplied for installation; the college server has not been modified.
 
-1. Copy `fortisim.routes.mjs` and `lesson-manifest.mjs` into Academy's `backend/src/routes/`.
+1. Copy `fortisim.routes.mjs`, `simulator-contract.mjs`, and `lesson-manifest.mjs` into Academy's `backend/src/routes/`.
 2. Apply `schema.sql` to Academy's existing MySQL database using its normal migration procedure. It creates `fortisim_progress` with a foreign key to Academy `users`; it does not create a second user table.
 3. In Academy `backend/src/app.js`, add imports:
 
@@ -123,3 +123,11 @@ Automated API/adapter/bridge tests use a mock Academy and injected database inte
 ## Content administrators and custom lessons
 
 Verified Academy users with the `admin` role can open the FLAMES `/admin` page inside the lab. Expose the wrapper in an authenticated admin route if needed. Authored modules and answer keys persist in FLAMES content storage; student identity and completion remain in Academy. Set `FLAMES_CATALOG_URL` in the Academy backend to the reachable FLAMES `/api/content/catalog` endpoint so the updated adapter recognizes newly published lessons and updates totals. See [content administration](ADMIN_CONTENT.md).
+
+## Simulator configuration drafts
+
+Academy mode also stores unfinished simulator configurations in the parent `fortisim_simulator_drafts` table. Apply the additive schema update and copy the generated `simulator-contract.mjs` with the updated router. Versioned writes and resets reject stale revisions and mismatched owners. Custom FortiGate policy drafts use the published catalog version; configure `FLAMES_CATALOG_URL`. See [autosave and builder upgrade](AUTOSAVE_AND_EXERCISE_BUILDER.md).
+
+## Classroom assignment adapter update
+
+The updated adapter adds admin-only `POST /api/integrations/fortisim/classroom/progress` for validated batches of up to 500 student IDs. Install the updated router before integrated instructor reports are used. FLAMES stores group/assignment teaching metadata and parent ID references in its content database; account identity, completion and simulator drafts remain in Academy. Group ownership is checked by FLAMES before requesting parent results. No Academy UI/schema change for assignments is installed automatically. Back up both systems and preserve parent IDs during restore.

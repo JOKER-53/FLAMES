@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { gradeScenario, gradeWithFeedback } from "../controllers/submissionController";
-
-export const submissionsRouter = Router();
-
-submissionsRouter.post("/:scenarioId/grade", gradeScenario);
-submissionsRouter.post("/:scenarioId/feedback", gradeWithFeedback);
+import type { Scenario } from "@fortisim/engine";
+import { submissionHandlers } from "../controllers/submissionController";
+export function createSubmissionsRouter(resolve: (id: string) => Scenario | undefined) {
+  const router = Router(); const { gradeScenario, gradeWithFeedback } = submissionHandlers(resolve);
+  router.post("/:scenarioId/grade", gradeScenario); router.post("/:scenarioId/feedback", gradeWithFeedback); return router;
+}

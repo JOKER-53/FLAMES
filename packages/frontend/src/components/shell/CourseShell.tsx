@@ -1,10 +1,12 @@
+import { useLearningAccess } from "../../course/useLearningAccess";
+import { useDialogFocus } from "../../hooks/useDialogFocus";
 import { ThemeToggle } from "../ThemeToggle";
 // ============================================================================
 // Learning-platform frame shared by both vendors: course outline on the left,
 // breadcrumb and account on top, lesson content in the middle. Lesson
 // workspaces inside keep their vendor-console styling.
 // ============================================================================
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useCallback, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Icon } from "../ui/Icon";
 import { ProgressBar, StatusIcon } from "../ui/primitives";
@@ -50,13 +52,13 @@ export function AccountMenu() {
 
 function AccountActions() {
   const { user, integration } = useAccount();
-  if (integration?.mode === "academy") return <div className="flex items-center gap-2">{user?.canManageContent && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}<span className="hidden md:block text-sm text-muted">{user?.name || "Academy lab"}</span><a className="btn-secondary btn-sm" href={integration.parentUrl ?? "/"} target="_top">Back to Academy</a></div>;
+  if (integration?.mode === "academy") return <div className="flex items-center gap-2">{user && <Link to="/classroom" className="btn-ghost btn-sm">{user.role === "instructor" ? "Classroom" : "Assignments"}</Link>}{user?.canManageContent && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}<span className="hidden md:block text-sm text-muted">{user?.name || "Academy lab"}</span><a className="btn-secondary btn-sm" href={integration.parentUrl ?? "/"} target="_top">Back to Academy</a></div>;
   if (!user) return <Link to="/account" className="btn-secondary btn-sm"><span className="sm:hidden">Sign in</span><span className="hidden sm:inline">Sign in to save progress</span></Link>;
   const initials = user.name.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
   return (
     <div className="flex items-center gap-2">
       {user.role === "instructor" && <Link to="/admin" className="btn-ghost btn-sm">Admin</Link>}
-      {user.role === "instructor" && <Link to="/classroom" aria-label="Classroom" className="btn-ghost btn-sm"><Icon name="users" size={15} /><span className="hidden sm:inline">Classroom</span></Link>}
+      <Link to="/classroom" aria-label={user.role === "instructor" ? "Classroom" : "Assignments"} className="btn-ghost btn-sm"><Icon name="users" size={15} /><span className="hidden sm:inline">{user.role === "instructor" ? "Classroom" : "Assignments"}</span></Link>
       <Link to="/account" className="flex items-center gap-2 rounded-md px-1.5 py-1 hover:bg-sunken" title={`Signed in as ${user.email}`}>
         <span className="grid place-items-center w-7 h-7 rounded-full bg-sunken text-2xs font-semibold text-ink">{initials}</span>
         <span className="hidden md:block text-sm font-medium text-ink max-w-[140px] truncate">{user.name}</span>
@@ -66,6 +68,7 @@ function AccountActions() {
 }
 
 function Sidebar({ course, done, current, onNavigate }: { course: Course; done: Set<string>; current: { module: Module; lesson: Lesson } | null; onNavigate: () => void }) {
+  const { canView: canViewLearning } = useLearningAccess();
   const location = useLocation();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const progress = courseProgress(course, done);
@@ -130,7 +133,7 @@ function Sidebar({ course, done, current, onNavigate }: { course: Course; done: 
         })}
 
         <div className="eyebrow px-2.5 mt-5 mb-1.5">Reference</div>
-        {course.reference.map(item => (
+        {course.reference.filter(item => !item.path.endsWith("/learn") || canViewLearning).map(item => (
           <NavLink key={item.path} to={item.path} className={({ isActive }) => `flex items-center gap-2.5 px-2.5 h-9 rounded-md text-sm ${isActive ? "bg-sunken text-ink font-medium" : "text-body hover:bg-sunken hover:text-ink"}`}>
             <Icon name={item.icon} size={16} />{item.label}
           </NavLink>
@@ -148,6 +151,9 @@ function Sidebar({ course, done, current, onNavigate }: { course: Course; done: 
 export function CourseShell({ course, completed, children }: { course: Course; completed: Set<string>; children: ReactNode }) {
   const location = useLocation();
   const [drawer, setDrawer] = useState(false);
+  const drawerRef=useRef<HTMLElement>(null);
+  const closeDrawer=useCallback(()=>setDrawer(false),[]);
+  useDialogFocus(drawer,drawerRef,closeDrawer);
   const current = lessonForLocation(course, location.pathname, location.search);
   const moduleFromPath = course.modules.find(m => location.pathname === `${course.base}/modules/${m.id}`);
   const reference = course.reference.find(r => r.path === location.pathname);
@@ -163,16 +169,17 @@ export function CourseShell({ course, completed, children }: { course: Course; c
 
   return (
     <CourseContext.Provider value={{ course, completed }}>
+    <a href="#main-content" className="skip-link">Skip to content</a>
     <div data-vendor={course.vendor} className="flex h-screen bg-canvas text-base">
       <aside className="hidden lg:flex w-[272px] shrink-0 flex-col bg-surface border-r border-line">
-        <div className="h-14 flex items-center px-4 border-b border-line"><BrandMark /></div>
+        <div className="h-14 shrink-0 flex items-center px-4 border-b border-line"><BrandMark /></div>
         <Sidebar course={course} done={completed} current={current} onNavigate={() => undefined} />
       </aside>
 
       {drawer && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="absolute inset-0 bg-ink/30" onClick={() => setDrawer(false)} />
-          <aside className="relative w-[300px] max-w-[85vw] flex flex-col bg-surface shadow-raised">
+          <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label="Course navigation" tabIndex={-1} className="relative w-[300px] max-w-[85vw] flex flex-col bg-surface shadow-raised">
             <div className="h-14 flex items-center justify-between px-4 border-b border-line">
               <BrandMark />
               <button className="btn-ghost w-9 px-0" aria-label="Close navigation" onClick={() => setDrawer(false)}><Icon name="x" size={18} /></button>
@@ -182,7 +189,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
         </div>
       )}
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div data-course-content className="flex-1 min-w-0 flex flex-col">
         <header className="h-14 shrink-0 flex items-center justify-between gap-3 px-4 lg:px-6 bg-surface border-b border-line">
           <div className="flex items-center gap-2 min-w-0">
             <button className="lg:hidden btn-ghost w-9 px-0" aria-label="Open navigation" aria-expanded={drawer} onClick={() => setDrawer(true)}><Icon name="menu" size={18} /></button>
@@ -199,10 +206,10 @@ export function CourseShell({ course, completed, children }: { course: Course; c
           </div>
           <AccountMenu />
         </header>
-        <main className="flex-1 overflow-y-auto">
+        <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto">
           <div className={location.pathname === `${course.base}/hardware`
             ? "mx-auto w-full px-4 lg:px-6 py-4"
-            : "mx-auto w-full max-w-[1280px] px-4 lg:px-8 py-6 lg:py-8"}>{children}</div>
+            : current ? "w-full px-4 lg:px-6 py-5 lg:py-6" : "w-full px-4 lg:px-6 py-6 lg:py-8"}>{children}</div>
         </main>
       </div>
     </div>
