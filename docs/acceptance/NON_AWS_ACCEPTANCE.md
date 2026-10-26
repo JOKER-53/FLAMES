@@ -24,3 +24,9 @@ For each native task, record vendor/task ID, guide/instruction review, correct s
 For hardware, record model orientation, zoom, front/rear socket mapping, touch drag, ten-second idle resume, reduced-motion behavior, WebGL failure/retry and mobile framing. Browser software WebGL evidence is separate from this actual-device sign-off.
 
 Issues [8](https://github.com/JOKER-53/FLAMES/issues/8), [9](https://github.com/JOKER-53/FLAMES/issues/9) and [14](https://github.com/JOKER-53/FLAMES/issues/14) need the deployed services. Issues [11](https://github.com/JOKER-53/FLAMES/issues/11), [12](https://github.com/JOKER-53/FLAMES/issues/12) and [13](https://github.com/JOKER-53/FLAMES/issues/13) retain human/device/pilot acceptance. Excluding AWS deployment does not make these checks complete.
+
+## Automated evidence, 2026-10-26
+
+`npm run verify`: 66 engine, 104 backend and 37 frontend tests pass, with successful TypeScript/production frontend builds. Active documentation link checking passes. Focused browser checks passed for new builder publication, topology, CLI/diff, certificate editing/downloads and both ten-second model idle timers. The broader Chromium run passed 83 of 84 checks; its catalog test selected a progress-dependent course action while account progress was hydrating. Its selector now explicitly chooses **View syllabus**; that test change has not been rerun, because the user requested no further Playwright runs and will review the UI. Do not report the complete browser suite as green.
+
+Local live question requests returned HTTP 200 with `source: ai` for both vendor endpoints on 2026-10-26. Browser fixtures intentionally omit provider keys and verify labelled fallback. These local requests do not establish deployed provider quota, monitoring or Academy acceptance.
