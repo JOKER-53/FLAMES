@@ -1,67 +1,95 @@
 # Repository structure
 
-FLAMES uses one npm workspace and one active lockfile: `/package-lock.json`. Run dependency installation from the repository root.
+FLAMES is one npm workspace with three packages and one active dependency lockfile, `package-lock.json`. Install and run workspace commands from the repository root. Product labels use **FLAMES**; `@fortisim/*`, database/session keys, and Academy protocol identifiers stay stable for compatibility.
 
 ```text
 .
 ├── packages/
 │   ├── engine/
-│   │   ├── src/                 # Shared types, matching, grading, scenarios
-│   │   │   ├── evaluators/      # Routing and security-profile evaluators
-│   │   │   └── scenarios/       # Routing scenario definitions
-│   │   └── test/                # Engine regression tests
+│   │   ├── src/
+│   │   │   ├── index.ts                  # Public @fortisim/engine exports
+│   │   │   ├── demo.ts                   # CLI demonstration
+│   │   │   ├── policy/                   # Packet types, matching, evaluation, grading
+│   │   │   ├── interfaces/               # Interface contracts, scenarios, grading
+│   │   │   ├── ports/                    # Port contracts, scenarios and grading
+│   │   │   ├── pan/                      # Palo Alto security, zones and NAT models
+│   │   │   ├── content/                  # Authored lesson/configuration contracts
+│   │   │   ├── progress/                 # Native completion IDs and draft contracts
+│   │   │   ├── learning/                 # Curated questions and deterministic hints
+│   │   │   ├── evaluators/               # Routing and security-profile evaluators
+│   │   │   └── scenarios/
+│   │   │       ├── fortigate/            # Policy/operations/static-route definitions
+│   │   │       └── assessments/          # Combined final-assessment definitions
+│   │   └── test/                         # Pure engine regressions
 │   ├── backend/
 │   │   ├── src/
-│   │   │   ├── controllers/     # Submission and knowledge-check handlers
-│   │   │   ├── platform/        # SQLite, authentication, accounts, progress
-│   │   │   ├── routes/          # Training API routes
-│   │   │   ├── scenarios/       # Server scenario registry
-│   │   │   └── services/        # AI providers, fallback hints, question store
-│   │   └── test/                # API and tutor regression tests
+│   │   │   ├── app.ts / server.ts        # App construction and process startup
+│   │   │   ├── platform/                 # Accounts, sessions and completion
+│   │   │   ├── content/                  # Private drafts, publishing, history, guide settings
+│   │   │   ├── classroom/                # Ownership, invitations and assignments
+│   │   │   ├── drafts/                   # Versioned simulator autosave APIs
+│   │   │   ├── db/                       # Transactional, checksummed migrations
+│   │   │   ├── integration/              # Academy identity/progress proxy
+│   │   │   ├── routes/ / controllers/    # Native training and knowledge-check endpoints
+│   │   │   ├── scenarios/                # Server policy-scenario registry
+│   │   │   └── services/                 # AI provider, fallbacks and question sessions
+│   │   └── test/                         # API, persistence, authorization and operations
 │   └── frontend/
-│       ├── public/              # Runtime GLB models, served at stable URLs
+│       ├── public/
+│       │   ├── firewall.glb              # Original FortiGate asset
+│       │   ├── pa-220-firewall.glb        # Original Palo Alto asset
+│       │   ├── images/beyondbug-team.png # Original credits team photograph
+│       │   └── theme-init.js             # Theme initialization before React
 │       ├── src/
-│       │   ├── api/             # HTTP clients
-│       │   ├── components/      # Shared UI, shells, lesson and 3D components
-│       │   ├── course/          # Curriculum and lesson metadata
-│       │   ├── hardware/        # Socket maps, cable compatibility and geometry
-│       │   ├── hooks/           # Accounts, progress, sessions and grading
+│       │   ├── App.tsx                   # Public/account/admin/course routes
+│       │   ├── api/                      # Shared HTTP behavior
+│       │   ├── components/               # UI primitives, shells, lessons, packet tools
+│       │   ├── course/                   # Curriculum, catalog, learning source/access
+│       │   ├── drafts/                   # Hydration, autosave, conflicts and status
+│       │   ├── hardware/                 # Model loading, scheduling, sockets and cables
+│       │   ├── hooks/                    # Identity, progress, grading and sessions
+│       │   ├── integration/              # Verified parent-frame bridge
+│       │   ├── utils/                    # Small shared helpers
 │       │   └── pages/
-│       │       ├── fortigate/   # FortiGate hardware, policies and network tools
-│       │       ├── pan/         # Palo Alto hardware and exercises
-│       │       └── course/      # Shared overview and module pages
-│       └── test/                # Render smoke and hardware mapping tests
-├── integrations/academy/        # Parent router/schema/iframe wrapper for installation
-├── assets/source/               # Non-runtime source assets
-├── scripts/                     # Maintained development utilities
-├── deploy/                      # Nginx configuration
-├── docs/                        # Current guides
-│   └── archive/                 # Historical reports, prototypes and retired files
-└── .github/                     # CI and contribution templates
+│       │       ├── admin/                # Content studio, builders, guide visibility
+│       │       ├── course/               # Overview, modules, authored lessons, guide
+│       │       ├── fortigate/            # Native FortiGate screens
+│       │       ├── pan/                  # Native Palo Alto screens
+│       │       └── *.tsx                 # Landing, account, classroom and credits
+│       └── test/                         # Frontend logic, rendering and content coverage
+├── integrations/academy/                 # Companion adapter installed in Academy
+├── assets/source/                        # Non-runtime model source assets
+├── scripts/                              # Development, generation and operations commands
+├── tests/browser/                        # Isolated Chromium/Firefox workflows
+├── deploy/                               # Production and Academy Nginx configuration
+├── docs/                                 # Active, maintained documentation
+│   └── archive/                          # Dated evidence and retired prototypes
+└── .github/                              # CI, issues and pull-request templates
 ```
 
-Root Docker/Compose files, `vercel.json`, workspace manifests, and community files remain at the root so their tooling and hosting discovery continue to work. Each package owns its compiler and build configuration. Generated `dist/`, installed `node_modules/`, local environment files, and SQLite data are ignored.
+## Placement and ownership
 
-## Placement rules
+| Change | Source of truth | Companion updates |
+| --- | --- | --- |
+| Native task | Engine feature/scenario folder | Public engine export, server registry where used, curriculum, progress IDs, Academy manifest, learning plan and tests |
+| Learning material | Frontend `course/learning.json` | Run `npm run docs:learning`; output is `docs/LEARNING_HANDBOOK.md` |
+| Student guide visibility | Backend `content/store.ts` and protected routes | Frontend `useLearningAccess.ts`, admin panel, catalog and route/navigation guards |
+| Content authoring | Engine `content/`, backend `content/`, frontend `pages/admin/` | Public serializers must omit reference answers and private history |
+| Simulator drafts | Engine `progress/drafts.ts`, backend/frontend `drafts/` | Run `npm run sync:academy` after contract changes |
+| Hardware | Frontend `hardware/`, vendor hardware pages and public GLBs | Model preparation, socket checks and real-device visual acceptance |
+| Credits | Frontend `pages/CreditsPage.tsx` and public team photo | Header access in shared `AccountMenu`; no footer/sidebar duplicate |
+| Operational command | `scripts/` | Script index, command documentation and deployment image copies if used there |
 
-- Put vendor-specific screens in `pages/fortigate/` or `pages/pan/`; keep account, classroom, and vendor selection screens at `pages/`.
-- Share learning metadata through `course/curriculum.ts` and pure simulation behavior through the engine's public `src/index.ts` exports.
-- Keep API handlers in the backend; provider credentials must never enter the frontend.
-- Tests belong to the package whose behavior they cover. Frontend tests can import shared engine definitions.
-- Runtime models belong in `packages/frontend/public/`. The FBX source belongs in `assets/source/`; do not duplicate runtime GLBs at the root.
-- Import replacement GLBs with `node scripts/import-model.mjs /path/to/model.glb [pa-220-firewall.glb|firewall.glb]`. Recheck socket alignment after replacing a model.
-- Keep active instructions in `docs/`; place dated implementation reports and retired tooling in `docs/archive/`.
+Import shared behavior through `@fortisim/engine`. Keep its supported exports in `src/index.ts`; internal source paths are implementation details. Tests may use feature-local imports. Keep grading credentials and private authored solutions in the backend.
 
-The hardware pages are `FortiGateHardwarePage.tsx` and `PanHardwarePage.tsx`. Their public routes remain `/fortigate/hardware` and `/paloalto/hardware`.
+Keep package compiler/build configuration beside its package. Root Dockerfiles, Compose files, `vercel.json`, workspace manifests, CI/community files, and the `TODO.md`/`updation.md` entry points stay discoverable at their existing paths. `Architecture.md` is a compatibility pointer to the maintained architecture guide. GitHub templates belong only in `.github/`.
 
-The API `src/integration/` and frontend `src/integration/` implement parent-managed mode. `integrations/academy/` contains the companion files for the other repository; it is not automatically deployed by FLAMES.
+## Source assets, generated output and runtime data
 
-The product name is **FLAMES**. Existing `@fortisim/*` workspace names, database/session keys, and `FORTISIM_*` integration identifiers remain stable for compatibility. Use FLAMES for visible labels and documentation.
+Keep original runtime GLBs at their stable public URLs. The optimized FortiGate GLB, gzip sidecars, manifest and content-hashed references are generated by `scripts/prepare-hardware.cjs` and ignored by Git. Development with a read-only public mount uses the private `node_modules/.cache/flames-hardware` cache. Do not move model URLs without updating serving, transport and socket calibration together.
 
-Content authoring lives in backend `src/content/`, frontend `pages/admin/`, and `course/CourseCatalog.tsx`. Shared authored-content interfaces are in engine `src/authoredContent.ts`. The interactive local administrator setup is `scripts/create-admin.cjs`.
+Keep the credits photo in `public/images/`; it is a source asset, not generated output. Keep the FBX original in `assets/source/`.
 
-Simulator autosave contracts are in engine `src/drafts.ts`, persistence APIs in backend `src/drafts/`, and shared client state/status in frontend `src/drafts/`. `PolicyExerciseEditor.tsx` provides visual policy authoring; backend `content/policyExercise.ts` validates and tests it. `scripts/sync-academy-contract.mjs` generates the companion Academy validator.
+`node_modules/`, `dist/`, browser reports, coverage, local environment files, SQLite databases and private backup directories are generated or runtime state. They stay ignored; a repository reorganization must not move or delete live databases, volumes or user backups. Retired implementation reports belong in `docs/archive/`; their historical statements are not current acceptance guarantees.
 
-Additional feature locations: `packages/backend/src/classroom/` contains scoped group/assignment persistence, module resolution and authenticated routes; `packages/engine/src/learningHints.ts` supplies deterministic concept guidance; `packages/frontend/src/components/lesson/StagedHints.tsx` renders hint stages. Content import/export uses the existing `content/store.ts` and admin routes with `pages/admin/ContentTransfer.tsx`. Operational commands are in `scripts/data-backup.cjs` and `scripts/create-admin.cjs`; private snapshots belong outside Git (the `.backups/` directory is ignored).
-
-Expanded authoring uses `engine/src/configurationExercises.ts`, `pages/admin/ConfigurationExerciseEditor.tsx`, shared `components/configuration/` forms/traces, and `pages/course/AuthoredConfigurationLesson.tsx`. Backend content storage/routes keep reference definitions private and grade version-bound submissions. `scripts/backend-dev.cjs` supervises shared-engine/API compilation in development.
+Package guides: [engine](../packages/engine/README.md), [backend](../packages/backend/README.md), [frontend](../packages/frontend/README.md). Command guide: [scripts](../scripts/README.md). Browser guide: [tests](../tests/README.md).

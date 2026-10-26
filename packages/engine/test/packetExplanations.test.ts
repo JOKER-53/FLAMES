@@ -1,6 +1,6 @@
 import {expect,it} from 'vitest';
-import {explainConfigurationPacket} from '../src/configurationExercises';
-import {evaluatePacket} from '../src/evaluator';
+import {explainConfigurationPacket} from '../src/content/configurationExercises';
+import {evaluatePacket} from '../src/policy/evaluator';
 it('route explanations show mismatched prefixes, preferred paths and exact row identities',()=>{
  const rows=[{id:'default',destination:'0.0.0.0/0',gateway:'10.0.0.1',interfaceName:'port1',distance:1},{id:'specific',destination:'192.168.10.0/24',gateway:'10.0.0.2',interfaceName:'port2',distance:20},{id:'other',destination:'172.16.0.0/16',gateway:'10.0.0.3',interfaceName:'port3',distance:10}];
  const result=explainConfigurationPacket('routing',rows,{destination:'192.168.10.5'});expect(result.paths).toEqual([{gateway:'10.0.0.2',interfaceName:'port2'}]);expect(result.trace.find(step=>step.rowId==='specific')?.selected).toBe(true);expect(result.trace.find(step=>step.rowId==='other')?.detail).toContain('does not match');expect(result.note).toContain('NAT are not evaluated');

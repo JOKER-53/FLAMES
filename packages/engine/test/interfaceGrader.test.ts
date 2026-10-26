@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { gradeInterfaceSubmission } from '../src/interfaceGrader';
-import type { InterfaceScenario, InterfaceSubmission } from '../src/interfaceTypes';
+import { gradeInterfaceSubmission } from '../src/interfaces/interfaceGrader';
+import type { InterfaceScenario, InterfaceSubmission } from '../src/interfaces/interfaceTypes';
 
 it('accepts every contiguous dotted IPv4 mask and slash prefix', () => {
   for (let prefix = 0; prefix <= 32; prefix++) {

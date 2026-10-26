@@ -6,7 +6,7 @@
 // even though LAN can reach DMZ and WAN can reach DMZ web server.
 // ============================================================================
 
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const fullNetworkPolicyScenario: Scenario = {
   id: "full-network-policy-01",

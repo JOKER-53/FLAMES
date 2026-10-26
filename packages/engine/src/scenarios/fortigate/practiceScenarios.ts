@@ -1,4 +1,4 @@
-import type { Scenario } from "./types";
+import type { Scenario } from "../../policy/types";
 
 /** Additional packet-policy practice. Private grading outcomes are stripped by the API. */
 export const PRACTICE_SCENARIOS: Scenario[] = [

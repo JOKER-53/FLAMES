@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { PRACTICE_SCENARIOS } from '../src/practiceScenarios';
-import { gradeSubmission } from '../src/grader';
-import { gradePanExercise, type PanSecurityRule } from '../src/panExercises';
-import type { FirewallPolicy } from '../src/types';
+import { PRACTICE_SCENARIOS } from '../src/scenarios/fortigate/practiceScenarios';
+import { gradeSubmission } from '../src/policy/grader';
+import { gradePanExercise, type PanSecurityRule } from '../src/pan/panExercises';
+import type { FirewallPolicy } from '../src/policy/types';
 
 // Independently authored valid configurations, rather than rules generated from expected outcomes.
 const specs: Record<string, [string, string, string[], string[], string[], 'ACCEPT' | 'DENY'][] > = {

@@ -3,63 +3,67 @@
 ## Student journey
 
 1. Open `/` and choose FortiGate 60F or Palo Alto PA-220.
-2. Open the course overview at `/fortigate` or `/paloalto`.
-3. Choose a module, then a lesson. Curriculum metadata defines lesson order, prerequisites, duration, and final assessments. FortiGate lesson URLs select exercises with `scenario` (plus `track` for interfaces/ports); Palo Alto URLs use `task`.
-4. Read the scenario, configure the simulated device, and check the work. Available knowledge checks provide an additional practice path. Optional tutoring returns AI guidance or labelled offline hints when no provider is available.
-5. Completion updates the course outline and module navigation. Applied simulator configurations autosave per lesson and identity, with saved status, retry, and version/conflict recovery.
+2. Open the course overview and choose a module. There are 28 native FortiGate tasks and 20 native Palo Alto tasks, plus any published instructor modules.
+3. If the administrator has opened the learning guide, study the relevant chapter or choose **Study this task**. The guide defaults to hidden for students; administrators retain previews.
+4. Read the scenario and configure the simulated device. Native selectors use `scenario` (and interface/port `track`) for FortiGate and `task` for Palo Alto.
+5. Use available packet tests, traces and Network view to inspect the current configuration. These exploratory tools do not grant completion.
+6. Submit **Check my work**. Supported knowledge checks offer an alternate concept-based practice path; provider failures use labelled offline fallbacks. Assessments unlock after the other lessons in their module.
+7. Applied simulator configurations autosave by task and identity. Completion updates navigation, progress totals and classroom assignment reports.
 
-Guests can practice by default. `/account` provides registration and sign-in; signed-in users synchronize completion through the API. `AUTH_REQUIRED=true` redirects anonymous training users to sign-in and protects training API routes. `ALLOW_REGISTRATION=false` disables registration. `/classroom` shows all registered students to instructors; this is a shared classroom rather than separate institutional tenants.
+Standalone guest practice is enabled by default. `/account` supports registration/sign-in when configured. `AUTH_REQUIRED=true` requires training sign-in; `ALLOW_REGISTRATION=false` disables registration. Instructor-owned classroom groups and invitations determine student membership/report access; instructors do not receive unrestricted access to every account.
 
 ## Routes
 
 | Area | Route |
 | --- | --- |
-| Course module | `/fortigate/modules/:moduleId`, `/paloalto/modules/:moduleId` |
-| FortiGate policies | `/fortigate/policy/firewall-policy` |
+| Landing, account, classroom | `/`, `/account`, `/classroom` |
+| Content administration | `/admin` |
+| Public credits | `/credits` |
+| Vendor overview | `/fortigate`, `/paloalto` |
+| Module | `/fortigate/modules/:moduleId`, `/paloalto/modules/:moduleId` |
+| Learning guide | `/fortigate/learn`, `/paloalto/learn` |
+| Published authored lessons | `/fortigate/lessons/:lessonId`, `/paloalto/lessons/:lessonId` |
+| FortiGate policy | `/fortigate/policy/firewall-policy?scenario=<id>` |
 | FortiGate address/service references | `/fortigate/policy/addresses`, `/fortigate/policy/services` |
-| FortiGate interfaces and port exercises | `/fortigate/network/interfaces` |
+| FortiGate interfaces/ports | `/fortigate/network/interfaces?track=<interface-or-port>&scenario=<id>` |
 | FortiGate static routing | `/fortigate/network/routing` |
-| Palo Alto security, zones, NAT | `/paloalto/security`, `/paloalto/zones`, `/paloalto/nat` |
-| Palo Alto interfaces and ports | `/paloalto/interfaces`, `/paloalto/port` |
+| Palo Alto security, zones, NAT | `/paloalto/security?task=<id>`, `/paloalto/zones?task=<id>`, `/paloalto/nat?task=<id>` |
+| Palo Alto interfaces/ports | `/paloalto/interfaces`, `/paloalto/port?task=<id>` |
 | Palo Alto App-ID reference | `/paloalto/appid` |
-| Hardware references | `/fortigate/hardware`, `/paloalto/hardware` |
+| Hardware | `/fortigate/hardware`, `/paloalto/hardware` |
 
-Older task and network URLs redirect to the current course pages. Unknown routes return to the appropriate overview or vendor selection.
+Older task/network URLs redirect to current course pages. Unknown routes return to the appropriate overview or landing page. Route URLs are independent of source folder names.
 
-## Hardware interaction
+## Accounts, drafts and completion
 
-Both hardware pages use the full course content width, retain the sidebar/header, and provide a tall viewer (78 dynamic viewport height units, minimum 480px). Supporting information and cable controls can scroll below the viewer. This is an in-page layout, not browser fullscreen.
+Guest progress/drafts are device-local. Signed-in standalone users use account-specific caches and server persistence; guest work is not silently imported into an account. Draft hydration, debounced saving, retry/reset, revisions and stale-tab conflicts are explicit. Reset uses a revisioned tombstone. Failed completion synchronization displays a warning rather than claiming the server saved progress.
 
-Models initially load with extra camera distance so they fit comfortably inside the larger viewer. Drag to rotate, scroll or use the zoom buttons to change scale, and Reset to restore the initial view. Explore allows component inspection; Cable mode starts with no connected cables and provides compatible cable selection, socket clicking, and keyboard-accessible socket buttons. Reset view and clearing cable connections are separate controls.
+In Academy mode, the configured parent owns identity, completion and simulator drafts. FLAMES accepts credentials only through its verified parent bridge and validates parent identity server-side. It does not fall back to a local student account or persistent local progress. Authored content, classroom teaching metadata and learning-guide settings remain FLAMES content responsibilities. See [Academy integration](PARENT_LMS_INTEGRATION_GUIDE.md).
 
-Runtime model URLs are `/firewall.glb` and `/pa-220-firewall.glb`. WebGL rendering and loading errors appear in the viewer. Socket anchors are calibrated to these assets; model changes require manual alignment verification.
+Completion is practice progress, not certified examination evidence. Native exercise definitions may be included in browser bundles. Generated knowledge questions are one-use, expire after 15 minutes and are lost on API restart. Private authored reference rows, expected answers and revision snapshots remain behind instructor authorization.
 
-## Grading and completion
+## Classroom and administration
 
-FortiGate policy, interface, and port exercises use backend grading. Palo Alto security, zones, and NAT use backend grading against shared engine definitions. Static routing and some interface/reference practice use local evaluation. The simulator does not configure real appliances or inspect real traffic.
+`/classroom` provides instructor-owned groups, invitations, module assignments/deadlines and scoped completion reporting. Operations Practice is a separate assignment module in each vendor; original policy assessment prerequisites and existing assignment snapshots are preserved.
 
-Guest progress is device-local. Account progress uses account-specific local caches plus SQLite-backed monotonic completion merges. Guest history is not automatically imported into an account. Failed cloud saving produces a warning; reopening the lab retries synchronization. Signing out revokes the current server session.
+`/admin` supports private drafts, publication, ordering, module/lesson search and duplication, private revision comparison, transfer preview/import and visual exercise builders. Published lessons enter the course catalog dynamically. Reading lessons support multiple-choice/short-answer tasks; policy/configuration lessons use server-side grading bound to their published version. See [content administration](ADMIN_CONTENT.md) and [configuration builders](CONFIGURATION_EXERCISE_BUILDER.md).
 
-Completion is student-reported practice progress, not an authenticated examination score. Exercise definitions are included in browser bundles. Generated knowledge questions are single-use, expire after 15 minutes, and are lost when the API restarts.
+## Learning material and visibility
 
-## Parent-managed mode and appearance
+`course/learning.json` supplies ten chapters and study plans for all 48 native tasks. It includes worked examples, predicted-result tables, accessible flowcharts, mistakes and self-check explanations. Run `npm run docs:learning` to regenerate the [handbook](LEARNING_HANDBOOK.md). Reading it does not mark tasks complete. Instructor-authored modules can supply additional material.
 
-With `PLATFORM_MODE=academy`, the parent Academy owns sign-in and saved progress. FLAMES accepts the parent credential only from its configured iframe parent, validates it through Academy, and proxies completion there. Standalone registration/classroom routes are replaced by links back to Academy. No account/progress database file or browser progress cache is written in this mode. See [integration setup](PARENT_LMS_INTEGRATION_GUIDE.md).
+**Admin → Student learning guide** opens/closes access for both vendors. The setting defaults to hidden, persists through content migration 3 and controls sidebar/study links and direct in-app guide routes. Administrators retain preview links. Visible tabs refresh on focus and every 30 seconds; reloading also fetches the current setting.
 
-Every shared header provides a light/dark toggle. A first visit uses the system preference, then a saved choice persists across reloads. Course shells, forms, lesson tables, references, and topology backgrounds use the same theme tokens. The dark 3D stage retains its lighting and canvas background.
+## Hardware and packet tools
 
-## Authored modules
+Hardware viewers use the available course width while preserving navigation. Models initially fit within the viewport. Rotation, zoom/reset, component inspection, download/parse feedback and retries are available. Cable mode starts empty and provides keyboard cable/socket controls. Reset view and clearing cables are separate actions.
 
-`/admin` lets authorized instructors/Academy admins create draft modules, lessons, and multiple-choice or short-answer tasks. Publishing adds them to the vendor course outline. Student routes are `/fortigate/lessons/:lessonId` and `/paloalto/lessons/:lessonId`; grading occurs on the API, and completion follows the existing progress flow. Reading-only lessons can be marked as read. Drafts and answer keys are never exposed through the published catalog. See [administration](ADMIN_CONTENT.md).
+Original model URLs stay `/firewall.glb` and `/pa-220-firewall.glb`. The default FortiGate viewer loads the generated optimized asset; gzip/versioned transport, per-tab buffer caching and idle/hidden rendering suspension improve performance. Model replacements require actual-device socket/alignment acceptance. Keyboard component descriptions remain available if WebGL fails. See [hardware performance](HARDWARE_PERFORMANCE.md).
 
-See [autosave and visual policy authoring](AUTOSAVE_AND_EXERCISE_BUILDER.md) for guest/account/Academy storage, reset behavior, and custom exercise publishing.
+Topology panels and network views represent the exercise/current configuration, not live traffic. Policy tests use supplied interface direction rather than a complete route/session engine. NAT translation is distinct from permission; App-ID uses supplied labels. These teaching boundaries are described in the learning guide and packet explanations.
 
-Configuration lessons: administrator selects a family, edits starter/reference rows and checks, tests the reference and publishes. The student lesson loads only public starters/check descriptions, resumes its native-family draft, and submits the configuration with the published version for private server grading. Decision traces show the student’s own rows; packet explorers do not grant completion. See [expanded builder](CONFIGURATION_EXERCISE_BUILDER.md) and [packet explanations](PACKET_EXPLANATIONS.md).
+## Appearance and credits
 
-## Learning and operations practice
+Shared headers provide theme and Credits controls. The first visit follows system light/dark preference; an explicit choice persists locally. Course/forms/topology UI uses shared tokens, while the 3D stage keeps its own scene background.
 
-Both course sidebars expose **Learning guide** (`/fortigate/learn`, `/paloalto/learn`). The ten chapters include concept definitions, step-by-step procedures, worked examples, predicted-result tables, accessible flow diagrams, mistakes, and self-check explanations. `?task=<built-in ID>` opens the task’s study plan; **Study this task** links there from native lessons. The 48 study plans and shareable [handbook](LEARNING_HANDBOOK.md) use `packages/frontend/src/course/learning.json`; regenerate Markdown with `npm run docs:learning`. Reading does not grant completion.
-
-Operations Practice adds six FortiGate policy tasks and three Palo Alto security tasks, with existing autosave, grading, topology/packet tools, and progress whitelists. These are separate classroom assignment modules, preserving original policy-assessment prerequisites and existing assignment scopes. The Academy lesson manifest includes the new IDs; update the adapter alongside FLAMES when integrating this version.
-
-The learning guide is hidden from students by default. Admin dashboard controls its shared visibility across both vendors; administrators retain preview access. Course navigation, study links, and direct guide routes use the setting returned with the public catalog. Visible tabs recheck on focus and every 30 seconds. Content migration 3 persists this flag; tasks and completion are independent of guide availability.
+`/credits` is public and lists KADHIRAVAN EG (`JOKER-53`), Harish Kumar (`Harishkumar-47`) and BeyondBug with supplied GitHub/LinkedIn links. Its opt-in full-width layout frames the original 1280 × 567 team photograph at `public/images/beyondbug-team.png` without cropping. Profiles sit alongside it on wide screens and stack below on small screens. Credits is linked only in the shared header, without footer/sidebar duplicates. Other standard pages retain their usual widths.

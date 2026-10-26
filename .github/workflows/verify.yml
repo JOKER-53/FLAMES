@@ -14,6 +14,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run docs:check
       - run: npm run verify
       - name: Install browsers for workflow regressions
         run: npx playwright install --with-deps chromium firefox

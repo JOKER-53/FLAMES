@@ -1,4 +1,4 @@
-import { PortScenario } from "./interfaceTypes";
+import { PortScenario } from "./portTypes";
 
 export const portAssignmentScenario: PortScenario = {
   id: "port-assignment-01",
@@ -152,7 +152,7 @@ export const portPositionTrapScenario: PortScenario = {
   ],
 };
 
-import { portFinalScenario } from "./finalAssignments";
+import { portFinalScenario } from "../scenarios/assessments/finalAssignments";
 export { portFinalScenario };
 
 export const ALL_PORT_SCENARIOS: PortScenario[] = [

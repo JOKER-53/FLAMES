@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { PORTS, CABLE_TYPES, EXERCISE_SOCKETS, acceptsCable } from "../src/hardware/cables";
-import { ALL_PORT_SCENARIOS } from "../../engine/src/portScenarios";
-import { portFinalScenario } from "../../engine/src/finalAssignments";
+import { ALL_PORT_SCENARIOS } from "../../engine/src/ports/portScenarios";
+import { portFinalScenario } from "../../engine/src/scenarios/assessments/finalAssignments";
 
 describe("cable practice mapping", () => {
   it("covers all 13 sockets exactly once", () => {

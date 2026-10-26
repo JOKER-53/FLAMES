@@ -6,7 +6,7 @@ FLAMES supports two runtime modes. `standalone` retains its own optional account
 
 The public reference is [liyander/Incogn1tr1x-Academy](https://github.com/liyander/Incogn1tr1x-Academy), `main` commit `e7b04c60a92fe81c40130dbeae369fd69cebbee5` (2026-10-21). Its backend is Express/MySQL, `authenticate` validates bearer tokens, and `/api/auth/me` returns the token identity. The frontend reads its session through `getAuthSession()` and calls APIs through `src/services/api.js`.
 
-The supplied college frontend is `http://110.172.151.108:5173/`; it responded to a read-only HTTP check. This does **not** verify its deployed source revision or backend configuration. On the server, run `git rev-parse HEAD` inside the actual Academy checkout and compare the middleware, `/api/auth/me`, API base URL, and MySQL `users.id` schema before applying the adapter. The API port is not established by the frontend port; confirm it with the server operator.
+The originally supplied college frontend was `http://110.172.151.108:5173/`. A previous read-only check is historical evidence only; the user later reported that server unavailable and planned AWS hosting. No current deployment availability, deployed source revision or backend configuration is established by this repository. On the server, run `git rev-parse HEAD` inside the actual Academy checkout and compare the middleware, `/api/auth/me`, API base URL, and MySQL `users.id` schema before applying the adapter. The API port is not established by the frontend port; confirm it with the server operator.
 
 ## Runtime flow
 

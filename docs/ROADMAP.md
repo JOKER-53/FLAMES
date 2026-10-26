@@ -1,19 +1,35 @@
-# Release status and future work
+# Current capabilities and remaining work
 
-## Delivered in the October 2026 upgrade
+The prioritized acceptance list is [TODO.md](../TODO.md). This page separates implemented behavior from optional features and environment-dependent validation.
 
-Accounts and expiring sessions, account-scoped server completion, instructor progress visibility, guest practice, responsive account/navigation UI, lazy routes, API timeouts/validation, regression verification, and deployment configuration are implemented.
+## Implemented
 
-The listed Palo Alto security/zone/NAT finals now have actual exercises and server grading. Task navigation selects the requested exercise. Hardware practice has distinct connector families, manual rotation, keyboard ports, and no preconnected cables. Explore hides cables and indicators.
+- Two vendor courses with 48 native tasks, guided configuration and assessments.
+- Local accounts/sessions, identity-scoped progress, Academy-owned identity/progress integration and versioned simulator autosave.
+- Administrator-authored reading/questions, FortiGate policy exercises, and configuration builders for FortiGate interfaces/routes and Palo Alto security/NAT/zones.
+- Private drafts, publication, revision comparison, module/lesson search and duplication, versioned content transfer.
+- Instructor-owned classroom groups, invitation membership, module assignments/deadlines, scoped reporting and CSV export.
+- Ten learning chapters, individual study plans, worked examples, flowcharts and a generated handbook. Student guide visibility is administrator-controlled and defaults to hidden.
+- Staged concept hints, optional AI tutoring and labelled offline fallback questions.
+- Theme-aware packet explanations/network views, topology panels, optimized 3D transport/cache, loading feedback and idle/offscreen render suspension.
+- Public contributor/organization credits with team photograph and header navigation.
+- Request-correlated diagnostics, protected schema/process status, checksummed migrations and documented backup/recovery workflows.
+- Automated package/browser regressions and light/dark accessibility checks.
 
-See [current application flow](APPLICATION_FLOW.md) and [release checklist](RELEASE_CHECKLIST.md) for current scope and acceptance work. The [upgrade report](archive/UPGRADE_2026-10-02.md) records historical checks.
+See the [application flow](APPLICATION_FLOW.md) and feature guides for model boundaries. Simulator completion is practice progress, not a certified assessment score.
 
-## Deliberate future work
+## Environment-dependent acceptance
 
-- Hosted password reset, email verification, MFA, and operator account management.
-- Server-saved configuration drafts, instructor-defined courses, multiple classrooms, and auditable server-issued assessment scores.
-- Full PAN-OS/FortiOS parity: connection tracking, actual App-ID inspection, NAT packet/session behavior, real HA/management configuration, CLI parsing, and device integration.
-- Durable question sessions and distributed rate limiting if the API becomes multi-replica.
-- Broader browser/mobile visual and interaction tests, using an approach approved by the user.
+AWS hosting, HTTPS/DNS, production configuration, persistent storage, scheduled backups and external monitoring must be verified in the target deployment. Academy adapter installation and parent auth/progress/draft round trips require the actual deployed Academy version. The previous college endpoint is not evidence of a currently working deployment.
 
-These are not represented as working features. Public hosting, TLS provisioning, backup scheduling, provider credentials, and visual acceptance are operator tasks documented in [deployment](DEPLOYMENT.md).
+Manual actual-device WebGL/socket alignment, screen-reader/assistive-technology review, and release acceptance remain separate from automated browser success. Follow the [release checklist](RELEASE_CHECKLIST.md) and [operations runbook](OPERATIONS_RUNBOOK.md).
+
+## Optional future features
+
+- Standalone hosted password recovery, email verification and MFA if local identities remain in use; Academy-owned identities use Academy recovery.
+- Certified assessment evidence and server-authoritative examination scoring, if required by the institution.
+- Configuration diffs, topology authoring and supported CLI practice after the current flow is validated with teachers.
+- Durable/distributed question sessions, shared rate limiting and multi-replica storage design if scaling requires them.
+- More appliance fidelity: stateful sessions, actual App-ID inspection, complete NAT/session behavior and real HA/management configuration. These are not implied by the current simulator models.
+
+Dated implementation and verification reports are historical evidence in the [archive](archive/README.md), not a current deployment guarantee.

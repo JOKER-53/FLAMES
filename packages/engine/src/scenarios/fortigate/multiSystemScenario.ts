@@ -1,4 +1,4 @@
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const multiSystemScenario: Scenario = {
   id: "multi-system-block-01",

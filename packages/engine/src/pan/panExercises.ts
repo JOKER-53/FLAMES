@@ -1,4 +1,4 @@
-import { ipMatchesAddressValue } from "./matching";
+import { ipMatchesAddressValue } from "../policy/matching";
 /** Simplified teaching models, not a complete PAN-OS dataplane or configuration schema. */
 export interface PanSecurityRule { id: number; name: string; srcZone: string; dstZone: string; apps: string[]; action: "allow" | "deny"; }
 export interface PanZone { id: number; name: string; type: "layer3" | "layer2" | "tap" | "ha" | "management"; profile: "none" | "default" | "strict"; interfaces: string[]; logForwarding: boolean; }

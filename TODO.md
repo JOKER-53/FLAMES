@@ -1,6 +1,6 @@
 # FLAMES — work plan
 
-Updated: 2026-10-24
+Updated: 2026-10-26
 
 Completed implementation and verification are recorded in [updation.md](updation.md). Checked feature items are implemented; unchecked items remain future work or deployment acceptance. Completing implementation does not imply the college deployment has been performed.
 
@@ -146,6 +146,12 @@ Standalone self-service password recovery is conditional on keeping local accoun
 - [x] Provide an in-app learning guide and reproducible Markdown handbook covering all 48 built-in tasks, examples, flowcharts, troubleshooting, and self-check explanations.
 
 - [x] Add a persistent, administrator-only student learning-guide visibility toggle (hidden by default, both vendors, administrator previews).
+
+## Repository maintenance
+
+- [x] Group engine source by domain while preserving public package exports and runtime entry points.
+- [x] Separate current documentation from dated verification reports; document package, script and test ownership.
+- [x] Add active Markdown file-link checking to CI and document learning/Academy generation commands.
 
 ## Working rules
 

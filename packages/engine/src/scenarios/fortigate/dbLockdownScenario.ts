@@ -8,7 +8,7 @@
 // traffic since the broad rule already claimed it.
 // ============================================================================
 
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const dbLockdownScenario: Scenario = {
   id: "db-lockdown-01",

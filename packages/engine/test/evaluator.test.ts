@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { evaluatePacket } from "../src/evaluator";
-import type { FirewallPolicy, TestPacket } from "../src/types";
+import { evaluatePacket } from "../src/policy/evaluator";
+import type { FirewallPolicy, TestPacket } from "../src/policy/types";
 
 const packet: TestPacket = { id: "p", description: "test", srcIntf: "LAN", dstIntf: "WAN", srcIp: "10.0.0.1", dstIp: "1.1.1.1", protocol: "TCP", port: 443 };
 const policy: FirewallPolicy = { id: "rule", name: "rule", srcIntf: "LAN", dstIntf: "WAN", srcAddrIds: ["missing"], dstAddrIds: [], serviceIds: [], action: "ACCEPT", log: false, enabled: true };

@@ -1,5 +1,5 @@
-import { Scenario } from "./types";
-import { PortScenario } from "./interfaceTypes";
+import { Scenario } from "../../policy/types";
+import { PortScenario } from "../../ports/portTypes";
 
 export const firewallFinalScenario: Scenario = {
   id: "firewall-final-01",

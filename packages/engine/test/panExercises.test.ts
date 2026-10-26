@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { evaluatePanPacket, gradePanExercise, PAN_SECURITY_SCENARIOS, PAN_ZONE_SCENARIOS, PAN_NAT_SCENARIOS, type PanSecurityRule, type PanZone, type PanNatRule } from "../src/panExercises";
+import { evaluatePanPacket, gradePanExercise, PAN_SECURITY_SCENARIOS, PAN_ZONE_SCENARIOS, PAN_NAT_SCENARIOS, type PanSecurityRule, type PanZone, type PanNatRule } from "../src/pan/panExercises";
 
 const rule = (srcZone: string, dstZone: string, apps: string[], action: "allow" | "deny" = "allow"): PanSecurityRule => ({ id: 1, name: "Rule", srcZone, dstZone, apps, action });
 const security = [
