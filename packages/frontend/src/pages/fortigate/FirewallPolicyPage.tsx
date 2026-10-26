@@ -1,3 +1,4 @@
+import { ExerciseTopologyDiagram } from "../../components/topology/ExerciseTopologyDiagram";
 import { focusConfigurationRow } from "../../components/configuration/DecisionTrace";
 import { DraftWorkspace } from "../../drafts/DraftWorkspace";
 import { useEffect, useRef, useState } from "react";
@@ -356,6 +357,7 @@ export function FirewallPolicyPage({ session }: FirewallPolicyPageProps) {
       </div>
 
       <aside className="space-y-4 min-w-0">
+        {scenario.topology&&<ExerciseTopologyDiagram topology={scenario.topology}/>}
         <NetworkTopology addresses={addresses} packets={scenario.testPackets} activeFlow={activeFlow} />
         <PacketFlowPanel traces={flowTraces} onSelectPolicy={id=>{setSelectedRow(id);focusConfigurationRow("policy-row",id);}} />
       </aside>
