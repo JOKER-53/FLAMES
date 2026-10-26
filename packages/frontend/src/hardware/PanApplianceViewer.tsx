@@ -113,7 +113,7 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
     camera.position.set(0, 5, 12);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
+    controls.enableDamping = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
     controls.autoRotate = modeRef.current==="explore"&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -229,7 +229,13 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
       renderer.render(scene, camera);
     },()=>!!sceneRef.current&&!reducedMotion.matches&&(controls.autoRotate||modeRef.current==="cable"&&!!cableRef.current));
     controls.addEventListener("change",loop.invalidate);
-    const motionChange=()=>{pauseRotation();loop.invalidate();};reducedMotion.addEventListener("change",motionChange);
+    const motionChange=()=>{
+      pauseRotation();
+      // Clear residual orbit momentum immediately when reduced motion is enabled.
+      controls.enableDamping = !reducedMotion.matches;
+      controls.update();
+      loop.invalidate();
+    };reducedMotion.addEventListener("change",motionChange);
 
     const resize = new ResizeObserver(() => {
       const nw = mount.clientWidth, nh = mount.clientHeight;
