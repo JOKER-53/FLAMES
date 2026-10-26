@@ -1,0 +1,54 @@
+name: Optional browser and deployment checks
+on:
+  workflow_dispatch:
+    inputs:
+      check:
+        description: Choose the extended checks to run
+        required: true
+        type: choice
+        options:
+          - browsers
+          - deployment
+permissions:
+  contents: read
+jobs:
+  browsers:
+    if: inputs.check == 'browsers'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend
+      - run: npx playwright install --with-deps chromium firefox
+      - name: Chromium workflows
+        run: npm run test:browser
+      - name: Firefox workflows
+        if: ${{ !cancelled() }}
+        run: npm run test:browser
+        env:
+          PLAYWRIGHT_BROWSER: firefox
+      - name: Upload browser failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-failure-evidence
+          path: test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+  deployment:
+    if: inputs.check == 'deployment'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate deployment configuration
+        run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml config --quiet
+      - name: Validate Academy integration configuration
+        run: ACADEMY_ORIGIN=http://academy.example:5173 ACADEMY_API_URL=http://academy:4000/api FRONTEND_ORIGIN=http://lab.example:5174 docker compose -f compose.academy.yml config --quiet
+      - name: Build deployment images
+        run: FRONTEND_ORIGIN=https://training.example.org docker compose -f compose.production.yml build

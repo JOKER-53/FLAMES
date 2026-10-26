@@ -65,3 +65,9 @@ This change adds new SQLite tables without deleting previous tables. Older versi
 The configured retired model returned HTTP 410. The local backend configuration now uses a model that passed real requests: `nvidia/nemotron-3.5-lightning-30b-a3b`. Its key remains only in the ignored backend environment. Provider availability is time-dependent; verify after deployment and model changes. FLAMES sends `enable_thinking: false` to the NVIDIA endpoint, bounds calls to 15 seconds, strips reasoning text, sends only vetted concept guidance to the tutor, rejects concrete answer-like values/prescriptions and unsupported NAT explanations, and labels generated hints/questions separately from deterministic guidance/curated questions. Grading never depends on provider availability.
 
 To change Docker `env_file` settings, recreate the backend (`docker compose up -d --force-recreate backend`); a restart alone does not reload container environment variables. AI explanations remain generated teaching guidance; the deterministic grader decides completion.
+
+## GitHub checks
+
+Automatic push/PR verification runs dependency installation, documentation link checks, package tests, TypeScript checks and the frontend build. It does not install browsers or build deployment images. Superseded runs on the same ref are cancelled.
+
+For extended checks, open **Actions → Optional browser and deployment checks → Run workflow**, select the branch, then choose `browsers` or `deployment`. Browser checks run Chromium and Firefox and retain failure artifacts for seven days. Deployment checks validate both Compose configurations and build the production images; they do not deploy to AWS. These checks are manual and remain separate from basic verification.
