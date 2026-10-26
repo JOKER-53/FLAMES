@@ -16,7 +16,7 @@ The backend reads saved completion from the owning account service. Guest/browse
 
 ## Staff flow
 
-Open **Admin → Completion certificates**. Choose the vendor, edit organization/title/colors, choose a classic frame or side accent, and inspect the live preview. Save explicitly. FortiGate and Palo Alto templates are independent.
+Open **Admin → Completion certificates**. Choose the vendor, edit organization/title/colors, choose the default FLAMES formal design, a classic frame or side accent, and inspect the live preview. Save explicitly. FortiGate and Palo Alto templates are independent. The default uses a navy and brass double frame, a FLAMES learning emblem, and serif display typography. **Reset design** selects this default; save to apply it to an already customized vendor template. Existing issued records retain their original layout.
 
 For your own layout, upload a PNG, JPEG, or WebP background up to 90 KB and adjust text positions/sizes under **Text positions and sizes**. The 1000 × 700 canvas reserves the bottom 100 pixels for the mandatory note. Text centers can be placed within the validated bounds. Layouts are declarative; arbitrary HTML, SVG uploads, remote image URLs and scripts are not accepted. Long identity text fits within the canvas. Backgrounds are embedded in the SVG download, so no image host is required.
 
