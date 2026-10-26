@@ -59,6 +59,8 @@ The shared header provides Credits, theme and account controls. Credits is a pub
 
 Hardware routes are lazy. Original GLBs retain stable URLs; build tooling creates the optimized FortiGate texture asset, gzip sidecars and versioned manifest. A bounded per-tab transport cache shares downloads while each viewer owns/disposes its scene. Loading/parse feedback, retry, keyboard component descriptions and cable/socket controls remain available, including useful fallback when WebGL is unavailable. Rendering pauses when idle, hidden or offscreen and respects reduced motion.
 
+The shared PA-220 appliance viewer is used by both the hardware reference and native interface task. Its compact task mode links data/MGT socket selection to the existing editor, retains keyboard editing after WebGL failure, and reuses model transport without changing grading or completion.
+
 Socket placement remains asset-dependent. Automated model/anchor tests and software-WebGL evidence do not prove actual-device alignment; replacement models need visual acceptance. See [hardware performance](HARDWARE_PERFORMANCE.md) and [accessibility](ACCESSIBILITY.md).
 
 ## Deployment and acceptance

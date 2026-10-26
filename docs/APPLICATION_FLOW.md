@@ -62,6 +62,12 @@ Original model URLs stay `/firewall.glb` and `/pa-220-firewall.glb`. The default
 
 Topology panels and network views represent the exercise/current configuration, not live traffic. Policy tests use supplied interface direction rather than a complete route/session engine. NAT translation is distinct from permission; App-ID uses supplied labels. These teaching boundaries are described in the learning guide and packet explanations.
 
+### PA-220 interface task
+
+The native Palo Alto Interface Configuration task embeds the real PA-220 model above its interface table. Clicking a data Ethernet socket or MGT selects the matching row and opens its editor; keyboard interface buttons provide the same action. Save applies type/zone/address changes through the existing draft flow and updates topology and the selected-interface summary. The viewer highlights the selected physical socket; console, USB and power are not network configuration targets.
+
+The embedded viewer has a compact in-page height and starts without automatic rotation. It shares the hardware reference's loader/cache, retry, calibrated socket mapping and render suspension through `hardware/PanApplianceViewer.tsx`. A missing WebGL context does not prevent keyboard/table editing. Selecting a port does not assign a zone, change a link, or grant completion.
+
 ## Appearance and credits
 
 Shared headers provide theme and Credits controls. The first visit follows system light/dark preference; an explicit choice persists locally. Course/forms/topology UI uses shared tokens, while the 3D stage keeps its own scene background.

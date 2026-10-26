@@ -46,7 +46,7 @@ FLAMES is one npm workspace with three packages and one active dependency lockfi
 │       │   ├── components/               # UI primitives, shells, lessons, packet tools
 │       │   ├── course/                   # Curriculum, catalog, learning source/access
 │       │   ├── drafts/                   # Hydration, autosave, conflicts and status
-│       │   ├── hardware/                 # Model loading, scheduling, sockets and cables
+│       │   ├── hardware/                 # Shared appliance viewer, loading, scheduling, sockets/cables
 │       │   ├── hooks/                    # Identity, progress, grading and sessions
 │       │   ├── integration/              # Verified parent-frame bridge
 │       │   ├── utils/                    # Small shared helpers
