@@ -3,11 +3,15 @@ import { isSimulatorConfiguration, type SimulatorDraft, type SimulatorKind } fro
 import { apiFetch } from "../api/http";
 import { useAccount } from "../hooks/useAccount";
 export type DraftStatus = "loading" | "saved" | "unsaved" | "saving" | "error" | "conflict" | "outdated";
+export interface DraftComparison { before: unknown; current: unknown; label: string; canCapture: boolean; capture: () => void; }
 export interface DraftControls {
+  scopeKey?: string;
+  comparison?: DraftComparison;
   ready: boolean; status: DraftStatus; message: string; canReset: boolean;
   retry: () => void; reload: () => void; reset: () => void;
 }
 interface Scope<T> {
+  comparison: string | null; comparisonLabel: string;
   key: string; value: T; baseline: string; revision: number; version: string;
   ready: boolean; loaded: boolean; blocked: boolean; alive: boolean; dirty: boolean;
   status: DraftStatus; message: string; timer?: ReturnType<typeof setTimeout>; flight: Promise<void> | null;
@@ -26,7 +30,7 @@ export function useSimulatorDraft<T>(platform: "fortigate" | "paloalto", taskId:
   const guest = !user;
   const key = `${active ? "active" : "idle"}:${integration?.mode ?? "pending"}:${user?.id ?? "guest"}:${platform}:${taskId}:${version}`;
   const storageKey = `flames:simulator-draft:v1:${platform}:${taskId}`;
-  const scope = useMemo<Scope<T>>(() => ({ key, value: clone(initial), baseline: JSON.stringify(initial), revision: 0, version, ready: false, loaded: false, blocked: false, alive: true, dirty: false, status: "loading", message: "Loading saved configuration…", flight: null }), [key]);
+  const scope = useMemo<Scope<T>>(() => ({ comparison: null, comparisonLabel: "Configuration loaded for this visit", key, value: clone(initial), baseline: JSON.stringify(initial), revision: 0, version, ready: false, loaded: false, blocked: false, alive: true, dirty: false, status: "loading", message: "Loading saved configuration…", flight: null }), [key]);
   const [, redraw] = useState(0);
   const render = useCallback(() => { if (scope.alive) redraw(value => value + 1); }, [scope]);
   const endpoint = `/api/drafts/${platform}/${encodeURIComponent(taskId)}`;
@@ -83,6 +87,7 @@ export function useSimulatorDraft<T>(platform: "fortigate" | "paloalto", taskId:
         scope.blocked = true; scope.status = "outdated"; scope.message = "The exercise or draft format changed. Reset this draft to start the current version."; render(); return;
       }
       scope.value = record?.config == null ? clone(initial) : record.config as T;
+      if (scope.comparison === null) scope.comparison = JSON.stringify(scope.value);
       scope.baseline = JSON.stringify(scope.value); scope.dirty = false; scope.ready = true; scope.status = "saved"; scope.message = record?.config != null ? savedMessage : "Ready · changes save automatically"; render();
     } catch (error) {
       if (!scope.alive) return;
@@ -139,5 +144,5 @@ export function useSimulatorDraft<T>(platform: "fortigate" | "paloalto", taskId:
       window.removeEventListener("beforeunload", unload); document.removeEventListener("visibilitychange", hide); window.removeEventListener("storage", storage);
     };
   }, [scope]);
-  return { value: scope.value, setValue, controls: { ready: scope.ready, status: scope.status, message: scope.message, canReset: scope.loaded && scope.status !== "conflict" && scope.status !== "loading" && scope.status !== "saving" && (!scope.blocked || scope.status === "outdated"), retry: () => { if (scope.blocked && scope.status === "error") { window.location.reload(); return; } if (!scope.ready || !scope.loaded || !scope.dirty) void load(); else void save(); }, reload: () => { if (!scope.dirty || window.confirm("Discard your unsaved changes and reload the saved version?")) void load(); }, reset: () => void reset() } };
+  return { value: scope.value, setValue, controls: { scopeKey: key, comparison: scope.comparison !== null && scope.ready ? { before: JSON.parse(scope.comparison), current: scope.value, label: scope.comparisonLabel, canCapture: scope.status === "saved", capture: () => { if (scope.status !== "saved" || !scope.ready) return; scope.comparison = JSON.stringify(scope.value); scope.comparisonLabel = "Comparison snapshot captured this visit"; render(); } } : undefined, ready: scope.ready, status: scope.status, message: scope.message, canReset: scope.loaded && scope.status !== "conflict" && scope.status !== "loading" && scope.status !== "saving" && (!scope.blocked || scope.status === "outdated"), retry: () => { if (scope.blocked && scope.status === "error") { window.location.reload(); return; } if (!scope.ready || !scope.loaded || !scope.dirty) void load(); else void save(); }, reload: () => { if (!scope.dirty || window.confirm("Discard your unsaved changes and reload the saved version?")) void load(); }, reset: () => void reset() } };
 }
