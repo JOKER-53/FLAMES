@@ -67,3 +67,20 @@ Use the [operations runbook](OPERATIONS_RUNBOOK.md) for the shipped SQLite snaps
 ### Development engine changes
 
 `npm run backend:dev` and the development Compose backend now use `scripts/backend-dev.cjs`. It watches both packages, compiles engine/backend together, and replaces the API only after success. Compiler errors keep the previous API running and are retried on the next source edit. This avoids stale shared declarations taking down `/api/integration/config` when engine exports change. Dependency changes still require rebuilding development images. Production continues to use the built API directly.
+
+## Temporary Vercel demonstration
+
+The backend service has a root `app.ts` default Express export for Vercel discovery. On Vercel, default SQLite paths use the writable temporary directory rather than the read-only application bundle. This is a temporary demonstration setup, not durable hosting: accounts, content, certificates, question sessions and rate limits are per-instance and may disappear or differ after cold starts/scaling. The training page labels this mode. Do not use it for real student records or assessment acceptance.
+
+For a standalone demonstration, set backend service environment variables:
+
+```text
+PLATFORM_MODE=standalone
+FRONTEND_ORIGIN=https://flames-nine-orcin.vercel.app
+AUTH_REQUIRED=false
+ALLOW_REGISTRATION=false
+```
+
+Use Node.js 22.x or a supported newer runtime with `node:sqlite`. Remove old `DATABASE_PATH`/`CONTENT_DATABASE_PATH` overrides that point to read-only locations, or explicitly set `/tmp/flames-demo/fortisim.sqlite` and `/tmp/flames-demo/content.sqlite`. Do not set `ACADEMY_*` values unless a reachable Academy is actually being used. If admin editing is required, configure `INSTRUCTOR_EMAIL` and a unique `INSTRUCTOR_PASSWORD` of at least 12 characters through Vercel's private environment settings, not committed source. Remove invalid/incomplete bootstrap instructor variables if only guest demonstration is needed.
+
+Redeploy after changing environment variables. Verify `/api/health` and `/api/integration/config` return JSON before opening a course. A `FUNCTION_INVOCATION_FAILED` response is a function startup/runtime failure; use Vercel runtime logs for the exact exception if it persists. Vercel credentials are not stored in this repository, so the local fix does not establish a successful remote deployment.

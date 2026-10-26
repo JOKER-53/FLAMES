@@ -5,7 +5,8 @@
       "root": "packages/backend",
       "framework": "express",
       "installCommand": "cd ../.. && npm ci",
-      "buildCommand": "cd ../.. && npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend"
+      "buildCommand": "cd ../.. && npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend",
+      "entrypoint": "app.ts"
     },
     "frontend": {
       "root": "packages/frontend",
@@ -17,11 +18,15 @@
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": { "service": "backend" }
+      "destination": {
+        "service": "backend"
+      }
     },
     {
       "source": "/(.*)",
-      "destination": { "service": "frontend" }
+      "destination": {
+        "service": "frontend"
+      }
     }
   ]
 }

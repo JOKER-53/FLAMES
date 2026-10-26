@@ -2,14 +2,16 @@ import { ContentStore } from "./content/store";
 import dotenv from "dotenv";
 dotenv.config();
 import { resolve, dirname } from "node:path";
+import { tmpdir } from "node:os";
 import { createApp } from "./app";
 import { PlatformStore } from "./platform/store";
 import { hashPassword, verifyPassword } from "./platform/auth";
 
-async function main() {
+export async function createRuntimeApp() {
+  const databasePath = process.env.DATABASE_PATH || resolve(process.env.VERCEL ? tmpdir() : ".", process.env.VERCEL ? "flames-demo/fortisim.sqlite" : "data/fortisim.sqlite");
   const academy = process.env.PLATFORM_MODE === "academy";
-  const store = new PlatformStore(academy ? ":memory:" : process.env.DATABASE_PATH || resolve("data/fortisim.sqlite"));
-  const content = new ContentStore(process.env.CONTENT_DATABASE_PATH || resolve(dirname(process.env.DATABASE_PATH || resolve("data/fortisim.sqlite")), "content.sqlite"));
+  const store = new PlatformStore(academy ? ":memory:" : databasePath);
+  const content = new ContentStore(process.env.CONTENT_DATABASE_PATH || resolve(dirname(databasePath), "content.sqlite"));
   const email = academy ? undefined : process.env.INSTRUCTOR_EMAIL?.trim().toLowerCase();
   const password = academy ? undefined : process.env.INSTRUCTOR_PASSWORD;
   if (email && password) {
@@ -26,12 +28,19 @@ async function main() {
       if (await verifyPassword("admin123", hash)) throw new Error("The checking-only administrator password must be rotated before production. Run admin:create -- --reset-password in a maintenance terminal.");
     }
   }
-  const server = createApp(store, content).listen(Number(process.env.PORT) || 4000, () => console.log("FLAMES API ready"));
+  const app = createApp(store, content);
+  app.locals.closeStores = () => { store.close(); content.close(); };
+  return app;
+}
+
+async function main() {
+  const app = await createRuntimeApp();
+  const server = app.listen(Number(process.env.PORT) || 4000, () => console.log("FLAMES API ready"));
   const shutdown = () => {
-    server.close(() => { store.close(); content.close(); process.exit(0); });
+    server.close(() => { app.locals.closeStores(); process.exit(0); });
     setTimeout(() => process.exit(1), 10_000).unref();
   };
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
 }
-main().catch(error => { console.error(error.message); process.exit(1); });
+if (require.main === module) main().catch(error => { console.error(error.message); process.exit(1); });
