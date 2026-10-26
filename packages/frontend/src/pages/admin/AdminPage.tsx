@@ -1,3 +1,4 @@
+import { CertificateEditor } from "./CertificateEditor";
 import { TopologyEditor } from "./TopologyEditor";
 import { ExerciseTopologyDiagram } from "../../components/topology/ExerciseTopologyDiagram";
 import { LearningVisibility } from "./LearningVisibility";
@@ -110,6 +111,7 @@ export function AdminPage() {
     {error && <Callout tone="danger" className="mb-5">{error} {error.includes("another editor") && draft && <button className="link ml-2" onClick={() => void open(draft.module.id)}>Reload module</button>}</Callout>}
     {notice && <p className="mb-5 rounded-md bg-success-soft text-success border border-success/20 px-4 py-3 text-sm" role="status">{notice}</p>}
     <LearningVisibility />
+    <CertificateEditor />
     <ContentTransfer moduleId={draft?.module.id} dirty={dirty} onImported={async result => { setDraft(result); setSelectedLesson(null); setLessonQuery(""); setDirty(false); setPreview(false); await reloadList(); }} />
     {creating && <form onSubmit={create} className="card p-5 mb-6 flex flex-wrap items-end gap-4">
       <label className="min-w-[180px]"><span className="field-label">Course</span><select aria-label="Course" className="input" value={vendor} onChange={event => setVendor(event.target.value as ContentVendor)}><option value="fortigate">FortiGate 60F</option><option value="paloalto">Palo Alto PA-220</option></select></label>

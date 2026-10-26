@@ -29,6 +29,8 @@ const PanPortAssignment = lazy(() => import("./pages/pan/PanPortAssignment").the
 import { useScenarioSession }    from "./hooks/useScenarioSession";
 import { usePanSession }         from "./hooks/usePanSession";
 
+const CertificatesPage = lazy(() => import("./pages/CertificatesPage").then(module => ({ default: module.CertificatesPage })));
+
 function TrainingAccess({ children }: { children: ReactNode }) {
   const { loading, authRequired, user, integration, error } = useAccount();
   if (loading) return <p className="p-8 text-muted" role="status">Checking lab access…</p>;
@@ -115,6 +117,7 @@ export default function App() {
       <Routes>
         <Route path="/"            element={<VendorSelect />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/certificates" element={<CertificatesPage />} />
         <Route path="/credits" element={<CreditsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/classroom" element={<ClassroomPage />} />
