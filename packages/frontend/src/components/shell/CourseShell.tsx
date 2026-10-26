@@ -47,7 +47,7 @@ export function BrandMark({ className = "" }: { className?: string }) {
 }
 
 export function AccountMenu() {
-  return <div className="flex max-w-full flex-wrap items-center justify-end gap-2"><NavLink to="/credits" className={({ isActive }) => `btn-secondary btn-sm shrink-0 ${isActive ? "bg-sunken font-semibold" : ""}`}>Credits</NavLink><NavLink to="/certificates" className="btn-ghost btn-sm">Certificates</NavLink><ThemeToggle /><AccountActions /></div>;
+  return <div className="flex max-w-full flex-wrap items-center justify-end gap-2"><NavLink to="/credits" className={({ isActive }) => `btn-secondary btn-sm shrink-0 ${isActive ? "bg-sunken font-semibold" : ""}`}>Credits</NavLink><ThemeToggle /><AccountActions /></div>;
 }
 
 function AccountActions() {

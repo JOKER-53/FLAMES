@@ -76,4 +76,4 @@ Shared headers provide theme and Credits controls. The first visit follows syste
 
 ## Internal completion records
 
-The shared header links to `/certificates`. Signed-in students see separate vendor eligibility and SVG downloads after all required vendor tasks are saved and their authoritative profile supplies a roll number. Administrators edit templates/live previews and local roll numbers in the content studio. See [certificate flow](CERTIFICATES.md); this is explicitly internal practice completion, not approved assessment certification.
+Completed courses link to `/certificates`; the shared header does not show a Certificates button. Signed-in students see separate vendor eligibility and SVG downloads after all required vendor tasks are saved and their authoritative profile supplies a roll number. Administrators edit templates/live previews and local roll numbers in the content studio. See [certificate flow](CERTIFICATES.md); this is explicitly internal practice completion, not approved assessment certification.

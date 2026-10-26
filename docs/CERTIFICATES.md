@@ -8,7 +8,7 @@ Every preview, download page, and downloaded certificate contains the fixed note
 
 ## Student flow
 
-Open **Certificates** in the header. Sign in, complete every required course task, and ensure your student profile has a roll number. The certificate is issued automatically when the signed-in student opens this page after becoming eligible. Download the self-contained SVG; browsers can open it at full resolution. This release does not send email or automatically award a professional credential.
+Open **View completion certificate** inside a completed course. Sign in, complete every required course task, and ensure your student profile has a roll number. The certificate is issued automatically when the signed-in student opens this page after becoming eligible. Download the self-contained SVG; browsers can open it at full resolution. This release does not send email or automatically award a professional credential.
 
 Required tasks are all built-in vendor completion IDs (28 FortiGate, 20 Palo Alto), plus currently published authored lessons for that vendor. Alternate knowledge-check completion still counts: this is the platform's existing practice-progress meaning. Retired/unpublished lessons are not new requirements. An existing certificate remains a historical record of its issuance requirements when content changes.
 
