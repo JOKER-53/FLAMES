@@ -224,6 +224,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       mount.style.cursor="grabbing"; resetIdleTimer();
     };
     const onUp   = () => {
+      if (isDragging) resetIdleTimer();
       isDragging=false;
       mount.style.cursor = "grab";
     };
@@ -252,7 +253,7 @@ export function FortiGateHardwarePage({ session: _ }: DashboardProps) {
       prevX=e.touches[0].clientX; prevY=e.touches[0].clientY;
       group.rotation.set(rotX,rotY,0); syncRotToRef();
     };
-    const onTE = () => { isDragging=false; };
+    const onTE = () => { isDragging=false; resetIdleTimer(); };
 
     mount.addEventListener("click",      onClick);
     mount.addEventListener("mousemove",  onHover);

@@ -115,9 +115,26 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.enablePan = false;
-    controls.autoRotate = !compact&&modeRef.current==="explore"&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    controls.autoRotate = modeRef.current==="explore"&&!window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     controls.autoRotateSpeed = 0.6;
-    renderer.domElement.addEventListener("pointerdown", () => { controls.autoRotate = false; }, { once: true });
+    let idleTimer: ReturnType<typeof setTimeout> | undefined;
+    let interacting = false;
+    const pauseRotation = () => {
+      controls.autoRotate = false;
+      clearTimeout(idleTimer);
+      idleTimer = setTimeout(() => {
+        controls.autoRotate = !interacting && modeRef.current === "explore" && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        sceneRef.current?.invalidate();
+      }, 10000);
+    };
+    const interactionStart = () => { interacting = true; pauseRotation(); };
+    const interactionEnd = () => { if (interacting) { interacting = false; pauseRotation(); } };
+    mount.addEventListener("pointerdown", interactionStart);
+    window.addEventListener("pointerup", interactionEnd);
+    window.addEventListener("pointercancel", interactionEnd);
+    mount.addEventListener("wheel", pauseRotation, { passive: true });
+    mount.addEventListener("click", pauseRotation);
+    mount.addEventListener("keydown", pauseRotation);
 
     scene.add(new THREE.AmbientLight(0xffffff, 1.2));
     [[5, 10, 10, 1.2], [-5, 5, 10, 0.9], [0, -5, 10, 0.5], [0, 5, -10, 0.9]].forEach(([x, y, z, i]) => {
@@ -228,6 +245,13 @@ export function PanApplianceViewer({ interfacePorts, selectedInterface, onSelect
 
     return () => {
       disposed = true;
+      clearTimeout(idleTimer);
+      mount.removeEventListener("pointerdown", interactionStart);
+      window.removeEventListener("pointerup", interactionEnd);
+      window.removeEventListener("pointercancel", interactionEnd);
+      mount.removeEventListener("wheel", pauseRotation);
+      mount.removeEventListener("click", pauseRotation);
+      mount.removeEventListener("keydown", pauseRotation);
       cancelLoad();loop.dispose();controls.removeEventListener("change",loop.invalidate);reducedMotion.removeEventListener("change",motionChange);
       resize.disconnect();
       canvas.removeEventListener("pointerdown", onDown);
