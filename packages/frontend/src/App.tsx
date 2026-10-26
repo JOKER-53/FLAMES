@@ -37,7 +37,7 @@ function TrainingAccess({ children }: { children: ReactNode }) {
   if (error && !integration) return <p className="p-8 text-danger" role="alert">Could not load lab settings. Reload to retry: {error}</p>;
   if (integration?.mode === "academy" && !user) return <div className="min-h-screen bg-canvas p-8 text-body"><h1 className="text-2xl font-semibold">Open this lab from Academy</h1><p className="mt-3">{error || "Your Academy login is required. Return to Academy and open the firewall lab."}</p><a className="btn-primary mt-5" href={integration.parentUrl ?? "/"} target="_top">Return to Academy</a></div>;
   if (authRequired && !user) return <Navigate to="/account" replace />;
-  return <>{children}</>;
+  return <>{integration?.ephemeralDemo && <p role="status" className="bg-warning-soft px-4 py-2 text-sm text-body">Temporary demo: server data may reset. Use this deployment for demonstrations only.</p>}{children}</>;
 }
 
 function LearningAccess() {

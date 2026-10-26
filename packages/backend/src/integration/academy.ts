@@ -1,7 +1,7 @@
 import { Router, type Request } from "express";
 import { isCompletionTask } from "@fortisim/engine";
 
-export interface IntegrationConfig { mode: "standalone" | "academy"; parentOrigin: string | null; parentUrl: string | null; }
+export interface IntegrationConfig { mode: "standalone" | "academy"; parentOrigin: string | null; parentUrl: string | null; ephemeralDemo?: boolean; }
 /** Validate the upstream identity before granting any local administrative access. */
 export function academyIdentity(value: unknown) {
   const user = value as { id?: unknown; username?: unknown; email?: unknown; role?: unknown; rollNumber?: unknown; roll_number?: unknown } | null;
@@ -15,7 +15,7 @@ export function academyIdentity(value: unknown) {
 export function integrationConfig(): IntegrationConfig {
   const mode = process.env.PLATFORM_MODE || "standalone";
   if (mode !== "standalone" && mode !== "academy") throw new Error("PLATFORM_MODE must be standalone or academy.");
-  if (mode === "standalone") return { mode, parentOrigin: null, parentUrl: null };
+  if (mode === "standalone") return { mode, parentOrigin: null, parentUrl: null, ...(process.env.VERCEL ? { ephemeralDemo: true } : {}) };
   const parent = new URL(process.env.ACADEMY_ORIGIN || "");
   const api = new URL(process.env.ACADEMY_API_URL || "");
   if (![parent, api].every(url => ["http:", "https:"].includes(url.protocol) && !url.username && !url.password && !url.search && !url.hash)) throw new Error("Invalid Academy URLs.");

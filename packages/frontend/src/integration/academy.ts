@@ -1,4 +1,4 @@
-export interface IntegrationConfig {
+export interface IntegrationConfig { ephemeralDemo?: boolean;
   mode: "standalone" | "academy";
   parentOrigin: string | null;
   parentUrl: string | null;
