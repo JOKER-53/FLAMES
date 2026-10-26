@@ -6,7 +6,7 @@ The prioritized acceptance list is [TODO.md](../TODO.md). This page separates im
 
 - Two vendor courses with 48 native tasks, guided configuration and assessments.
 - Local accounts/sessions, identity-scoped progress, Academy-owned identity/progress integration and versioned simulator autosave.
-- Administrator-authored reading/questions, FortiGate policy exercises, and configuration builders for FortiGate interfaces/routes and Palo Alto security/NAT/zones.
+- Administrator-authored reading/questions, FortiGate policy exercises, and configuration builders for FortiGate interfaces/routes and Palo Alto security/NAT/zones, physical ports and interfaces; FortiGate physical-port authoring is also supported.
 - Private drafts, publication, revision comparison, module/lesson search and duplication, versioned content transfer.
 - Instructor-owned classroom groups, invitation membership, module assignments/deadlines, scoped reporting and CSV export.
 - Ten learning chapters, individual study plans, worked examples, flowcharts and a generated handbook. Student guide visibility is administrator-controlled and defaults to hidden.
@@ -18,6 +18,8 @@ The prioritized acceptance list is [TODO.md](../TODO.md). This page separates im
 
 See the [application flow](APPLICATION_FLOW.md) and feature guides for model boundaries. Simulator completion is practice progress, not a certified assessment score.
 
+- Per-vendor internal college completion certificates, staff-editable designs/backgrounds, live previews and required roll numbers; see [certificates](CERTIFICATES.md).
+
 ## Environment-dependent acceptance
 
 AWS hosting, HTTPS/DNS, production configuration, persistent storage, scheduled backups and external monitoring must be verified in the target deployment. Academy adapter installation and parent auth/progress/draft round trips require the actual deployed Academy version. The previous college endpoint is not evidence of a currently working deployment.
@@ -28,7 +30,7 @@ Manual actual-device WebGL/socket alignment, screen-reader/assistive-technology 
 
 - Standalone hosted password recovery, email verification and MFA if local identities remain in use; Academy-owned identities use Academy recovery.
 - Certified assessment evidence and server-authoritative examination scoring, if required by the institution.
-- Configuration diffs, topology authoring and supported CLI practice after the current flow is validated with teachers.
+- Configuration comparisons, topology authoring and the supported FortiGate interface CLI subset are implemented; see [configuration tools](CONFIGURATION_TOOLS.md).
 - Durable/distributed question sessions, shared rate limiting and multi-replica storage design if scaling requires them.
 - More appliance fidelity: stateful sessions, actual App-ID inspection, complete NAT/session behavior and real HA/management configuration. These are not implied by the current simulator models.
 

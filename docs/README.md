@@ -49,3 +49,11 @@ The student learning guide is hidden by default. Administrators enable it for bo
 - After changing engine draft contracts, run `npm run sync:academy` and verify the generated companion contract.
 - Run `npm run docs:check` to validate local links in active documentation.
 - Update the relevant guide when changing routes, feature flags, migrations, commands or file ownership. Store dated evidence in the archive and distinguish automated checks from deployment/manual acceptance.
+
+## Current additions
+
+- [Internal completion certificates](CERTIFICATES.md)
+- [Configuration comparison, CLI practice and topology authoring](CONFIGURATION_TOOLS.md)
+- [Non-AWS acceptance and human review](acceptance/NON_AWS_ACCEPTANCE.md)
+- [Identity and assessment decision](decisions/0001-identity-and-assessment-boundaries.md)
+- [Single-instance runtime decision](decisions/0002-single-instance-runtime.md)

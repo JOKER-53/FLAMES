@@ -131,3 +131,7 @@ Academy mode also stores unfinished simulator configurations in the parent `fort
 ## Classroom assignment adapter update
 
 The updated adapter adds admin-only `POST /api/integrations/fortisim/classroom/progress` for validated batches of up to 500 student IDs. Install the updated router before integrated instructor reports are used. FLAMES stores group/assignment teaching metadata and parent ID references in its content database; account identity, completion and simulator drafts remain in Academy. Group ownership is checked by FLAMES before requesting parent results. No Academy UI/schema change for assignments is installed automatically. Back up both systems and preserve parent IDs during restore.
+
+## Roll numbers for internal completion certificates
+
+The authenticated `/auth/me` user must supply a string `rollNumber` or `roll_number` (up to 64 characters) for certificate issuance. Map the existing authoritative Academy college roll-number field in that response; do not infer it from username/email and do not allow FLAMES clients to overwrite it. Missing roll numbers keep new certificates unavailable until staff update the parent profile. Existing login/progress behavior does not require the optional field. [Certificate details](CERTIFICATES.md) explain current practice-progress semantics and the fixed internal-use disclaimer. This contract must be checked against the actual deployed Academy version.

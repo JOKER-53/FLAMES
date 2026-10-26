@@ -73,3 +73,7 @@ The embedded viewer has a compact in-page height and starts without automatic ro
 Shared headers provide theme and Credits controls. The first visit follows system light/dark preference; an explicit choice persists locally. Course/forms/topology UI uses shared tokens, while the 3D stage keeps its own scene background.
 
 `/credits` is public and lists KADHIRAVAN EG (`JOKER-53`), Harish Kumar (`Harishkumar-47`) and BeyondBug with supplied GitHub/LinkedIn links. Its opt-in full-width layout frames the original 1280 × 567 team photograph at `public/images/beyondbug-team.png` without cropping. Profiles sit alongside it on wide screens and stack below on small screens. Credits is linked only in the shared header, without footer/sidebar duplicates. Other standard pages retain their usual widths.
+
+## Internal completion records
+
+The shared header links to `/certificates`. Signed-in students see separate vendor eligibility and SVG downloads after all required vendor tasks are saved and their authoritative profile supplies a roll number. Administrators edit templates/live previews and local roll numbers in the content studio. See [certificate flow](CERTIFICATES.md); this is explicitly internal practice completion, not approved assessment certification.
