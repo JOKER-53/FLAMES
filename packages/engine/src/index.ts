@@ -21,6 +21,7 @@ export * from "./evaluators/routingEvaluator";
 export * from "./scenarios/routingScenarios";
 export * from "./panExercises";
 
+export * from "./practiceScenarios";
 export * from "./completion";
 export * from "./authoredContent";
 export * from "./drafts";

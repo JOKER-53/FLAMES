@@ -1,3 +1,4 @@
+import { LearningVisibility } from "./LearningVisibility";
 import { RevisionHistory } from "./RevisionHistory";
 import { CONFIGURATION_FAMILIES, type ConfigurationFamily } from "@fortisim/engine";
 import { ConfigurationExerciseEditor, exampleConfigurationExercise } from "./ConfigurationExerciseEditor";
@@ -106,6 +107,7 @@ export function AdminPage() {
     <PageHeader eyebrow="FLAMES administration" title="Content studio" description="Build modules, write lessons, and add tasks. Publish when you are ready for students to see them." actions={<button className="btn-primary" disabled={busy} onClick={() => { setCreating(true); setPreview(false); }}><Icon name="plus" size={15} />New module</button>} />
     {error && <Callout tone="danger" className="mb-5">{error} {error.includes("another editor") && draft && <button className="link ml-2" onClick={() => void open(draft.module.id)}>Reload module</button>}</Callout>}
     {notice && <p className="mb-5 rounded-md bg-success-soft text-success border border-success/20 px-4 py-3 text-sm" role="status">{notice}</p>}
+    <LearningVisibility />
     <ContentTransfer moduleId={draft?.module.id} dirty={dirty} onImported={async result => { setDraft(result); setSelectedLesson(null); setLessonQuery(""); setDirty(false); setPreview(false); await reloadList(); }} />
     {creating && <form onSubmit={create} className="card p-5 mb-6 flex flex-wrap items-end gap-4">
       <label className="min-w-[180px]"><span className="field-label">Course</span><select aria-label="Course" className="input" value={vendor} onChange={event => setVendor(event.target.value as ContentVendor)}><option value="fortigate">FortiGate 60F</option><option value="paloalto">Palo Alto PA-220</option></select></label>

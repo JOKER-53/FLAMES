@@ -1,7 +1,9 @@
+import { useLearningAccess } from "../../course/useLearningAccess";
 // ============================================================================
 // Standard lesson layout: header, scenario brief, the vendor workspace, and
 // previous/next navigation. Pages provide the brief and the workspace only.
 // ============================================================================
+import { isCompletionTask } from "@fortisim/engine";
 import { useState, type ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Icon } from "../ui/Icon";
@@ -21,6 +23,7 @@ interface LessonFrameProps {
 
 export function LessonFrame({ brief, hint, title, children }: LessonFrameProps) {
   const { course, completed } = useCourse();
+  const { canView: canViewLearning } = useLearningAccess();
   const location = useLocation();
   const [showHint, setShowHint] = useState(false);
   const match = lessonForLocation(course, location.pathname, location.search);
@@ -39,6 +42,7 @@ export function LessonFrame({ brief, hint, title, children }: LessonFrameProps) 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted">
             {module && lesson && <span>{lesson.final ? "Module assessment" : `Lesson ${index + 1} of ${module.lessons.filter(l => !l.final).length}`}</span>}
             {lesson && <><span className="inline-flex items-center gap-1.5"><Icon name="clock" size={14} />{lesson.minutes} min</span><LevelBadge level={lesson.level} /></>}
+            {canViewLearning && lesson && isCompletionTask(course.vendor, lesson.id) && <Link className="text-accent underline underline-offset-4" to={`${course.base}/learn?task=${lesson.id}`}>Study this task</Link>}
             {done && <span className="inline-flex items-center gap-1.5 text-success"><Icon name="check" size={13} strokeWidth={2.25} />Completed</span>}
           </div>
         </div>

@@ -1,6 +1,13 @@
 // Public practice lesson IDs. Keep synchronized with @fortisim/engine completion.ts.
 export const LESSONS = {
   "fortigate": [
+    "dns-resolver-01",
+    "admin-jump-host-01",
+    "quarantine-exception-01",
+    "monitoring-collector-01",
+    "time-service-01",
+    "partner-allowlist-01",
+
     "web-server-access-01",
     "db-lockdown-01",
     "dmz-multi-service-01",
@@ -25,6 +32,10 @@ export const LESSONS = {
     "routing-static-01"
   ],
   "paloalto": [
+    "pan-sec-dns",
+    "pan-sec-admin",
+    "pan-sec-mail",
+
     "pan-sec-01",
     "pan-sec-02",
     "pan-sec-03",

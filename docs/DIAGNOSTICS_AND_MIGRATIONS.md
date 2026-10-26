@@ -11,3 +11,5 @@ Before upgrading, make and validate a database backup using the operations runbo
 Backend regressions cover old-data adoption, repeated startup, checksum/future-version rejection, failed-migration rollback, administrator authorization, request correlation and secret-free rate-limit logging.
 
 Content migration 2 adds private revision snapshots and adopts each existing module's current draft as its first historical baseline. It leaves `published_json`, completion, task identities and answers unchanged. The legacy-content regression verifies adoption, publication and private answer preservation across a reopen. Before rolling back to a binary without migration 2, use the matched pre-upgrade database backup; its schema is deliberately rejected by the earlier binary's future-version guard.
+
+Content migration 3 adds the single platform-wide learning-guide visibility setting, initialized to hidden. It preserves course content and revision history. A rollback to a release that does not understand content version 3 requires the corresponding pre-upgrade backup.

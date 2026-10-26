@@ -42,7 +42,7 @@ export function createApp(store: PlatformStore, content = new ContentStore(":mem
   app.use(express.json({ limit: "256kb" }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.get("/api/integration/config", (_req, res) => res.json(integration));
-  app.get("/api/content/catalog", (_req, res) => res.json({ modules: content.catalog() }));
+  app.get("/api/content/catalog", (_req, res) => res.json({ modules: content.catalog(), ...content.learningSettings() }));
   if (integration.mode === "academy") {
     app.use("/api", async (req, res, next) => {
       if (!bearer(req)) {

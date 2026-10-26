@@ -41,12 +41,16 @@ function exercise<T>(id: string, title: string, description: string, checks: Che
 }
 
 export const PAN_SECURITY_SCENARIOS = [
+
   exercise("pan-sec-01", "Basic Outbound Access", "Allow Trust → Untrust web-browsing, ssl, and dns. Deny all other applications and finish with an explicit any/any/any deny rule.", [...outbound, ...["ssh", "ftp", "smtp", "rdp", "bittorrent", "unknown-tcp"].map(app => traffic("Trust", "Untrust", app, "deny")), denyBottom]),
   exercise("pan-sec-02", "DMZ Web Server Access", "Allow Untrust → DMZ ssl and Trust → DMZ web-browsing + ssl. DMZ must not initiate traffic to Trust.", dmz),
   exercise("pan-sec-03", "App-ID Enforcement", "Explicitly deny bittorrent and rdp across all zones before allow rules. Allow Trust → Untrust web-browsing and ssl.", [...risky, blockBeforeAllow, ...outbound.slice(0, 2)]),
   exercise("pan-sec-04", "Approved Application Whitelist", "Trust → Untrust may use only web-browsing, ssl, dns, and smtp. Deny ssh, ftp, rdp, bittorrent, and unknown-tcp.", [...outbound, traffic("Trust", "Untrust", "smtp", "allow"), ...["ssh", "ftp", "rdp", "bittorrent", "unknown-tcp"].map(app => traffic("Trust", "Untrust", app, "deny"))]),
   exercise("pan-sec-05", "Inter-Zone Trust Hierarchy", "Allow Management → Trust/DMZ ssh; Trust → DMZ web-browsing + ssl; Untrust → DMZ ssl only. Isolate Trust/DMZ from Management, DMZ from Trust, and Untrust from Trust/Management.", hierarchy),
   exercise("pan-sec-final", "Security Policy Final", "Combine the outbound and DMZ exercises with Management SSH access and zone isolation. Explicitly block bittorrent and rdp before allow rules; end with any/any/any deny.", [...outbound, ...hierarchy, ...risky, blockBeforeAllow, denyBottom]),
+  exercise("pan-sec-dns", "DNS-Only Egress", "Trust \u2192 Untrust may use dns only. Deny every other supported application in that direction; deny Untrust \u2192 Trust. Finish with an explicit any/any/any deny rule.", [traffic("Trust", "Untrust", "dns", "allow"), ...apps.filter(app => app !== "dns").map(app => traffic("Trust", "Untrust", app, "deny")), blockDirection("Untrust", "Trust"), denyBottom]),
+  exercise("pan-sec-admin", "Dedicated Administration Zone", "Allow only ssh from Management to Trust and DMZ. Deny other supported applications on those two paths, all traffic from Trust/DMZ/Untrust to Management, and Management \u2192 Untrust. Finish with an explicit catch-all deny.", [...(["Trust", "DMZ"].flatMap(dst => apps.map(app => traffic("Management", dst, app, app === "ssh" ? "allow" : "deny")))), ...["Trust", "DMZ", "Untrust"].map(src => blockDirection(src, "Management")), blockDirection("Management", "Untrust"), denyBottom]),
+  exercise("pan-sec-mail", "DMZ Mail Relay Isolation", "Allow smtp from Untrust to DMZ and from DMZ to Untrust only. Deny all other supported applications on these paths and all DMZ \u2192 Trust/Management traffic. Finish with an explicit catch-all deny.", [...([ ["Untrust", "DMZ"], ["DMZ", "Untrust"] ].flatMap(([src, dst]) => apps.map(app => traffic(src, dst, app, app === "smtp" ? "allow" : "deny")))), blockDirection("DMZ", "Trust"), blockDirection("DMZ", "Management"), denyBottom]),
 ];
 
 const zone = (name: string, type: PanZone["type"], iface: string, profile?: PanZone["profile"], logging = false): Check<PanZone> => ({

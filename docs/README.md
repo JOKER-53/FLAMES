@@ -14,7 +14,8 @@ Start with the repository [README](../README.md) for installation and commands. 
 | [Deployment](DEPLOYMENT.md) | Local containers, production hosting, and backups |
 | [Scenario authoring](SCENARIO_AUTHORING.md) | Adding training scenarios |
 | [LMS integration](PARENT_LMS_INTEGRATION_GUIDE.md) | Existing completion events and embedding limitations |
-| [Learning guide](COMPLETE_FORTISIM_PANSIM_MASTER_GUIDE.md) | Networking concepts and simulator coverage |
+| [Learning handbook](LEARNING_HANDBOOK.md) | Current study paths for all 48 built-in tasks, examples, and flowcharts |
+| [Background learning guide](COMPLETE_FORTISIM_PANSIM_MASTER_GUIDE.md) | Additional networking background beyond the simulator |
 | [Glossary](NETWORKING_CONCEPTS_GLOSSARY.md) | Networking terminology |
 | [Roadmap](ROADMAP.md) | Remaining work |
 | [Academy and themes](ACADEMY_AND_THEME_2026-10-23.md) | Integration, theme implementation, and verification record |
@@ -33,3 +34,5 @@ Expanded authoring: [configuration exercise builder](CONFIGURATION_EXERCISE_BUIL
 Learning tools: [packet explanations and row highlighting](PACKET_EXPLANATIONS.md).
 
 Platform improvements: [accessibility support](ACCESSIBILITY.md), [hardware loading/rendering](HARDWARE_PERFORMANCE.md), and [API diagnostics/schema migrations](DIAGNOSTICS_AND_MIGRATIONS.md). The content administration guide covers search, duplication and revision comparisons.
+
+- [Learning handbook](LEARNING_HANDBOOK.md): all 48 built-in tasks, worked examples, study plans, and Mermaid flowcharts. Regenerate with `npm run docs:learning` after updating the shared course material.

@@ -14,6 +14,10 @@ export function adminContentRouter(content: ContentStore, accounts: PlatformStor
     if (academy ? !user.canManageContent : user.role !== "instructor") { res.status(403).json({ error: "Content administrator access required." }); return; }
     next();
   });
+  router.get("/learning-settings", (_req, res) => res.json(content.learningSettings()));
+  router.put("/learning-settings", (req, res, next) => {
+    try { res.json(content.setLearningVisibility(req.body?.learningGuideVisible)); } catch (error) { next(error); }
+  });
   router.get("/diagnostics", (_req, res) => res.json(diagnostics?.() ?? {}));
   router.post("/validate-configuration", (req, res, next) => {
     try { const exercise = validateConfigurationExercise(req.body?.exercise, true, false); res.json(gradeConfigurationExercise(exercise, exercise.referenceConfig)); }

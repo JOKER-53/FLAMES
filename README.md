@@ -94,3 +94,7 @@ Browser regression tests: after `npm run build`, run `npx playwright install chr
 Expanded authoring: [configuration exercise builder](docs/CONFIGURATION_EXERCISE_BUILDER.md) — FortiGate interfaces/routing and Palo Alto security/NAT/zones.
 
 Learning tools: [packet explanations and row highlighting](docs/PACKET_EXPLANATIONS.md).
+
+### Learning material
+
+Administrators first enable **Student learning guide** in the admin dashboard (hidden by default). Then open **Learning guide** from either course sidebar, or use **Study this task** in a lesson. The [full handbook](docs/LEARNING_HANDBOOK.md) covers all 48 built-in tasks with ten concept chapters, examples, flowcharts, troubleshooting, and individual practice checklists. Six additional FortiGate and three Palo Alto operations labs use the existing grading, autosave, packet tools, and progress integration. Run `npm run docs:learning` to refresh the handbook from the same material used in the app.

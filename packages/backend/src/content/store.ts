@@ -81,7 +81,14 @@ export class ContentStore {
         id TEXT PRIMARY KEY, draft_json TEXT NOT NULL, published_json TEXT,
         revision INTEGER NOT NULL, updated_at INTEGER NOT NULL, published_at INTEGER
       );`},{version:2,name:"Private content revision history",sql:`CREATE TABLE IF NOT EXISTS content_history (module_id TEXT NOT NULL,revision INTEGER NOT NULL,event TEXT NOT NULL,snapshot_json TEXT NOT NULL,created_at INTEGER NOT NULL,PRIMARY KEY(module_id,revision));
-      INSERT OR IGNORE INTO content_history SELECT id,revision,'adopted',draft_json,updated_at FROM content_modules;`}]);
+      INSERT OR IGNORE INTO content_history SELECT id,revision,'adopted',draft_json,updated_at FROM content_modules;`},{version:3,name:"Learning guide visibility",sql:`CREATE TABLE IF NOT EXISTS learning_settings (id INTEGER PRIMARY KEY CHECK(id=1), visible INTEGER NOT NULL CHECK(visible IN (0,1)));
+      INSERT OR IGNORE INTO learning_settings VALUES (1,0);`}]);
+  }
+  learningSettings() { return { learningGuideVisible: this.db.prepare("SELECT visible FROM learning_settings WHERE id=1").get()?.visible === 1 }; }
+  setLearningVisibility(visible: unknown) {
+    requireValue(typeof visible === "boolean", "Learning guide visibility must be true or false.");
+    this.db.prepare("UPDATE learning_settings SET visible=? WHERE id=1").run(visible ? 1 : 0);
+    return this.learningSettings();
   }
   close() { this.db.close(); }
   private write<T>(operation: () => T): T {

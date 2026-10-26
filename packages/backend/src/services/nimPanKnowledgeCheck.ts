@@ -27,6 +27,10 @@ interface GeneratedQuestion {
 }
 
 export const TASK_CONCEPTS: Record<string, { title: string; concept: string }> = {
+"pan-sec-dns": {"title": "DNS-Only Egress", "concept": "App-ID allowlists and explicit default deny for outbound DNS."},
+"pan-sec-admin": {"title": "Dedicated Administration Zone", "concept": "Asymmetric administration trust with a separate management zone."},
+"pan-sec-mail": {"title": "DMZ Mail Relay Isolation", "concept": "Bidirectional named application paths without lateral access to trusted networks."},
+
   // Security Policy
   "pan-sec-01": { title:"Basic Outbound Access", concept:"Why App-ID is more precise than port-based service matching, and why a deny-all rule must sit at the bottom of a PAN-OS policy." },
   "pan-sec-02": { title:"DMZ Web Server",        concept:"Zone directionality in PAN-OS security policy — why a rule allowing Untrust→DMZ does NOT automatically allow DMZ→Trust, and the semi-trusted zone model." },

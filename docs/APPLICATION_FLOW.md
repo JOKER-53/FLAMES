@@ -55,3 +55,11 @@ Every shared header provides a light/dark toggle. A first visit uses the system 
 See [autosave and visual policy authoring](AUTOSAVE_AND_EXERCISE_BUILDER.md) for guest/account/Academy storage, reset behavior, and custom exercise publishing.
 
 Configuration lessons: administrator selects a family, edits starter/reference rows and checks, tests the reference and publishes. The student lesson loads only public starters/check descriptions, resumes its native-family draft, and submits the configuration with the published version for private server grading. Decision traces show the student’s own rows; packet explorers do not grant completion. See [expanded builder](CONFIGURATION_EXERCISE_BUILDER.md) and [packet explanations](PACKET_EXPLANATIONS.md).
+
+## Learning and operations practice
+
+Both course sidebars expose **Learning guide** (`/fortigate/learn`, `/paloalto/learn`). The ten chapters include concept definitions, step-by-step procedures, worked examples, predicted-result tables, accessible flow diagrams, mistakes, and self-check explanations. `?task=<built-in ID>` opens the task’s study plan; **Study this task** links there from native lessons. The 48 study plans and shareable [handbook](LEARNING_HANDBOOK.md) use `packages/frontend/src/course/learning.json`; regenerate Markdown with `npm run docs:learning`. Reading does not grant completion.
+
+Operations Practice adds six FortiGate policy tasks and three Palo Alto security tasks, with existing autosave, grading, topology/packet tools, and progress whitelists. These are separate classroom assignment modules, preserving original policy-assessment prerequisites and existing assignment scopes. The Academy lesson manifest includes the new IDs; update the adapter alongside FLAMES when integrating this version.
+
+The learning guide is hidden from students by default. Admin dashboard controls its shared visibility across both vendors; administrators retain preview access. Course navigation, study links, and direct guide routes use the setting returned with the public catalog. Visible tabs recheck on focus and every 30 seconds. Content migration 3 persists this flag; tasks and completion are independent of guide availability.

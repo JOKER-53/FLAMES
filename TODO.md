@@ -140,6 +140,13 @@ Standalone self-service password recovery is conditional on keeping local accoun
 - [ ] Add hosted password recovery/account administration for standalone deployments if they remain in use.
 - [ ] Consider configuration diff views, topology authoring, and supported CLI practice after the core flow is stable.
 
+## Learning expansion
+
+- [x] Add nine graded operations tasks (six FortiGate, three Palo Alto) with offline concept checks and Academy/progress identifiers.
+- [x] Provide an in-app learning guide and reproducible Markdown handbook covering all 48 built-in tasks, examples, flowcharts, troubleshooting, and self-check explanations.
+
+- [x] Add a persistent, administrator-only student learning-guide visibility toggle (hidden by default, both vendors, administrator previews).
+
 ## Working rules
 
 - Keep FLAMES branding and the existing light/dark design consistent.

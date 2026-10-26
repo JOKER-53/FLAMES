@@ -1,3 +1,4 @@
+import { useLearningAccess } from "../../course/useLearningAccess";
 import { useDialogFocus } from "../../hooks/useDialogFocus";
 import { ThemeToggle } from "../ThemeToggle";
 // ============================================================================
@@ -67,6 +68,7 @@ function AccountActions() {
 }
 
 function Sidebar({ course, done, current, onNavigate }: { course: Course; done: Set<string>; current: { module: Module; lesson: Lesson } | null; onNavigate: () => void }) {
+  const { canView: canViewLearning } = useLearningAccess();
   const location = useLocation();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const progress = courseProgress(course, done);
@@ -131,7 +133,7 @@ function Sidebar({ course, done, current, onNavigate }: { course: Course; done: 
         })}
 
         <div className="eyebrow px-2.5 mt-5 mb-1.5">Reference</div>
-        {course.reference.map(item => (
+        {course.reference.filter(item => !item.path.endsWith("/learn") || canViewLearning).map(item => (
           <NavLink key={item.path} to={item.path} className={({ isActive }) => `flex items-center gap-2.5 px-2.5 h-9 rounded-md text-sm ${isActive ? "bg-sunken text-ink font-medium" : "text-body hover:bg-sunken hover:text-ink"}`}>
             <Icon name={item.icon} size={16} />{item.label}
           </NavLink>

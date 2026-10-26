@@ -14,6 +14,7 @@
     "build": "npm run build --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm run build --workspace=@fortisim/frontend",
     "test": "npm run build --workspace=@fortisim/engine && npm test --workspace=@fortisim/engine && npm run build --workspace=@fortisim/backend && npm test --workspace=@fortisim/backend && npm test --workspace=@fortisim/frontend",
     "verify": "npm test && npm run build --workspace=@fortisim/frontend",
+    "docs:learning": "node scripts/prepare-learning.cjs",
     "engine:demo": "npm run demo --workspace=@fortisim/engine",
     "backend:dev": "node scripts/backend-dev.cjs",
     "frontend:dev": "npm run build --workspace=@fortisim/engine && npm run dev --workspace=@fortisim/frontend",

@@ -6,11 +6,14 @@ import {
   multiDmzAccessScenario, firewallFinalScenario,
 } from "@fortisim/engine";
 
+import { PRACTICE_SCENARIOS } from "@fortisim/engine";
+
 const allScenarios: Scenario[] = [
   webServerAccessScenario, dbLockdownScenario, dmzMultiServiceScenario,
   interZoneTrustScenario, fullNetworkPolicyScenario, multiSystemScenario,
   webFilterScenario, serverSegmentationScenario, guestIsolationScenario,
   multiDmzAccessScenario, firewallFinalScenario,
+  ...PRACTICE_SCENARIOS,
 ];
 
 export function listScenarios() {
