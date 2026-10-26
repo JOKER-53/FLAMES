@@ -47,7 +47,7 @@ export function BrandMark({ className = "" }: { className?: string }) {
 }
 
 export function AccountMenu() {
-  return <div className="flex items-center gap-2"><ThemeToggle /><AccountActions /></div>;
+  return <div className="flex max-w-full flex-wrap items-center justify-end gap-2"><NavLink to="/credits" className={({ isActive }) => `btn-secondary btn-sm shrink-0 ${isActive ? "bg-sunken font-semibold" : ""}`}>Credits</NavLink><ThemeToggle /><AccountActions /></div>;
 }
 
 function AccountActions() {
@@ -142,7 +142,8 @@ function Sidebar({ course, done, current, onNavigate }: { course: Course; done: 
 
       <div className="px-4 py-3 border-t border-line text-2xs text-muted leading-relaxed">
         <Link to="/" className="flex items-center gap-1.5 text-xs font-medium text-body hover:text-ink mb-1.5"><Icon name="arrowLeft" size={14} />All courses</Link>
-        Simulated {course.os} · no live traffic
+        <Link to="/credits" className="inline-block text-xs font-medium text-body underline underline-offset-4 hover:text-ink mb-1.5">Credits</Link>
+        <p>Simulated {course.os} · no live traffic</p>
       </div>
     </nav>
   );
@@ -190,7 +191,7 @@ export function CourseShell({ course, completed, children }: { course: Course; c
       )}
 
       <div data-course-content className="flex-1 min-w-0 flex flex-col">
-        <header className="h-14 shrink-0 flex items-center justify-between gap-3 px-4 lg:px-6 bg-surface border-b border-line">
+        <header className="min-h-14 shrink-0 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 lg:px-6 py-2 bg-surface border-b border-line">
           <div className="flex items-center gap-2 min-w-0">
             <button className="lg:hidden btn-ghost w-9 px-0" aria-label="Open navigation" aria-expanded={drawer} onClick={() => setDrawer(true)}><Icon name="menu" size={18} /></button>
             <ol className="flex items-center gap-1.5 text-sm min-w-0" aria-label="Breadcrumb">

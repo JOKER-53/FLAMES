@@ -8,6 +8,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { CourseShell }       from "./components/shell/CourseShell";
 import { CourseCatalogProvider, useCourseCatalog } from "./course/CourseCatalog";
 const LearningPage = lazy(() => import("./pages/course/LearningPage").then(module => ({ default: module.LearningPage })));
+const CreditsPage = lazy(() => import("./pages/CreditsPage").then(module => ({ default: module.CreditsPage })));
 const AdminPage = lazy(() => import("./pages/admin/AdminPage").then(module => ({ default: module.AdminPage })));
 const AuthoredLessonPage = lazy(() => import("./pages/course/AuthoredLessonPage").then(module => ({ default: module.AuthoredLessonPage })));
 import { CourseOverviewPage, ModulePage } from "./pages/course/CoursePages";
@@ -114,6 +115,7 @@ export default function App() {
       <Routes>
         <Route path="/"            element={<VendorSelect />} />
         <Route path="/account" element={<AccountPage />} />
+        <Route path="/credits" element={<CreditsPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/classroom" element={<ClassroomPage />} />
         <Route path="/fortigate/*" element={<TrainingAccess><FortiGateApp /></TrainingAccess>} />

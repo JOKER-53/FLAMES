@@ -376,3 +376,21 @@ Validation: `npm run verify` passed 56 engine, 95 backend, and 37 frontend tests
 Added a Student learning guide panel to the admin dashboard with Show learning guide / Hide learning guide controls and administrator preview links for both vendors. The shared setting defaults to hidden and persists in content migration 3. Existing content, revisions, tasks, and progress are preserved. Only existing content administrators can read/change the protected setting. The student catalog supplies the visibility flag; student sidebar links, lesson study links, and direct in-app guide routes honor it. Administrators retain preview access. Visible tabs refresh on focus and every 30 seconds; initial settings failures leave student visibility closed.
 
 Validation: `npm run verify` passed 56 engine, 97 backend, and 37 frontend tests, plus the production frontend build. Eight targeted Chromium checks (including light/dark administrator accessibility) and five Firefox guide/visibility checks passed. Regression coverage verifies default-hidden behavior, strict boolean validation, persistence across database reopen, anonymous/student write rejection, both vendors, hidden direct URLs and study links, retained administrator preview, reload persistence, and an already-open student guide closing after refresh. The actual local catalog reports `learningGuideVisible: false`. Updated administrator instructions, application flow, migration notes, and generated handbook.
+
+## 51. Contributor and organization credits
+
+Added the public `/credits` page for KADHIRAVAN EG (`JOKER-53`), Harish Kumar (`Harishkumar-47`), and BeyondBug. Included the supplied contributor GitHub/LinkedIn profiles and organization repositories/LinkedIn links, with safe new-tab behavior and descriptive accessible names. The page uses the existing FLAMES layout, typography, responsive spacing, and light/dark theme. Credits links are available in the site footer and both course navigation footers. No biographies, titles, or achievements beyond the supplied contributor identities were invented.
+
+Validation: production frontend build passed; targeted Chromium and Firefox browser checks passed for page navigation, all six link destinations, mobile/desktop overflow, and light/dark accessibility. Reviewed the rendered desktop page. Updated application-flow documentation.
+
+## 52. Visible header access to credits
+
+Added a labeled Credits link beside the shared theme/account controls on main pages and both course headers. The active credits route is indicated, and headers wrap on narrow screens to retain guest and instructor controls without horizontal overflow. Existing footer links remain available. Updated the application-flow documentation and browser coverage to use header navigation.
+
+Validation: production frontend build and four targeted browser workflows passed in each of Chromium and Firefox, covering contributor links, light/dark accessibility, mobile guest/instructor headers, and existing lesson/course spacing.
+
+## 53. Framed team photograph and wider credits layout
+
+Added the supplied original BeyondBug team photograph without image changes or cropping. Redesigned credits to use the available page width, with a themed corner-accent frame, contributor profiles alongside the photograph on desktop, stacked mobile content, and an organization link strip. The photo includes explicit dimensions and descriptive alternative text. Added an opt-in full-width SiteLayout setting so the credits layout does not widen other standard pages. Retained the Credits header button and all supplied contributor/organization links.
+
+Validation: production frontend build passed. Four targeted browser workflows passed in each of Chromium and Firefox, covering image loading, all profile links, light/dark accessibility, 390/1280/1920-pixel overflow checks, mobile guest/instructor headers, and existing lesson/course layouts. Reviewed actual desktop and dark mobile screenshots. Verified the stored photo checksum matches the supplied original.

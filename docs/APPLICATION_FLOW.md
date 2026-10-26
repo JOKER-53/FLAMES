@@ -63,3 +63,9 @@ Both course sidebars expose **Learning guide** (`/fortigate/learn`, `/paloalto/l
 Operations Practice adds six FortiGate policy tasks and three Palo Alto security tasks, with existing autosave, grading, topology/packet tools, and progress whitelists. These are separate classroom assignment modules, preserving original policy-assessment prerequisites and existing assignment scopes. The Academy lesson manifest includes the new IDs; update the adapter alongside FLAMES when integrating this version.
 
 The learning guide is hidden from students by default. Admin dashboard controls its shared visibility across both vendors; administrators retain preview access. Course navigation, study links, and direct guide routes use the setting returned with the public catalog. Visible tabs recheck on focus and every 30 seconds. Content migration 3 persists this flag; tasks and completion are independent of guide availability.
+
+## Credits
+
+The public `/credits` page identifies FLAMES contributors KADHIRAVAN EG (`JOKER-53`) and Harish Kumar (`Harishkumar-47`), with their supplied GitHub and LinkedIn profiles, and links to the BeyondBug organization. **Credits** appears in the shared header on main pages and both courses, with additional links in the main site footer and course navigation footers. The page follows the shared light/dark theme and requires no student login.
+
+The credits page uses a page-wide layout with the supplied original team photograph at `public/images/beyondbug-team.png`. The image retains its full 1280 × 567 aspect ratio without cropping, sits in a themed frame, and has descriptive alternative text. Contributor profiles sit beside the photo on wide screens and stack below it on smaller screens. The full-width layout is opt-in for credits; standard site pages retain their existing width.
