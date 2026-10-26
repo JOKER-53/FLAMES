@@ -1,3 +1,4 @@
+import type { ExerciseTopology } from "./topology";
 import type { ConfigurationExercise, ConfigurationFamily } from "./configurationExercises";
 import type { AddressObject, ServiceObject, FirewallPolicy, TestPacket, ExpectedOutcome, WebFilterProfile } from "../policy/types";
 
@@ -22,6 +23,7 @@ export interface AuthoredTask {
   acceptedAnswers: string[];
 }
 export interface AuthoredLesson {
+  topology?: ExerciseTopology;
   kind?: "reading" | "policy" | "configuration";
   configurationExercise?: ConfigurationExercise;
   simulatorFamily?: ConfigurationFamily;
