@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 // Frame for pages outside a course: landing, account, and classroom.
 import type { ReactNode } from "react";
 import { AccountMenu, BrandMark } from "./CourseShell";
@@ -20,7 +19,7 @@ export function SiteLayout({ children, wide = false, fullWidth = false }: { chil
       <footer className="border-t border-line bg-surface">
         <div className={`mx-auto ${fullWidth ? "w-full" : "max-w-[1120px]"} px-4 lg:px-8 py-5 flex flex-wrap justify-between gap-2 text-xs text-muted`}>
           <span>FLAMES Academy · Firewall training on simulated FortiOS and PAN-OS consoles. No live equipment is configured.</span>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2"><Link to="/credits" className="font-medium text-body underline underline-offset-4 hover:text-ink">Credits</Link><span>Not affiliated with Fortinet or Palo Alto Networks.</span></div>
+          <span>Not affiliated with Fortinet or Palo Alto Networks.</span>
         </div>
       </footer>
     </div>

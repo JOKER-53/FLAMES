@@ -1,5 +1,5 @@
 import {expect,it} from 'vitest';
-import {isSimulatorConfiguration} from '../src/drafts';
+import {isSimulatorConfiguration} from '../src/progress/drafts';
 it('rejects duplicate or empty simulator row identities before restoration',()=>{
  const route={id:'same',destination:'',gateway:'',interfaceName:'port1',distance:10};
  expect(isSimulatorConfiguration('routing',[route])).toBe(true);

@@ -44,7 +44,7 @@ See [repository structure](docs/REPOSITORY_STRUCTURE.md).
 | Docker development | Build the shared engine before API startup; mount current frontend HTML/runtime assets. Rebuilt the actual running services after identifying stale engine output. |
 | Provisioned test login | Permit sign-in with an existing operator-provisioned password while retaining the 12-character registration minimum. |
 
-Regression tests were added for confirmed cases. These fixes are not a guarantee that no undiscovered bugs remain. See [bug-fix report](docs/BUG_FIXES_2026-10-23.md).
+Regression tests were added for confirmed cases. These fixes are not a guarantee that no undiscovered bugs remain. See [bug-fix report](docs/archive/BUG_FIXES_2026-10-23.md).
 
 ## 4. Dark/light mode
 
@@ -121,7 +121,7 @@ The command asks for email, display name, and a hidden password. It does not ove
 
 A local test account was provisioned at the user's request. Its database state and credentials are not part of the source commit; this is not a seeded default account for new deployments.
 
-See [administrator guide](docs/ADMIN_CONTENT.md) and [authoring verification](docs/ADMIN_VERIFICATION_2026-10-23.md).
+See [administrator guide](docs/ADMIN_CONTENT.md) and [authoring verification](docs/archive/ADMIN_VERIFICATION_2026-10-23.md).
 
 ## 7. Current application flow
 
@@ -174,7 +174,7 @@ Use [TODO.md](TODO.md) as the action plan. Autosave and the FortiGate visual pol
 - Browser checks passed all nine guest restorations, real saves/resets, cross-context account resume, account isolation, stale-device conflicts, corrupt/blocked storage recovery, retry, expired sessions, custom exercise grading, changed-version reset, and dark/mobile builder layouts.
 - Academy needs the updated router, generated simulator contract, and additive draft-table migration installed before parent-side autosave is available there. No college deployment was changed.
 
-See [the feature guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md) and [verification record](docs/AUTOSAVE_BUILDER_VERIFICATION_2026-10-23.md).
+See [the feature guide](docs/AUTOSAVE_AND_EXERCISE_BUILDER.md) and [verification record](docs/archive/AUTOSAVE_BUILDER_VERIFICATION_2026-10-23.md).
 
 
 ## 11. Operations, targeted guidance, assignments and content transfer
@@ -259,7 +259,7 @@ Administrative access now requires a valid upstream identity with a nonempty bou
 
 ## 28. Final audit verification — 2026-10-24
 
-The [code audit report](docs/CODE_AUDIT_2026-10-24.md) records the reproduced failures and individual fix commits. Final verification: 146 unit/API/render tests, five isolated Chromium workflows, zero npm audit findings, production image builds, isolated read-only production startup/health/auth checks, valid standalone/Academy Compose configuration, and clean diff checks. College/AWS deployment and unchecked new features remain explicitly pending in TODO.md.
+The [code audit report](docs/archive/CODE_AUDIT_2026-10-24.md) records the reproduced failures and individual fix commits. Final verification: 146 unit/API/render tests, five isolated Chromium workflows, zero npm audit findings, production image builds, isolated read-only production startup/health/auth checks, valid standalone/Academy Compose configuration, and clean diff checks. College/AWS deployment and unchecked new features remain explicitly pending in TODO.md.
 
 ## 29. Lesson header layout — 2026-10-24
 
@@ -394,3 +394,9 @@ Validation: production frontend build and four targeted browser workflows passed
 Added the supplied original BeyondBug team photograph without image changes or cropping. Redesigned credits to use the available page width, with a themed corner-accent frame, contributor profiles alongside the photograph on desktop, stacked mobile content, and an organization link strip. The photo includes explicit dimensions and descriptive alternative text. Added an opt-in full-width SiteLayout setting so the credits layout does not widen other standard pages. Retained the Credits header button and all supplied contributor/organization links.
 
 Validation: production frontend build passed. Four targeted browser workflows passed in each of Chromium and Firefox, covering image loading, all profile links, light/dark accessibility, 390/1280/1920-pixel overflow checks, mobile guest/instructor headers, and existing lesson/course layouts. Reviewed actual desktop and dark mobile screenshots. Verified the stored photo checksum matches the supplied original.
+
+## 54. Feature-based repository structure and current documentation
+
+Grouped engine implementations by policy, interfaces, ports, PAN, content, progress, learning and scenario ownership while preserving public package exports. Updated all consumers, source tests, demo imports and the generated Academy contract. Added package/script/test guides, moved dated reports into the archive, rewrote active setup/architecture/application-flow/authoring/roadmap documentation, and added `npm run docs:check` to CI. Learning and Academy generation now have documented npm commands. Header-only Credits behavior from the preceding change is retained.
+
+Validation: 190 package tests and the production frontend build passed; Chromium passed 77 browser workflows, Firefox passed 75 with two intentional GPU skips; 39 maintained Markdown files passed link checking. Both Compose configurations validated, generation commands and the engine demo ran, and the existing local API health check passed after the moves. See the [dated move map and verification](docs/archive/REPOSITORY_REORGANIZATION_2026-10-26.md). Runtime routes, model URLs, data locations and deployment entry points were preserved.

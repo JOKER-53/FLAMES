@@ -5,7 +5,7 @@
 // precisely the two required ones.
 // ============================================================================
 
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const dmzMultiServiceScenario: Scenario = {
   id: "dmz-multi-service-01",

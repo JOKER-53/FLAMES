@@ -1,4 +1,4 @@
-import { parseCidr, ipToInt } from "../matching";
+import { parseCidr, ipToInt } from "../policy/matching";
 
 export interface StaticRoute {
   id: string;

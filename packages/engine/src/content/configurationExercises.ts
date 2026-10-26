@@ -1,8 +1,8 @@
-import { isSimulatorConfiguration, type SimulatorKind } from "./drafts";
-import { evaluatePanPacket, evaluatePanNat, type PanSecurityRule, type PanNatRule } from "./panExercises";
-import { parseCidr, ipToInt } from "./matching";
-import { gradeInterfaceSubmission } from "./interfaceGrader";
-import type { InterfaceConfig, InterfaceFieldCheck } from "./interfaceTypes";
+import { isSimulatorConfiguration, type SimulatorKind } from "../progress/drafts";
+import { evaluatePanPacket, evaluatePanNat, type PanSecurityRule, type PanNatRule } from "../pan/panExercises";
+import { parseCidr, ipToInt } from "../policy/matching";
+import { gradeInterfaceSubmission } from "../interfaces/interfaceGrader";
+import type { InterfaceConfig, InterfaceFieldCheck } from "../interfaces/interfaceTypes";
 export type ConfigurationFamily = "interfaces" | "routing" | "pan-security" | "pan-nat" | "pan-zones";
 export type ConfigurationValue = string | number | boolean | string[];
 export type ConfigurationRow = Record<string, ConfigurationValue>;

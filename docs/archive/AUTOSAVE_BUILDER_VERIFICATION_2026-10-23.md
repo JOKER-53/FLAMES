@@ -55,4 +55,4 @@ Temporary test students and sample modules were removed. The existing user-reque
 - The visual builder does not yet author other simulator families.
 - Completion remains practice progress, not certified examination evidence.
 
-See [feature setup and behavior](AUTOSAVE_AND_EXERCISE_BUILDER.md).
+See [feature setup and behavior](../AUTOSAVE_AND_EXERCISE_BUILDER.md).

@@ -1,59 +1,68 @@
-# Architecture
+# FLAMES architecture
 
-FLAMES is an npm workspace with three packages.
+FLAMES is an npm workspace with three packages and stable public route/protocol boundaries. See the [repository map](REPOSITORY_STRUCTURE.md) for source ownership and the [application flow](APPLICATION_FLOW.md) for user-visible behavior.
 
-| Package | Responsibility |
-| --- | --- |
-| engine | Pure traffic matching, graders, scenario definitions, PAN practice models |
-| backend | Express API, input validation, SQLite accounts/sessions/progress, tutoring proxy |
-| frontend | React routes, vendor consoles, hardware interaction, guest/account completion cache |
+```mermaid
+flowchart LR
+  Browser[React course and admin UI] --> Proxy[Vite or Nginx same-origin API proxy]
+  Proxy --> API[Express application]
+  API --> Engine[Shared simulation and validation engine]
+  API --> Accounts[(Standalone accounts and progress)]
+  API --> Content[(Content, classrooms and guide settings)]
+  API --> Provider[Optional AI provider]
+  API --> Academy[Academy identity, progress and drafts in integrated mode]
+```
 
-See [repository structure](REPOSITORY_STRUCTURE.md) for file ownership and [application flow](APPLICATION_FLOW.md) for the current user journey. Frontend screens are grouped into `pages/fortigate/`, `pages/pan/`, and shared course/account pages. Each workspace owns its tests.
+## Package and runtime boundaries
 
-## Runtime
+The engine owns pure ordered policy decisions, matching, native task definitions, PAN models, authored-content/configuration contracts, progress/draft validation and deterministic learning hints. Its source is grouped into policy, interfaces, ports, PAN, content, progress, learning, evaluator and scenario folders. `src/index.ts` remains the public export boundary. The backend loads compiled CommonJS from `dist/index.js`; Vite consumes the TypeScript browser entry. Rebuild shared output when running the backend independently; `npm run backend:dev` supervises both packages.
 
-The frontend sends same-origin /api requests. Vite forwards them to the API during development; Nginx does so in production. The API loads compiled CommonJS engine output. Vite consumes the engine's TypeScript browser entry. Rebuild the engine after source changes when running the backend independently.
+The backend constructs dependencies in `app.ts` and starts in `server.ts`. Feature folders own content, classroom, draft, identity/integration and migration responsibilities. Native training routes/controllers use shared grading and scenario registries. Frontend pages own vendor-specific console interactions; shared shells, API helpers, draft state, course metadata and hardware utilities avoid duplicating cross-vendor behavior.
 
-AccountProvider resolves session state before hosted training access. Local guest practice remains available unless AUTH_REQUIRED=true. Passwords use salted scrypt, session tokens are random and stored as SHA-256 digests, and sessions expire after seven days. Cookie flags are HTTP-only, SameSite=Lax, and Secure in production. Mutating requests with an unapproved Origin are rejected. Registration never accepts a caller-selected instructor role.
+Vite forwards same-origin `/api` requests during development. Production Nginx serves the SPA/assets and proxies API requests. Only configured origins are accepted for cross-origin use and mutating requests; provider credentials never belong in browser environment variables.
 
-SQLite tables hold users, sessions, and completion markers. WAL and a busy timeout support a small single-instance classroom. Completion writes are transactional, monotonic merges keyed by user + platform + task. Completion IDs are validated against a shared public lesson registry and invalid legacy IDs are excluded from reads. Device caches use account-specific keys, so guest history is not silently assigned to an account. Roster access is instructor-only. This is one shared classroom, not a multi-tenant institution system.
+## Identity and persistent state
 
-## Grading and tutoring
+| Responsibility | Standalone mode | Academy mode |
+| --- | --- | --- |
+| Student identity | Local user/session store | Verified parent identity; bearer stays in memory |
+| Completion | Account SQLite; device-local for guests | Authenticated parent progress API |
+| Simulator drafts | Account SQLite or guest local storage | Parent MySQL adapter |
+| Authored content, revisions and guide settings | FLAMES content SQLite | FLAMES content SQLite |
+| Classroom teaching metadata | Scoped content database records | Scoped teaching records with verified parent identities/progress |
 
-FortiGate policy/interface/port submissions are graded by API endpoints. Palo Alto security/zone/NAT submissions use /api/pan/grade/:taskId and the shared PAN exercise definitions. Security checks evaluate effective first-match traffic behavior; zone checks enforce exclusive interface ownership; NAT checks require coherent exact mappings instead of unrelated partial rules or substring matches.
+Local passwords use salted scrypt; session tokens are random and stored as hashes. HTTP-only/SameSite cookies and production Secure settings protect local sessions. Registration does not accept an instructor role. Device keys are identity-scoped; guest drafts/progress are not silently copied into accounts. Failures display explicit save errors rather than claiming persistence succeeded.
 
-The AI tutor is optional. Requests use a 15-second timeout, and grading reports remain usable on provider failure. Generated questions are validated, kept in a capped 15-minute store, and consumed once. Restarting the API invalidates pending questions. The question store is in-memory and unsuitable for an uncoordinated multi-replica deployment.
+Content/classroom/account schemas use an append-only checksummed migration ledger. Existing data is adopted, pending migrations apply transactionally, and changed historical SQL or a newer schema causes startup rejection. Content versions 1–3 establish modules, private history and default-hidden learning-guide visibility. Request IDs, redacted structured logs and protected diagnostics help correlate failures. See [migrations](DIAGNOSTICS_AND_MIGRATIONS.md).
 
-Knowledge checks and ordinary submissions both contribute student-reported completion. Instructor counts are not tamper-proof grades. Applied simulator drafts are versioned and stored separately from completion: guests use local storage, standalone accounts use SQLite, and Academy accounts use parent MySQL. Some tools still evaluate locally. Browser bundles include exercise definitions; API answer stripping is not a claim of browser answer-key secrecy.
+In integrated mode, exact parent origin/window/version checks protect the iframe bridge. FLAMES verifies identity through Academy and proxies parent-owned completion/drafts; no signing keys are shared and no local student fallback is used. The companion adapter must be installed separately into the deployed Academy version. See [integration](PARENT_LMS_INTEGRATION_GUIDE.md).
 
-## UI and hardware
+## Content, classrooms and access
 
-Routes are lazy-loaded. The initial bundle does not include Three.js; hardware pages load it on demand. The hardware renderer derives front-panel depth from model bounds and keeps socket indicators/connectors in the same rotating group. Hardware reference pages use a full-width, tall in-page canvas with a pulled-back initial camera; supporting details scroll below. Reset restores that initial camera. Explore hides dots and cables. Cable mode starts empty, allows manual rotation, provides keyboard port controls, and clears connections with Reset. WebGL errors are surfaced; geometry, materials, textures, observers, timers, and handlers are cleaned up.
+Authored modules keep private draft/reference definitions separate from published snapshots. Publication validates definitions and reference behavior. Public catalog metadata and student serializers omit private authored answers and history. Submissions are bound to the published version; stale edits/configurations return explicit conflicts. Imports and duplication mint new identities and do not copy completion.
 
-The model's socket X/Y anchors remain calibrated to the supplied asset. Automated checks establish unique ordered anchors and cable compatibility, not pixel-perfect socket fit. Visual acceptance must use current screenshots or manual interaction.
+`CourseCatalogProvider` merges published lessons into native curriculum and reads guide visibility. The guide is hidden from students by default. The protected admin setting controls both vendor navigation/study links and direct in-app routes; administrators retain previews. Visible tabs recheck on focus/every 30 seconds. The ten-chapter JSON source generates the committed Markdown handbook; reading is independent of completion.
 
-## Deployment boundary
+Classrooms are instructor-owned groups with invitation membership, immutable assignment lesson snapshots, due dates and scoped progress reports. Operations Practice modules stay separate from original policy modules. Classroom authorization checks ownership/membership before accessing student progress; it is not an unrestricted global student roster.
 
-The production build has a non-root Node API and an unprivileged Nginx SPA target. Only the frontend port is exposed on loopback; an external HTTPS reverse proxy must terminate TLS. The API trusts one internal Nginx hop only when TRUST_PROXY=1. Do not expose that API directly or broaden proxy trust without reassessing the network boundary. SQLite lives in a persistent volume; backup it with the API stopped or use a consistent SQLite backup tool.
+## Simulation, grading and tutoring
 
-Production and dev containers are deliberately separate. See [deployment](DEPLOYMENT.md) and [release checklist](RELEASE_CHECKLIST.md).
+Policy grading evaluates first-match behavior and required logging. PAN security checks effective ordered application/zone decisions; zone checks reject shared interface ownership; NAT checks require coherent mappings. Supported authored configuration families reuse shared validation, decisions and private grading. Some native reference/interface/routing practice is evaluated locally.
 
-## Academy mode
+Packet explanations and Network view expose the student's current settings, matched rows and model limits. They do not award completion. Independent test packets do not implement a full session table; policy packets supply interface direction; App-ID consumes labels rather than inspecting payloads; NAT translation does not grant permission. Native definitions may be browser-visible. Practice progress is not certified assessment evidence.
 
-`integration/academy.ts` provides runtime configuration, parent identity validation, and the progress proxy. In Academy mode the standalone SQLite store is in-memory and no local credentials/progress are used. The frontend accepts bearer credentials from its exact configured parent and keeps them only in memory. The companion `integrations/academy` package uses Academy JWT middleware and MySQL; the supplied wrapper displays saved completion in Academy. Parent failures produce errors instead of falling back to a local account. No signing keys are shared.
+Tutoring uses vetted concepts, staged deterministic hints and optional validated provider output. A provider failure leaves grading available and produces labelled fallback guidance/questions. One-use question sessions are capped, expire after 15 minutes and remain process-local; multi-replica durable sessions/rate limits need a separate design.
 
-The React UI uses light/dark CSS tokens initialized before render by `public/theme-init.js`. The theme preference is independent of account and progress storage.
+## UI, assets and hardware
 
-## Authored content
+The shared header provides Credits, theme and account controls. Credits is a public, opt-in full-width page with the original team photo; footer/sidebar duplicates are omitted. Other standard page widths remain unchanged. Theme tokens initialize before React via `public/theme-init.js` and respect the device preference until explicitly changed.
 
-The API `content/` module maintains a separate SQLite content database with draft and published JSON snapshots, revision checks, and server-side task grading. Published catalog metadata is public; lesson answer keys remain on the server. `CourseCatalogProvider` merges published modules with the built-in curriculum so existing shells, navigation, and progress use the combined lesson list. Built-in engine graders remain unchanged. Academy can consume the public catalog from its configured `FLAMES_CATALOG_URL` to validate custom IDs and compute totals.
+Hardware routes are lazy. Original GLBs retain stable URLs; build tooling creates the optimized FortiGate texture asset, gzip sidecars and versioned manifest. A bounded per-tab transport cache shares downloads while each viewer owns/disposes its scene. Loading/parse feedback, retry, keyboard component descriptions and cable/socket controls remain available, including useful fallback when WebGL is unavailable. Rendering pauses when idle, hidden or offscreen and respects reduced motion.
 
-## Simulator drafts and policy authoring
+Socket placement remains asset-dependent. Automated model/anchor tests and software-WebGL evidence do not prove actual-device alignment; replacement models need visual acceptance. See [hardware performance](HARDWARE_PERFORMANCE.md) and [accessibility](ACCESSIBILITY.md).
 
-Engine `drafts.ts` defines simulator kinds and snapshot validation. API `drafts/` enforces identity, expected-owner checks, scenario versions, and compare-and-swap writes. Reset writes a tombstone instead of deleting its revision. Frontend `drafts/` provides shared hydration, debounced saving, status/retry/reset, and tab/device conflict handling. The Academy adapter includes a generated validator contract and a separate parent simulator-draft table.
+## Deployment and acceptance
 
-Visual policy lessons add a versioned exercise definition to authored content. Publication validates networking fields and references and grades the reference solution. Public catalog/lesson/scenario serializers whitelist safe fields; expected outcomes and reference policies stay private. Existing student scenario/grading routes resolve both built-in and published policy lessons.
+Production uses a non-root Node API, unprivileged Nginx frontend and persistent SQLite volumes. TLS/DNS, external monitoring, backup scheduling and parent installation belong to the target deployment. Trust the documented internal proxy hop only; do not expose/broaden the API trust boundary without review.
 
-Classroom ownership, membership references and assignment snapshots are additional teaching metadata in `content.sqlite`; the classroom router checks ownership before reading student progress. Standalone progress uses the account store, while Academy reports use authenticated parent progress APIs and the adapter admin endpoint. Module transfer reuses content validation but always mints new IDs and imports only drafts. Shared deterministic learning hints are in `engine/src/learningHints.ts`; tutor generation uses vetted concepts and validates output before returning a labelled AI response. The network dialog uses theme-aware SVG packet paths.
-
-The expanded configuration schema keeps instructor reference rows/check expectations in the content store. A shared expected-value-free packet explainer supplies row identities and model boundaries for routing, PAN security and NAT; private grading reuses the same decisions. Student check reports never serialize expected settings. Development compilation is supervised across engine/backend packages before the API process is replaced.
+Local reorganization preserves public exports/routes, runtime asset URLs, database paths and root Docker/Compose entry points. Generated build output and private user data are not source. See [deployment](DEPLOYMENT.md), [operations](OPERATIONS_RUNBOOK.md), [release acceptance](RELEASE_CHECKLIST.md) and the [roadmap](ROADMAP.md).

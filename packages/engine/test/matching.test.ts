@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ipToInt, parseCidr, parseIpRange, ipMatchesAddressValue, portMatchesServiceValue } from "../src/matching";
+import { ipToInt, parseCidr, parseIpRange, ipMatchesAddressValue, portMatchesServiceValue } from "../src/policy/matching";
 
 describe('matching logic', () => {
   it('rejects malformed numeric inputs instead of silently coercing them', () => {

@@ -1,4 +1,4 @@
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const webFilterScenario: Scenario = {
   id: "web-filter-instagram-01",

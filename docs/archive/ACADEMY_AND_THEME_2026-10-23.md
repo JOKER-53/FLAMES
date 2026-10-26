@@ -24,7 +24,7 @@ The reference Academy source is public `main` at `e7b04c60a92fe81c40130dbeae369f
 
 The parent adapter must be installed and its table migrated using the college's deployment process. Confirm the deployed Academy revision, actual API address, HTTPS/ports, Nginx framing policy, and two real user accounts. Existing Academy room scoring/certificates are not automatically mapped to FLAMES practice completion.
 
-Live MySQL migration, real Academy credentials, live AI calls, and production container runtime were not exercised. The development Docker images were subsequently rebuilt and both services restarted; the actual `http://localhost:5173` settings/health APIs and light/dark browser flows passed. CI validates the Compose definitions and builds production images. The SPA build retains its existing lazy-loaded Three.js chunk-size warning. See [integration setup](PARENT_LMS_INTEGRATION_GUIDE.md).
+Live MySQL migration, real Academy credentials, live AI calls, and production container runtime were not exercised. The development Docker images were subsequently rebuilt and both services restarted; the actual `http://localhost:5173` settings/health APIs and light/dark browser flows passed. CI validates the Compose definitions and builds production images. The SPA build retains its existing lazy-loaded Three.js chunk-size warning. See [integration setup](../PARENT_LMS_INTEGRATION_GUIDE.md).
 
 ## Local Docker recovery and FLAMES branding
 

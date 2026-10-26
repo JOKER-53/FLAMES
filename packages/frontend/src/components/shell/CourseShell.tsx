@@ -142,7 +142,6 @@ function Sidebar({ course, done, current, onNavigate }: { course: Course; done: 
 
       <div className="px-4 py-3 border-t border-line text-2xs text-muted leading-relaxed">
         <Link to="/" className="flex items-center gap-1.5 text-xs font-medium text-body hover:text-ink mb-1.5"><Icon name="arrowLeft" size={14} />All courses</Link>
-        <Link to="/credits" className="inline-block text-xs font-medium text-body underline underline-offset-4 hover:text-ink mb-1.5">Credits</Link>
         <p>Simulated {course.os} · no live traffic</p>
       </div>
     </nav>

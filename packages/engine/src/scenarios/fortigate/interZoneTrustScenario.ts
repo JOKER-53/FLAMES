@@ -5,7 +5,7 @@
 // accidentally allow the reverse direction.
 // ============================================================================
 
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const interZoneTrustScenario: Scenario = {
   id: "inter-zone-trust-01",

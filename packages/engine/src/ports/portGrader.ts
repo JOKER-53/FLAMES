@@ -1,4 +1,4 @@
-import { PortScenario, PortSubmission, PortGradingReport, PortCheckResult } from "./interfaceTypes";
+import { PortScenario, PortSubmission, PortGradingReport, PortCheckResult } from "./portTypes";
 
 /**
  * Check descriptions are authored as "Port 3 → DMZ (web server)". Reports go to the

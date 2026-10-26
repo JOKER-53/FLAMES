@@ -1,4 +1,4 @@
-// Generated from engine/src/drafts.ts by scripts/sync-academy-contract.mjs.
+// Generated from engine/src/progress/drafts.ts by scripts/sync-academy-contract.mjs.
 import { LESSONS } from "./lesson-manifest.mjs";
 const isCompletionTask = (platform, id) => Object.prototype.hasOwnProperty.call(LESSONS, platform) && LESSONS[platform].includes(id);
 export function builtinDraftSpec(platform, id) {

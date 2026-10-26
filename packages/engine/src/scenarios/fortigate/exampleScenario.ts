@@ -2,7 +2,7 @@
 // Example Scenario: "Web Server Access"
 // ============================================================================
 
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const webServerAccessScenario: Scenario = {
   id: "web-server-access-01",

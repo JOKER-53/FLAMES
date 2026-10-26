@@ -1,88 +1,48 @@
-# Authoring a new Scenario
+# Add or update a training task
 
-Scenarios are pure data. Adding a new exercise should never require
-touching evaluator or grader logic -- if it does, that means the scenario
-needs a genuinely new engine capability, which is a deliberate, separate
-decision.
+Prefer the [content studio](ADMIN_CONTENT.md) for instructor-authored modules. Native curriculum changes require the engine, public lesson metadata, learning material and progress integration to agree. Avoid scenario-specific branches in generic evaluators; a new simulation capability is a separate implementation decision.
 
-## Firewall Policy scenarios
+## Native task locations
 
-See `packages/engine/src/exampleScenario.ts` (Web Server Access) and
-`packages/engine/src/dbLockdownScenario.ts` as worked templates.
+| Task family | Definition / behavior |
+| --- | --- |
+| FortiGate policy | `packages/engine/src/scenarios/fortigate/` and `src/policy/` |
+| FortiGate operations practice | `src/scenarios/fortigate/practiceScenarios.ts` |
+| Interface configuration | `src/interfaces/interfaceScenarios.ts`, contracts and grader in the same folder |
+| Port assignment | `src/ports/portTypes.ts`, `portScenarios.ts` and `portGrader.ts` |
+| Final assessments | `src/scenarios/assessments/finalAssignments.ts` |
+| Static routing | `src/scenarios/fortigate/routingScenarios.ts` and `src/evaluators/routingEvaluator.ts` |
+| Palo Alto security/zones/NAT | `src/pan/panExercises.ts` |
 
-1. **Pick a teaching objective.** What mistake should this scenario catch?
-   (rule ordering, forgetting default-deny, wrong CIDR scope, wrong
-   service/port, asymmetric zone trust.)
-2. **Define starter objects** (`starterAddresses`, `starterServices`).
-   Include distractor objects so the scenario tests judgment, not just
-   data entry.
-3. **Write test packets that actually probe the objective.** Include
-   packets that should be DENIED, not just the happy-path ACCEPT case --
-   otherwise an overly permissive "allow everything" config can pass.
-4. **Never let `expectedOutcomes` describe a config, only a behavior.**
-   Many valid policy lists can satisfy the same expected outcomes; that's
-   the point of behavioral grading.
-5. **Register it** in `packages/backend/src/scenarios/registry.ts`'s
-   `allScenarios` array, and export it from `packages/engine/src/index.ts`.
+The `src/` paths in this table are relative to `packages/engine/`. Export new public definitions through `src/index.ts`; other workspaces consume `@fortisim/engine` rather than reaching into internal source folders.
 
-## Interface Configuration scenarios
+## Design the exercise
 
-See `packages/engine/src/interfaceScenarios.ts`.
+1. Pick the concept and write an exact, student-facing requirement. Use example networks, not real credentials or production settings.
+2. Define sensible starter objects or rows. Keep distractors useful rather than overcrowding the form.
+3. Provide positive and negative tests: neighboring addresses, wrong services/applications, reverse initiation and overlapping-rule order where relevant.
+4. For policy tasks, express expected outcomes as behavior, not one mandatory rulebase. Add logging requirements only when stated in the brief.
+5. For interface/port tasks, validate the complete required inventory. For PAN security, evaluate effective ordered decisions; zones must reject duplicate ownership; NAT checks must match one coherent translation.
+6. Prove a valid solution and demonstrate failure for missing permissions, broad access and relevant ordering/protocol/logging mistakes. Never derive the test's reference solution automatically from the expected outcome list.
 
-1. Define `starterInterfaces` (what the student sees pre-loaded -- often
-   blank IP/subnet/adminAccess fields for the student to fill in).
-2. Define `checks`: one entry per field you want graded, each pointing
-   at an `interfaceName` and `field` (`ip` | `subnet` | `adminAccess` |
-   `role`) with an `expectedValue`.
-3. Register the scenario in `ALL_INTERFACE_SCENARIOS`
-   (`packages/engine/src/interfaceScenarios.ts`).
+## Register a native lesson
 
-## Port Assignment scenarios
+- Add metadata to `packages/frontend/src/course/curriculum.ts`, preserving existing URLs and assessment prerequisite behavior.
+- Add native IDs to engine `progress/completion.ts` and the matching `integrations/academy/lesson-manifest.mjs`. Operations Practice also uses `PRACTICE_TASKS` to keep classroom modules separate.
+- Register FortiGate policy scenarios in backend `src/scenarios/registry.ts`; interface/port/PAN families use their native registries.
+- Add the relevant knowledge-check concept mapping in the backend and a curated offline question in engine `learning/hardQuestions.ts` or the existing PAN fallback bank.
+- Add a study plan to frontend `course/learning.json`; update chapters/examples if introducing a new concept. Run `npm run docs:learning`.
+- Update scoped classroom module resolution if adding a new module/family. Do not accidentally add practice tasks to existing assessment requirements or alter saved assignment snapshots.
+- Run `npm run sync:academy` after changing draft validation contracts. The companion adapter must be updated in the actual Academy deployment separately.
 
-See `packages/engine/src/portScenarios.ts`.
+Frontend coverage compares native curriculum, completion IDs, Academy manifest and learning plans. New task IDs must work with the existing draft family/version resolver and both guest/account ownership boundaries.
 
-1. Define `ports`: the list of physical ports visible on the chassis
-   diagram for this exercise (`portId`, display `label`).
-2. Define `checks`: one entry per port you want graded, each with an
-   `expectedZone` (`WAN` | `LAN` | `DMZ` | `unassigned`).
-3. Register the scenario in `ALL_PORT_SCENARIOS`
-   (`packages/engine/src/portScenarios.ts`).
-4. Good port scenarios introduce a *new wrinkle* each time (e.g. ports
-   that should stay unassigned despite being wired, redundant WAN links,
-   port numbering not matching physical position) rather than repeating
-   the same basic LAN/DMZ/WAN split.
+## Authored modules
 
-## Anti-patterns to avoid
+The admin studio creates reading/choice/answer lessons, FortiGate policy exercises and supported configuration-family lessons. Define starters, private reference settings and checks, test the reference, then publish. Published modules are discovered dynamically and do not need static completion registration. Imports receive new IDs and remain private drafts; duplication must not copy completion.
 
-- **Don't** add scenario-specific `if (scenario.id === "...")` branches
-  anywhere in evaluator/grader code or route handlers. If a scenario
-  needs special-case logic, the data model is missing something general.
-- **Don't** put a model/correct answer inside any field that could
-   accidentally be sent to the frontend. The API strips expected outcomes,
-   but browser-side exercises currently import scenario definitions. Do not
-   treat the application as a secret-answer-key examination system.
-- **Don't** write scenarios with only a "happy path" check. Always
-  include packets/fields that should fail if the student is too
-  permissive or careless.
+Public serializers must omit private reference values, expected answers and revision snapshots. Built-in definitions can be browser-visible; do not represent native practice tasks as a secret-answer-key examination system.
 
-## Palo Alto exercises
+## Verify and document
 
-Add security, zone, or NAT exercises in `packages/engine/src/panExercises.ts`,
-metadata in `packages/frontend/src/course/curriculum.ts`, and a concept mapping
-for optional knowledge checks. Exercise selectors and server grading share
-these definitions. Prove every listed exercise and final with positive and
-negative fixtures in `packages/engine/test/panExercises.test.ts`.
-
-Security tests must evaluate effective traffic in rule order, not the mere
-existence of an allow/deny rule. Zone checks must reject shared interface
-ownership. NAT mappings must match exactly within one coherent rule.
-
-## Navigation and verification
-
-Register lesson metadata in `packages/frontend/src/course/curriculum.ts`. FortiGate routes use `scenario` and, for interface/port exercises, `track`; Palo Alto routes use `task`. Update the server registry where appropriate and add offline knowledge-question coverage. Run `npm run verify`; engine fixtures live in `packages/engine/test/` and frontend rendering/hardware checks in `packages/frontend/test/`.
-
-For new built-in simulator lessons, add each lesson ID to `packages/engine/src/completion.ts`. The API and device caches accept only that registry; a frontend test checks it against the complete curriculum to prevent drift.
-
-For instructional lessons and multiple-choice/short-answer tasks, use the `/admin` [content studio](ADMIN_CONTENT.md). Published authored lessons are registered dynamically and do not require editing the static completion registry.
-
-FortiGate policy exercises can now be authored visually in `/admin`: choose the policy simulator lesson type, define starter objects, test packets/outcomes, and reference policies, then test and publish. See [builder instructions](AUTOSAVE_AND_EXERCISE_BUILDER.md). Other new simulator capabilities still need engine/UI implementation.
+Run `npm run verify` and `npm run docs:check`. Run relevant browser workflows for navigation, topology, forms and persistence; a new native task is included in curriculum-wide topology coverage. Regenerate the handbook/Academy contract and review their diffs. Actual-device rendering, assistive-technology acceptance and parent-deployment round trips are separate checks.

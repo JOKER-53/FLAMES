@@ -1,4 +1,4 @@
-import { RoutingConfiguration } from "../evaluators/routingEvaluator";
+import { RoutingConfiguration } from "../../evaluators/routingEvaluator";
 
 export interface RoutingScenario {
   id: string;

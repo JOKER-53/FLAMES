@@ -1,28 +1,40 @@
 # Browser regression checks
 
-Run `npm run build`, install Chromium with `npx playwright install chromium`, then run `npm run test:browser`. CI installs browser system dependencies with `--with-deps`. If Chromium is already installed elsewhere, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE` to its executable path.
+Build first, install the browsers and run one suite at a time from the repository root:
 
-The fixture starts an API on `127.0.0.1:4101` and Vite on `127.0.0.1:4173`. Both ports must be free. It creates temporary SQLite databases, seeds an ephemeral instructor only for these tests, disables live provider credentials, and removes its data after shutdown. It does not load the backend `.env` file or open existing runtime databases. Do not point these workflows at a deployed platform; they author fixture content and register fixture students.
-
-`tests/browser/workflows.spec.mjs` exercises real UI/API behavior:
-
-- Instructor sign-in, visual reading authoring/publication, student registration/completion and separate-device progress.
-- Persisted light/dark preference and a narrow network dialog with reduced motion, focus trapping and Escape restoration.
-- Guest route autosave across reload, followed by a fresh student account with no inherited guest configuration.
-- A held initial catalog response arriving after a newer publication, ensuring fresh content stays visible.
-- A completion-write outage after successful grading, ensuring the sync warning appears without claiming the write succeeded.
-
-The test runner uses one worker and retains a trace on failure. `test-results/` and `playwright-report/` are ignored. These checks complement engine/API tests; they do not replace real-device WebGL/socket-alignment checks or authenticated AWS/Academy deployment acceptance.
-
-Additional workflows now cover all five expanded authoring families end to end, private grading with student save/resume and wrong configurations, empty proxy account responses with retry, effective policy/route/NAT explanations, highlighting and stale-result clearing. Representative studio/student/mobile screenshots are written into ignored test outputs.
-
-Topology coverage is generated from both course curricula in `tests/browser/topology.spec.mjs`: all 39 built-in tasks (including assessments) must expose a topology region that fits its card on desktop and mobile. A separate workflow checks live Palo Alto rule updates; the authored-family workflow verifies topology availability for each configuration family.
-
-Run the same workflows in Firefox with:
-
-```sh
-npx playwright install firefox
+```bash
+npm run build
+npx playwright install chromium firefox
+npm run test:browser
 PLAYWRIGHT_BROWSER=firefox npm run test:browser
 ```
 
-The default runner remains Chromium. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` only affects Chromium, so it can stay configured without overriding Firefox. CI installs both engines and runs the workflow suite in each. Layout tests enforce compact desktop lesson introductions at normal scale as well as responsive containment. These checks do not replace actual-device 3D/WebGL and accessibility acceptance.
+CI installs browser system dependencies with `--with-deps` and runs both browsers. `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can point to an existing local Chromium-compatible executable. Firefox is selected through `PLAYWRIGHT_BROWSER=firefox`.
+
+## Isolation and artifacts
+
+The fixture in `scripts/browser-server.cjs` starts an API on `127.0.0.1:4101` and Vite on `127.0.0.1:4173`. Both ports must be free. It creates temporary SQLite databases and an ephemeral instructor, disables live AI credentials and cleans up its data/servers on shutdown. It does not load the backend `.env` or open development runtime databases. Do not run these authoring/registration workflows against a deployment or run separate suites concurrently on the shared ports.
+
+General learning fixtures explicitly enable guide visibility. Dedicated visibility tests hide/show it and restore their fixture setting; real installations remain hidden by default. Browser traces and reports belong in ignored `test-results/` and `playwright-report/`, not source folders.
+
+## Workflow coverage
+
+| File in `tests/browser/` | Exercises |
+| --- | --- |
+| `workflows.spec.mjs` | Instructor publication, student registration/completion, account isolation, autosave, catalog races, sync/API failures, five configuration families, packet traces and network interactions |
+| `topology.spec.mjs` | Every native task's topology at desktop/mobile widths and updates from student rules |
+| `lesson-layout.spec.mjs` | Compact introductions, readable scenarios, available course/module width and responsive lesson rows |
+| `studio.spec.mjs` | Search, identity-safe duplication and private revision comparison |
+| `learning.spec.mjs` | Study paths, chapter/task navigation, search, examples and light/dark accessibility |
+| `learning-visibility.spec.mjs` | Admin show/hide, student direct routes/study links, persistent setting and administrator previews |
+| `credits.spec.mjs` | Header access, contributor/organization destinations, original photo loading, themes and mobile headers |
+| `accessibility.spec.mjs` | Representative student/admin WCAG scans, named controls, keyboard skip/navigation and mobile drawer focus |
+| `hardware.spec.mjs` | Real software-WebGL loading/retry/cache, reduced-motion idle behavior and useful no-WebGL keyboard references |
+
+Firefox intentionally skips the two actual model-rendering cases; software-WebGL model tests run in Chromium. Firefox still runs fallback/keyboard/layout coverage. Native topology coverage is generated from curriculum so new lessons enter the check automatically.
+
+## Limits and manual acceptance
+
+Automated WCAG scans are not accessibility certification. Review actual screen readers, browser zoom, touch targets and assistive technologies using [accessibility guidance](ACCESSIBILITY.md). Software-WebGL evidence does not prove real-device GPU compatibility, performance or calibrated socket alignment. Actual-device model acceptance remains necessary after model changes.
+
+Fixtures intentionally avoid live AI and remote Academy/AWS dependencies. Verify real provider credentials, parent login/progress/draft round trips, deployment storage, HTTPS and restore/rollback separately in the target environment. See the [release checklist](RELEASE_CHECKLIST.md).

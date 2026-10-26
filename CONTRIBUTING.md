@@ -10,8 +10,8 @@ See [repository structure](docs/REPOSITORY_STRUCTURE.md) for file placement and 
 
 ## Verification
 
-Run `npm run verify` before submitting. It builds the engine/API, runs engine, backend, and frontend tests, type-checks the frontend, and builds the SPA. API tests require permission to open a temporary localhost listener. Add regression coverage for behavior changes; use manual browser checks for visual and WebGL changes.
+Run `npm run docs:check` and `npm run verify` before submitting. It builds the engine/API, runs engine, backend, and frontend tests, type-checks the frontend, and builds the SPA. API tests use temporary localhost listeners and isolated databases. Add regression coverage for behavior changes; use manual browser checks for visual and WebGL changes.
 
-Update current documentation when routes, scripts, environment settings, or behavior change. Preserve public routes and engine exports during file moves. Historical documents belong in `docs/archive/`.
+Update current documentation when routes, scripts, environment settings, or behavior change. Preserve public routes and engine exports during file moves. Historical documents belong in `docs/archive/`. Edit the shared learning JSON and run `npm run docs:learning` to update its handbook; run `npm run sync:academy` after changing engine draft contracts. Package and script READMEs describe their ownership and commands.
 
 Use a clear commit message. In the pull request, explain the problem, resulting behavior, tests performed, and remaining limitations. Reference relevant issues and include screenshots for visual changes.

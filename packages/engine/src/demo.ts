@@ -2,9 +2,9 @@
 // Demo script: proves the engine + grader work before any GUI exists.
 // ============================================================================
 
-import { StudentSubmission } from "./types";
-import { webServerAccessScenario } from "./exampleScenario";
-import { gradeSubmission } from "./grader";
+import { StudentSubmission } from "./policy/types";
+import { webServerAccessScenario } from "./scenarios/fortigate/exampleScenario";
+import { gradeSubmission } from "./policy/grader";
 
 function printReport(label: string, submission: StudentSubmission) {
   console.log(`\n=== ${label} ===`);

@@ -14,4 +14,4 @@ Validation performed:
 
 Temporary browser-test administrator accounts and sample modules were removed. No default administrator password was installed, and no college Academy deployment was changed. Live MySQL/Academy deployment acceptance remains an operator task. The existing lazy-loaded Three.js chunk-size warning remains.
 
-See [administrator setup](ADMIN_CONTENT.md) for first access and authoring instructions.
+See [administrator setup](../ADMIN_CONTENT.md) for first access and authoring instructions.

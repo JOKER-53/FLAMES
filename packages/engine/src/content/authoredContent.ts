@@ -1,5 +1,5 @@
 import type { ConfigurationExercise, ConfigurationFamily } from "./configurationExercises";
-import type { AddressObject, ServiceObject, FirewallPolicy, TestPacket, ExpectedOutcome, WebFilterProfile } from "./types";
+import type { AddressObject, ServiceObject, FirewallPolicy, TestPacket, ExpectedOutcome, WebFilterProfile } from "../policy/types";
 
 export interface PolicyExercise {
   schemaVersion: 1;

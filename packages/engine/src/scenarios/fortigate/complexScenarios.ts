@@ -1,4 +1,4 @@
-import { Scenario } from "./types";
+import { Scenario } from "../../policy/types";
 
 export const serverSegmentationScenario: Scenario = {
   id: "server-segmentation-01",
