@@ -1,4 +1,4 @@
-# FLAMES
+# FLAMES - Firewall learning And Monitoring Engine Simulator
 
 A firewall learning platform with FortiGate-style and Palo Alto-style consoles, 48 native tasks, instructor-authored lessons, packet explanations and interactive 3D hardware. FLAMES simulates configuration and traffic decisions; it does not configure real appliances.
 
